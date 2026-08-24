@@ -1,5 +1,10 @@
 # webull
 
+[![Run tests and upload coverage](https://github.com/sfreiberg/webull/actions/workflows/ci.yml/badge.svg)](https://github.com/sfreiberg/webull/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sfreiberg/webull/graph/badge.svg)](https://codecov.io/gh/sfreiberg/webull)
+[![Go Report Card](https://goreportcard.com/badge/github.com/sfreiberg/webull)](https://goreportcard.com/report/github.com/sfreiberg/webull)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
 > **Status: under construction.** This project is in early development. There is
