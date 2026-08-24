@@ -19,6 +19,11 @@ belong to their respective owners.
 Trading involves risk. This software is provided without warranty of any kind.
 You are responsible for any orders it places on your behalf.
 
+## Documentation
+
+- [API compatibility matrix](docs/COMPATIBILITY.md) — what is implemented, what is planned, and what is out of scope
+- [Discovery findings](docs/discovery/) — inventory of the Webull OpenAPI surface, authentication, streaming and wire format
+
 ## Installation
 
 ```
