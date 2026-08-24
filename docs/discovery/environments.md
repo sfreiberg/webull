@@ -51,6 +51,13 @@ The first two are answerable with a DNS lookup and one connection attempt once
 we have credentials; the rate-limits page listing separate sandbox quotas for
 every market-data endpoint is weak evidence that a sandbox does exist for them.
 
+## Connect API hosts
+
+The Connect API uses its own hosts, which do not follow the `.sandbox` insertion
+pattern above — production carries a `us-` prefix the sandbox host lacks. They
+are tabulated in [connect-api.md](connect-api.md#hosts). Endpoint resolution must
+treat them as table entries rather than deriving one from the other.
+
 ## Safety requirement
 
 Integration tests must be *impossible* to accidentally point at production. Since the difference between environments is a hostname, this needs a

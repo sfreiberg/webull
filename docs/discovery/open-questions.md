@@ -64,11 +64,13 @@ official SDK.
 **The Broker API is out of scope** by project decision. See
 [../COMPATIBILITY.md](../COMPATIBILITY.md#broker-api--excluded) for the reasoning.
 
-**The Connect API stays in scope** (Phase 7), but with a caveat worth carrying
-forward: it must be implemented from documentation alone, with no reference
-implementation to check against. It is a bounded OAuth 2.0 flow rather than a
-sprawling surface, so this is manageable — but it deserves more careful reading
-of the docs than the Trading endpoints, where the SDKs corroborate behaviour.
+**The Connect API stays in scope** (Phase 7). Its credentials are partner-gated
+— issued manually by Webull to registered companies — so like the Broker API we
+almost certainly cannot test it. The reason it survives where the Broker API did
+not is cost: Connect introduces no new endpoints, only a different host and an
+extra credential over the Trading API we will already have built and tested. See
+[connect-api.md](connect-api.md) for the full findings and for the design
+consequences that land in Phase 3.
 
 ## 3. FIX protocol
 

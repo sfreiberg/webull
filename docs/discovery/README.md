@@ -17,6 +17,7 @@ rather than a redesign.
 | [api-surface.md](api-surface.md) | Every endpoint found, by API area and generation |
 | [authentication.md](authentication.md) | Signing algorithm, headers, token lifecycle |
 | [streaming.md](streaming.md) | gRPC events and MQTT market data, protobuf availability |
+| [connect-api.md](connect-api.md) | OAuth 2.0 third-party authorization: flow, hosts, credentials |
 | [environments.md](environments.md) | Hosts, regions, sandbox status |
 | [wire-format.md](wire-format.md) | How Webull represents prices and quantities, and what we should do |
 | [package-layout.md](package-layout.md) | Proposed Go package structure |

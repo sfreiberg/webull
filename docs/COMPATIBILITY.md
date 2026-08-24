@@ -60,7 +60,7 @@ begins in Phase 3.
 | Watchlists | Planned | – | – | 6 | |
 | Corporate actions, calendars | Planned | – | – | 6 | |
 | News | Planned | – | – | 6 | Documented; absent from all SDKs |
-| **Connect API / OAuth** | Planned | – | – | 7 | Documented only; no SDK reference |
+| **Connect API / OAuth** | Planned | – | – | 7 | Documented only; credentials are partner-gated |
 | **gRPC trade events** | Planned | – | – | 8 | `.proto` available; unblocked |
 | **MQTT market data** | Planned | – | – | 9 | `.proto` available; no sandbox host published |
 | **Broker API** | Excluded | – | – | – | Out of scope; see below |
@@ -118,6 +118,7 @@ Phase 9 rather than assumed.
 | Region scope | US only | Other regions are a configuration addition, not a redesign |
 | Package layout | Root package at repo root | [package-layout.md](discovery/package-layout.md) |
 | Sandbox support | Required | Hosts known for trading and events; market data unconfirmed |
+| Connect API | In scope, likely unverifiable | No new endpoints; cost is a host and a credential — [connect-api.md](discovery/connect-api.md#implementation-cost) |
 
 ## Sandbox validation backlog
 
