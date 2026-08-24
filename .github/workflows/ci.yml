@@ -88,6 +88,12 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.1
+      # A malformed workflow fails the run before any job starts, which gives
+      # no useful output. This catches it as an ordinary lint error instead.
+      - name: actionlint
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          actionlint
 
   vulncheck:
     name: Vulnerabilities
@@ -127,7 +133,7 @@ jobs:
     steps:
       - name: Verify all jobs succeeded
         run: |
-          results='${{ join(needs.*.result, " ") }}'
+          results='${{ join(needs.*.result, ' ') }}'
           echo "job results: $results"
           for r in $results; do
             if [ "$r" != "success" ]; then
