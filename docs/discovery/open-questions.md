@@ -35,7 +35,7 @@ Note that the current SDK ships *all* of generations 1 and 3 simultaneously, wit
 
 **Why this can't be settled from the desk:** both sources are official and
 current. The Python SDK was updated the same week as this research; the docs are
-the stated source of truth under §4 of the design proposal. One plausible
+the nominal source of truth. One plausible
 reading is that the documented scheme is a gateway that the SDKs have not
 migrated to; another is that the docs describe a forthcoming version. Nothing in
 either source states which.
@@ -46,7 +46,7 @@ tells us which the server honours, and whether both do.
 **Recommendation:** treat this as the first item in the sandbox validation
 backlog and make it a gate on Phase 3. Until then, design the transport layer so
 the path scheme is a single centralised mapping rather than string literals
-scattered across service methods, which §45 asks for anyway. That way the answer
+scattered across service methods, which is good practice regardless. That way the answer
 changes one file instead of eighty. Do not begin implementing trading endpoints
 until this is settled — building against the wrong generation would waste most of
 Phases 4 through 6.
@@ -70,12 +70,12 @@ implementation to check against. It is a bounded OAuth 2.0 flow rather than a
 sprawling surface, so this is manageable — but it deserves more careful reading
 of the docs than the Trading endpoints, where the SDKs corroborate behaviour.
 
-## 3. FIX protocol is documented and absent from the proposal
+## 3. FIX protocol
 
 *Resolved: excluded.*
 
-`fix/about-fix`, `fix/fix-spec` and `fix/faq` document a FIX interface. The
-design proposal never mentions it.
+`fix/about-fix`, `fix/fix-spec` and `fix/faq` document a FIX interface. It was
+not part of the SDK's original scope and was surfaced by this inventory.
 
 FIX (Financial Information eXchange) is a decades-old messaging protocol used
 between institutions for order routing and execution reports. It is a persistent
@@ -87,7 +87,7 @@ run a dedicated engine such as QuickFIX rather than getting it from a vendor SDK
 Excluded. It shares essentially no implementation with the rest of the SDK and
 would roughly double the project's surface for an audience already served by
 existing FIX libraries. Recorded in the compatibility matrix as a deliberate
-exclusion so it does not resurface as an apparent gap during the Milestone 11
+exclusion so it does not resurface as an apparent gap during the final
 completeness audit.
 
 ## 4. Sandbox — hosts found, coverage still uncertain
@@ -118,8 +118,8 @@ matrix.
 All five official repositories are Apache-2.0. Apache-2.0 and MIT are compatible
 in the direction we need: we may read Apache-2.0 code for understanding and
 publish original work under MIT. What we must not do is copy Apache-2.0 source
-into this repository, because §4 of NOTICE-bearing Apache works carries
-attribution obligations that MIT does not express.
+into this repository, because NOTICE-bearing Apache works carry attribution
+obligations that MIT does not express.
 
 Two things follow:
 

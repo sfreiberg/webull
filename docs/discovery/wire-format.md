@@ -1,8 +1,8 @@
 # Wire format: prices, quantities and timestamps
 
 This document exists to settle one decision — how the SDK represents monetary
-and quantity values — because §23 of the design proposal flags it and because it
-is the most expensive thing to change once order and quote models are written.
+and quantity values — because it is the most expensive thing to change once
+order and quote models are written.
 
 ## What Webull actually sends
 
@@ -56,8 +56,8 @@ option contracts by strike, not response values.
 
 ## What this means
 
-The question §23 poses — "should prices be strings, a decimal type, integers
-plus scale, or another exact representation" — is partly answered for us. Webull
+The choice between strings, a decimal type, integers plus scale, or some other
+exact representation is partly made for us. Webull
 already hands us exact decimal values. Any `float64` in our models would be a
 precision loss *we introduce*, turning an exact value inexact and back again.
 
@@ -74,7 +74,7 @@ conversion, and a `string` price invites someone to reach for
 
 **B. A third-party decimal type in the public models.**
 Ergonomic and exact. Costs a dependency that appears in public signatures and so
-becomes part of the API compatibility promise under §42.
+becomes part of our public API compatibility promise.
 
 **C. Our own decimal type.**
 Full control, no dependency, but we would own a numeric type — a real
@@ -84,7 +84,7 @@ maintenance burden and easy to get subtly wrong.
 
 Option B, using the ecosystem standard.
 
-It clears §47's bar that every dependency have a clear reason:
+It meets the bar that every dependency have a clear reason:
 
 - **Exact.** A 29-digit value round-trips untouched. `float64` cannot make that
   claim, and float64 is what callers will otherwise reach for.
@@ -111,8 +111,7 @@ Webull cares about the textual form. Worth knowing, not worth designing around.
 
 ### Distinguishing absent from zero
 
-§23 requires that omission be distinguishable from a zero value, which matters
-acutely for prices — a market order has no limit price, and a limit price of zero
+Omission must be distinguishable from a zero value, which matters acutely for prices — a market order has no limit price, and a limit price of zero
 is a different and dangerous claim.
 
 The plain type cannot express this. Measured behaviour:
@@ -175,9 +174,9 @@ Less settled. Observed forms:
 - `Long` fields in some Java models.
 
 So timestamps are epoch integers in some places and formatted strings in others,
-and the string formats have not been verified across endpoints. §23 says to use
-`time.Time` where semantics are clear and stable, and to preserve the raw value
-otherwise.
+and the string formats have not been verified across endpoints. The sound rule is
+`time.Time` where timestamp semantics are clear and stable, and the raw value
+preserved otherwise.
 
 **Recommendation:** defer. Catalogue the actual format per endpoint during
 Phase 3 as real responses become available, then decide. Where a field is an

@@ -1,7 +1,6 @@
 # API compatibility matrix
 
-Maps Webull OpenAPI capability to SDK status, per §44 of the design proposal.
-This document is maintained for the life of the project and updated with every
+Maps Webull OpenAPI capability to SDK status. This document is maintained for the life of the project and updated with every
 phase that adds coverage.
 
 Scope is the **US** market.
@@ -96,9 +95,9 @@ Excluded by project decision. The reasoning:
 - It is larger than the entire individual Trading and Market Data surface
   combined.
 
-This is a deliberate scope decision rather than a technical block. §21 of the
-design proposal asks that the Broker API not be omitted merely because most
-users lack credentials; the judgement here is that shipping 115 endpoints that
+This is a deliberate scope decision rather than a technical block. A reasonable
+case exists for including it anyway — most SDK users lacking credentials is not
+by itself a reason to omit an API. The judgement here is that shipping endpoints that
 move money and have never been executed once would be worse than not shipping
 them. Adding it later is additive and needs no redesign, since its
 authentication and domain model are separate anyway.

@@ -107,19 +107,18 @@ The documentation uses a different scheme for the same operations
 (`/auth/tokens/create`) and additionally documents a separate **client token**
 pair, `/auth/client-tokens/create` and `/auth/client-tokens/refresh`, rate-limited
 far more generously at 600 per 60 seconds versus 10 per 10 seconds. The client
-token appears to be the market-data credential referred to in §10 of the design
-proposal. No SDK implements it. See [open-questions.md](open-questions.md#1).
+token appears to be a market-data-specific credential. No SDK implements it. See [open-questions.md](open-questions.md#1).
 
 The Python SDK persists tokens to a file in a configurable directory. We should
-not replicate that as a default — §10 asks for a pluggable token store, and
-writing credentials to disk without being asked is a poor default for a library.
+not replicate that as a default. Token storage should be pluggable, and writing
+credentials to disk without being asked is a poor default for a library.
 An in-memory store should be the default, with a file-backed implementation
 available for examples and CLI use.
 
 ## Implications for our design
 
 - Signing must be centralised and independently unit-testable with a fixed clock
-  and fixed nonce, per §10. The canonical-string builder should be a pure
+  and fixed nonce. The canonical-string builder should be a pure
   function of (method, path, query, headers, body) so it can be tested against
   known vectors without a network.
 - Because the body digest covers the exact serialized bytes, the signer must
@@ -127,8 +126,9 @@ available for examples and CLI use.
   mismatch if map ordering ever differs.
 - Token refresh must be concurrency-safe, and the conditional nature of token
   checking means the client needs a startup probe or lazy equivalent. Fetching
-  `/openapi/config` eagerly in `NewClient` would make construction perform I/O,
-  which §8 discourages; resolving it lazily on first request is preferable.
+  `/openapi/config` eagerly in `NewClient` would make construction perform I/O.
+  Resolving it lazily on first request is preferable — constructing a client
+  should not require a network round trip.
 - Secrets must never reach logs or error strings. The signing key is derived from
   the app secret, so error messages from the signer must never include the
   computed key or the string to sign.

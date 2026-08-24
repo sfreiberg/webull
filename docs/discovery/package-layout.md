@@ -1,8 +1,8 @@
 # Proposed package layout
 
-§6 of the design proposal offers an illustrative tree and explicitly says the
-final structure should follow real API boundaries. Now that those boundaries are
-known, this is the concrete proposal.
+Package structure should follow real API boundaries rather than mirroring how
+Webull documents the API or how the Python and Java SDKs are organised. Now that
+those boundaries are known, this is the concrete proposal.
 
 ## Layout
 
@@ -24,7 +24,7 @@ github.com/sfreiberg/webull
   internal/wbproto        vendored .proto files and generated Go bindings
   internal/testutil       httptest and bufconn helpers, fixtures, fake clock
 
-  examples/...            runnable programs per §32
+  examples/...            runnable example programs
 ```
 
 ## Why this shape
@@ -53,14 +53,15 @@ auth. A separate package would buy nothing but an extra import.
 **`internal/wbproto` holds both the vendored `.proto` files and generated code.**
 Keeping the schema next to its output makes the regeneration step obvious and
 keeps the Apache-2.0 provenance of the definitions in one place. Generated code
-is committed per §46 so ordinary users need no protobuf toolchain.
+is committed so ordinary users need no protobuf toolchain.
 
 **No `broker` package yet.** Pending the scope decision in
 [open-questions.md](open-questions.md#2). If it proceeds it belongs in its own
 package, since its auth model and domain differ materially from individual
-trading — exactly the condition §21 describes.
+trading, which is the condition that justifies a separate package.
 
-**No generic utility package.** §6 asks us to avoid these and there is no need:
+**No generic utility package.** These accrete unrelated code and have no clear
+owner, and there is no need for one here:
 signing belongs in `internal/signing` and transport concerns in
 `internal/transport`.
 
@@ -71,7 +72,7 @@ than a wrapper type of ours — see [wire-format.md](wire-format.md). That is th
 SDK's one non-obvious public dependency, and it appears in service package
 signatures rather than the root.
 
-The top-level `Client` composes the service clients per §8:
+The top-level `Client` composes the service clients:
 
 ```go
 type Client struct {
@@ -81,8 +82,8 @@ type Client struct {
 }
 ```
 
-Streaming clients are deliberately **not** fields on `Client`. §8 requires that
-long-lived connections be created explicitly rather than opened during client
+Streaming clients are deliberately **not** fields on `Client`. Long-lived
+connections should be created explicitly rather than opened during client
 construction, so `events.New(...)` and `streaming.New(...)` are constructed by
 the caller and have `Close` methods. Hanging them off `Client` would imply they
 share its lifetime, which they do not.

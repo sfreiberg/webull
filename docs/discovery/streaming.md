@@ -5,9 +5,10 @@ account events arrive over gRPC; real-time market data arrives over MQTT.
 
 ## Protobuf definitions are published
 
-This was the main gating question for the project, because §18 of the design
-proposal makes gRPC support conditional on obtaining protocol definitions, and
-§3 allows an explicit completeness exception if they cannot be had.
+This was the main gating question for the project: gRPC support is only
+practicable if the protocol definitions can be obtained, and hand-maintaining
+protobuf wire encodings is not an acceptable substitute. Without them, gRPC
+would have had to be documented as a coverage exception.
 
 **They can be had.** `.proto` source files ship in the official SDK repositories
 under Apache-2.0:
@@ -23,8 +24,8 @@ under Apache-2.0:
 with `protoc-gen-go` and `protoc-gen-go-grpc` from the same definitions the
 official SDKs use.
 
-Per §46, generated code should be committed so ordinary users can build without
-a protobuf toolchain, with regeneration documented. The `.proto` files themselves
+Generated code should be committed so ordinary users can build without a
+protobuf toolchain, with the regeneration command documented. The `.proto` files themselves
 should be vendored into the repository with their Apache-2.0 provenance recorded,
 since they are the schema source and pinning them protects us from upstream drift.
 
@@ -54,9 +55,9 @@ is an envelope, not a schema.
 Consequences for our design:
 
 - Typed Go event structs must be defined by us against the JSON payloads, since
-  protobuf does not describe them. §18's requirement that users not have to touch
-  generated protobuf messages is therefore easy to satisfy at the envelope level
-  and unavoidable work at the payload level.
+  protobuf does not describe them. Keeping generated protobuf types out of the
+  public API is therefore easy at the envelope level and unavoidable work at the
+  payload level.
 - `Ping` must be handled to keep the stream alive.
 - `NumOfConnExceed` and `SubscribeExpired` are distinct failure modes needing
   distinct typed errors. Blindly reconnecting on `NumOfConnExceed` would make the
@@ -86,7 +87,7 @@ participant identifiers is available.
 
 Consequences for our design:
 
-- §19 requires that ordinary users never construct topic strings. Since the topic
+- Ordinary users should never have to construct topic strings. Since the topic
   format is a simple triple, a typed subscription request that renders the topic
   internally is straightforward.
 - The MQTT broker is the market-data host itself: `data-api.webull.com`, on port
@@ -98,7 +99,7 @@ Consequences for our design:
   suggesting streaming may need its own credential. Whether that survives into
   the current generation is unverified.
 - Paho's Go client (`eclipse/paho.mqtt.golang`) is the mature equivalent and
-  matches §47's preference for not writing a protocol stack.
+  spares us writing an MQTT protocol stack.
 
 ## Previous-generation gRPC quotes
 
@@ -112,7 +113,8 @@ Phase 9 rather than assuming either way.
 
 ## Testing
 
-§36 requires local protocol tests. Both are tractable:
+Both protocols need tests that run locally, with no dependency on Webull being
+reachable. Both are tractable:
 
 - **gRPC** — a real in-process server on a bufconn listener implementing
   `EventService`, which exercises our client against the actual generated stubs

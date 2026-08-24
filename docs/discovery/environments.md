@@ -53,8 +53,7 @@ every market-data endpoint is weak evidence that a sandbox does exist for them.
 
 ## Safety requirement
 
-§37 requires that integration tests be *impossible* to accidentally point at
-production. Since the difference between environments is a hostname, this needs a
+Integration tests must be *impossible* to accidentally point at production. Since the difference between environments is a hostname, this needs a
 deliberate guard rather than a convention — for example, integration tests
 refusing to run unless the resolved host matches the sandbox host, checked at the
 transport layer rather than in each test.
@@ -74,12 +73,12 @@ mapping.
 
 Scope for this SDK is **US only**, as agreed. The relevant design consequence is
 that region should be modelled as configuration resolving to a host set, not
-hardcoded — which §9 requires anyway for endpoint overrides. Adding a region
+hardcoded, which endpoint overrides require anyway. Adding a region
 later then means adding a table entry, not restructuring.
 
 ## Endpoint overrides
 
-§9 requires per-endpoint overrides for testing, proxies and mock servers. The
+Per-endpoint overrides are needed for testing, proxies and mock servers. The
 SDK's own resolver chain does this with a user-customised resolver layered over
 the built-in table, which is a reasonable shape to mirror: a default table, an
 optional override map, and a documented precedence between them.
