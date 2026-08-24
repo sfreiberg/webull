@@ -1,4 +1,4 @@
-name: Run tests and upload coverage
+name: CI
 
 on:
   push:
@@ -8,28 +8,143 @@ on:
 permissions:
   contents: read
 
+env:
+  # The coverage floor at which the build fails - not the target. The intent is
+  # coverage close to 100%; this is the backstop. Raising it is welcome,
+  # lowering it needs a reason in the pull request.
+  COVERAGE_MIN: "80"
+
 jobs:
   test:
-    name: Run tests and collect coverage
+    name: Test (Go ${{ matrix.go }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.27", "1.26"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go mod download
+      - name: Test with race detector
+        run: go test -race ./...
+
+  coverage:
+    name: Coverage
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 2
-
-      - name: Set up Go
-        uses: actions/setup-go@v7
+      - uses: actions/setup-go@v7
         with:
           go-version-file: go.mod
+      - run: go mod download
 
-      - name: Install dependencies
-        run: go mod download
-
-      - name: Run tests
+      - name: Collect coverage
         run: go test -covermode=atomic -coverprofile=coverage.txt ./...
+
+      # Enforced here rather than delegated to Codecov, so that a fork PR with
+      # no upload token, or a Codecov outage, cannot silently weaken the gate.
+      - name: Enforce coverage floor
+        run: |
+          total=$(go tool cover -func=coverage.txt | awk '/^total:/ {sub(/%/,"",$3); print $3}')
+          if [ -z "$total" ]; then
+            echo "::error::could not read a total from coverage.txt"
+            exit 1
+          fi
+          echo "total coverage: ${total}% (minimum ${COVERAGE_MIN}%)"
+          if awk -v t="$total" -v m="$COVERAGE_MIN" 'BEGIN { exit !(t+0 < m+0) }'; then
+            echo "::error::coverage ${total}% is below the ${COVERAGE_MIN}% minimum"
+            exit 1
+          fi
+          echo "coverage floor met"
 
       - name: Upload results to Codecov
         uses: codecov/codecov-action@v7
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "::error::these files are not gofmt'd:"
+            echo "$unformatted"
+            exit 1
+          fi
+      # golangci-lint bundles staticcheck, govet and errcheck, so they are not
+      # run separately.
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.13.1
+      # A malformed workflow fails the run before any job starts, which gives
+      # no useful output. This catches it as an ordinary lint error instead.
+      - name: actionlint
+        run: |
+          go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+          "$(go env GOPATH)/bin/actionlint"
+
+  vulncheck:
+    name: Vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
+          govulncheck ./...
+
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # gitleaks scans history, not just the working tree.
+          fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      # GitHub's own push protection does not cover generic, non-provider
+      # credentials on a free plan, and Webull keys do not match any known
+      # provider pattern. This closes that gap.
+      - name: gitleaks
+        run: |
+          go install github.com/zricethezav/gitleaks/v8@v8.30.1
+          # `go install` writes to GOPATH/bin, which is not necessarily on PATH.
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/gitleaks" detect --source . --redact --verbose
+
+  # Single required status check. Depending on this rather than on each job
+  # means the Go version matrix can change without editing branch protection.
+  ci:
+    name: CI
+    if: always()
+    needs: [test, coverage, lint, vulncheck, secrets]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify all jobs succeeded
+        run: |
+          results='${{ join(needs.*.result, ' ') }}'
+          echo "job results: $results"
+          for r in $results; do
+            if [ "$r" != "success" ]; then
+              echo "::error::a required job did not succeed"
+              exit 1
+            fi
+          done
+          echo "all jobs succeeded"

@@ -1,0 +1,62 @@
+version: "2"
+
+linters:
+  # The standard set is errcheck, govet, ineffassign, staticcheck and unused.
+  default: standard
+  enable:
+    # An SDK that leaks connections is a bug users cannot see or fix.
+    - bodyclose
+    # Every network operation must take a context. This enforces it.
+    - noctx
+    - contextcheck
+    # We promise errors.Is / errors.As compatibility, which requires wrapping
+    # with %w and comparing with errors.Is rather than ==.
+    - errorlint
+    # This SDK handles credentials and signing material.
+    - gosec
+    - nilerr
+    - revive
+    - unconvert
+    - usestdlibvars
+    - misspell
+
+  settings:
+    gosec:
+      excludes:
+        # Integer conversion overflow. Noisy on protobuf field decoding, where
+        # the widths are fixed by the schema.
+        - G115
+    revive:
+      rules:
+        - name: exported
+        - name: package-comments
+        - name: context-as-argument
+        - name: error-strings
+        - name: error-return
+        - name: indent-error-flow
+        - name: var-naming
+
+  exclusions:
+    generated: lax
+    rules:
+      # Test helpers legitimately construct requests without a context and
+      # assert on errors in ways production code should not.
+      - path: _test\.go
+        linters:
+          - noctx
+          - gosec
+      # Generated protobuf bindings are not ours to style.
+      - path: internal/wbproto/
+        linters:
+          - revive
+          - gosec
+          - errorlint
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/sfreiberg/webull

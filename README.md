@@ -1,6 +1,6 @@
 # webull
 
-[![Run tests and upload coverage](https://github.com/sfreiberg/webull/actions/workflows/ci.yml/badge.svg)](https://github.com/sfreiberg/webull/actions/workflows/ci.yml)
+[![CI](https://github.com/sfreiberg/webull/actions/workflows/ci.yml/badge.svg)](https://github.com/sfreiberg/webull/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sfreiberg/webull/graph/badge.svg)](https://codecov.io/gh/sfreiberg/webull)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -23,6 +23,12 @@ You are responsible for any orders it places on your behalf.
 
 - [API compatibility matrix](docs/COMPATIBILITY.md) — what is implemented, what is planned, and what is out of scope
 - [Discovery findings](docs/discovery/) — inventory of the Webull OpenAPI surface, authentication, streaming and wire format
+
+## Contributing
+
+Contributions are welcome — see [CONTRIBUTING.md](CONTRIBUTING.md) for build,
+test and code standards, and [SECURITY.md](SECURITY.md) for reporting
+vulnerabilities.
 
 ## Installation
 
