@@ -1,0 +1,33 @@
+# Codecov reports coverage; it does not gate merges. The blocking check runs in
+# CI via `go tool cover -func`, so that a fork pull request without an upload
+# token, or a Codecov outage, cannot quietly weaken the gate.
+#
+# That blocking check is a floor, not a target. The intent is coverage close to
+# 100%; 80% is the point at which the build fails, not the point at which the
+# work is done. The settings below are deliberately stricter than the floor so
+# that drift downward is visible long before it reaches it.
+coverage:
+  status:
+    project:
+      default:
+        target: auto
+        # No tolerance for a downward drift in total coverage. `auto` compares
+        # against the base commit, so this reports any regression.
+        threshold: 0%
+        informational: true
+    patch:
+      default:
+        # New and changed lines are held to a higher standard than the codebase
+        # average: there is no legacy excuse for code being written today.
+        target: 90%
+        informational: true
+
+comment:
+  layout: "reach, diff, files"
+  require_changes: true
+
+ignore:
+  # Generated protobuf bindings are not meaningfully testable and would inflate
+  # the number. The handwritten code that wraps them is not excluded.
+  - "internal/wbproto/**"
+  - "examples/**"
