@@ -1,0 +1,32 @@
+# Binaries and build output
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+/bin/
+/dist/
+
+# Test and coverage output
+*.test
+*.out
+coverage.*
+/testdata/tmp/
+
+# Credentials and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+
+# Editor and OS noise
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local scratch and working notes (never committed)
+/scratch/
+/notes/
