@@ -17,39 +17,39 @@ a parameter, and `/openapi/config` is the likely discovery mechanism. Unverified
 
 ## Sandbox
 
-A sandbox exists, but we do not yet know how to reach it.
+Sandbox hosts are published in the getting-started guides, though not in any SDK
+endpoint table:
 
-The rate-limits documentation lists **separate Sandbox and Production quotas for
-every endpoint** — frequently different ones, with market-data endpoints allowing
-30 requests per 60 seconds in sandbox against 60 in production. An environment
-with its own published quotas is not hypothetical.
+| API type | Production | Sandbox |
+|---|---|---|
+| Trading / accounts | `api.webull.com` | `api.sandbox.webull.com` |
+| gRPC events | `events-api.webull.com` | `events-api.sandbox.webull.com` |
+| Market data HTTP | `data-api.webull.com` | **unconfirmed** |
+| MQTT streaming | `data-api.webull.com` | **not published** |
 
-But no official SDK exposes it. The endpoint table contains production hosts
-only, there is no environment switch in any client constructor, and the only
-trace of a non-production environment anywhere is a comment in a
-previous-generation demo noting that a UAT domain can be set by overriding the
-host manually.
+The pattern is to insert `.sandbox` before `.webull.com`, so
+`data-api.sandbox.webull.com` is the obvious guess — but it is a guess, and the
+market-data getting-started page muddies it further by listing the trading hosts
+(`api.webull.com` / `api.sandbox.webull.com`) as its "API Endpoints" while the
+SDK routes HTTP market data to `data-api.webull.com`. That is a second
+docs-versus-SDK discrepancy of the same family as the path-scheme one.
 
-So sandbox access appears to work by pointing the client at a different host,
-with that host documented somewhere we have not yet found — or issued alongside
-sandbox credentials.
+For streaming the documentation names only a **Production MQTT** host. No sandbox
+equivalent is given anywhere. Real-time market data may simply not have a
+sandbox, which would be consistent with market data being an entitlement rather
+than a simulated account.
 
-**Unresolved, and it matters.** The design proposal makes sandbox central: §9
-requires environment support, §37 requires opt-in sandbox integration tests, and
-Milestones 2 through 8 all carry sandbox verification in their acceptance
-criteria. The testing arrangement agreed for this project assumes it too.
+Still unresolved:
 
-Three things go in the sandbox validation backlog:
+1. Whether `data-api.sandbox.webull.com` exists.
+2. Whether MQTT streaming has any sandbox at all.
+3. Whether sandbox credentials are issued separately from production.
+4. Whether sandbox simulates market hours. This determines how much market-hours
+   machinery the test harness needs — possibly none.
 
-1. The sandbox hostnames for all three API types plus MQTT.
-2. Whether sandbox credentials are separate from production credentials.
-3. Whether sandbox simulates market hours, or accepts orders and streams data
-   around the clock. This determines how much market-hours machinery the test
-   harness actually needs — possibly none.
-
-Until this is settled, `Environment` should still exist in the config API as
-agreed, with `Production` implemented and `Sandbox` resolving to endpoints we fill
-in once known. That keeps the public API stable across the discovery.
+The first two are answerable with a DNS lookup and one connection attempt once
+we have credentials; the rate-limits page listing separate sandbox quotas for
+every market-data endpoint is weak evidence that a sandbox does exist for them.
 
 ## Safety requirement
 

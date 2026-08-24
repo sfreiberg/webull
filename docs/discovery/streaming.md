@@ -89,10 +89,11 @@ Consequences for our design:
 - §19 requires that ordinary users never construct topic strings. Since the topic
   format is a simple triple, a typed subscription request that renders the topic
   internally is straightforward.
-- The MQTT broker hostname is not in the SDK's endpoint table and appears to be
-  discovered at runtime — the client accepts an explicit `mqtt_host` and the
-  `/openapi/config` endpoint is the likely source. **Unverified**; needs
-  credentials to confirm.
+- The MQTT broker is the market-data host itself: `data-api.webull.com`, on port
+  **1883** for plain TCP and **8883** for TLS over WebSocket at path `/mqtt`.
+  This is documented in the streaming guide but absent from the SDK endpoint
+  table, which is why the Python client takes `mqtt_host` as a parameter. No
+  sandbox MQTT host is published.
 - The previous-generation SDK had a `/market-data/streaming/token` endpoint,
   suggesting streaming may need its own credential. Whether that survives into
   the current generation is unverified.

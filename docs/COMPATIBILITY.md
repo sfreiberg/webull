@@ -64,7 +64,7 @@ begins in Phase 3.
 | **Connect API / OAuth** | Planned | – | – | 7 | Documented only; no SDK reference |
 | **gRPC trade events** | Planned | – | – | 8 | `.proto` available; unblocked |
 | **MQTT market data** | Planned | – | – | 9 | `.proto` available; broker host unknown |
-| **Broker API** | Undecided | – | – | 10 | See below |
+| **Broker API** | Excluded | – | – | – | Out of scope; see below |
 | **FIX** | Excluded | – | – | – | See below |
 
 ## Exceptions and scope decisions
@@ -82,23 +82,26 @@ already uses a dedicated FIX library.
 This is a deliberate exclusion, not an oversight, and reversing it later is a
 clean addition rather than a redesign.
 
-### Broker API — Undecided
+### Broker API — Excluded
 
 115 documented reference pages covering account opening, ACH and wire funding,
 cash journals, agreements, document handling, and a dedicated event stream.
 
-Three facts bear on the decision:
+Excluded by project decision. The reasoning:
 
 - No official SDK implements any of it, so there is no reference implementation
-  to verify behaviour against.
-- Access requires an enterprise relationship with Webull, so we cannot test it.
+  to check behaviour against.
+- Access requires an enterprise relationship with Webull, so none of it could be
+  tested by this project.
 - It is larger than the entire individual Trading and Market Data surface
   combined.
 
-§21 says not to omit it merely because most users lack credentials, which is
-fair. But "implemented from documentation, never executed once" is a weak claim
-to make about code that moves money. Pending decision; see
-[discovery/open-questions.md](discovery/open-questions.md#2).
+This is a deliberate scope decision rather than a technical block. §21 of the
+design proposal asks that the Broker API not be omitted merely because most
+users lack credentials; the judgement here is that shipping 115 endpoints that
+move money and have never been executed once would be worse than not shipping
+them. Adding it later is additive and needs no redesign, since its
+authentication and domain model are separate anyway.
 
 ### Previous-generation gRPC quotes — Likely excluded
 
@@ -115,12 +118,12 @@ than being quietly forgotten.
 | # | Item | Blocks |
 |---|---|---|
 | 1 | Which endpoint path scheme the server honours — documented or SDK | Phase 3 |
-| 2 | Sandbox hostnames for `api`, `data-api`, `events-api`, MQTT | Phase 3 |
+| 2 | Whether `data-api.sandbox.webull.com` exists, and whether MQTT has any sandbox | Phase 3 |
 | 3 | Whether sandbox credentials are separate from production | Phase 3 |
 | 4 | Whether sandbox simulates market hours | Test harness design |
 | 5 | Whether the server still accepts HMAC-SHA1 signatures | Phase 3 |
 | 6 | Whether `token_check_enabled` is true for US production | Phase 3 |
-| 7 | MQTT broker host discovery mechanism | Phase 9 |
+| 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
 | 8 | Whether streaming requires its own token | Phase 9 |
 | 9 | Timestamp formats per endpoint | Phase 4 |
 | 10 | Display vs Non-Display entitlement behaviour on 403 | Phase 6 |

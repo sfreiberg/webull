@@ -17,9 +17,9 @@ valid as a map of *capabilities* either way; only the spelling is in question.
 | Current SDK, `/openapi/*` scheme | 97 |
 | Current SDK, legacy unprefixed scheme | 17 |
 | Docs: individual Trading + Market Data reference pages | 103 |
-| Docs: Broker API reference pages | 115 |
+| Docs: Broker API reference pages | 115 *(excluded from scope)* |
 | Docs: Connect API reference pages | 4 |
-| Docs: FIX pages | 3 |
+| Docs: FIX pages | 3 *(excluded from scope)* |
 
 The documentation describes substantially more surface than the SDKs implement.
 The Broker API alone has more reference pages than the entire individual

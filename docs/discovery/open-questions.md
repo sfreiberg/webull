@@ -53,58 +53,65 @@ Phases 4 through 6.
 
 ## 2. Connect API and Broker API exist in the docs but not in any SDK
 
+*Broker API resolved: excluded. Connect API remains in scope.*
+
 Both are documented — Connect API has 4 reference pages plus OAuth 2.0 guides,
 Broker API has 78 under `broker-fd-api` and a further 37 for broker market data
 — but neither appears anywhere in the Python, Java, or Go references. There is no
 OAuth code, no authorization-code exchange, no `redirect_uri` handling in any
 official SDK.
 
-Consequences:
+**The Broker API is out of scope** by project decision. See
+[../COMPATIBILITY.md](../COMPATIBILITY.md#broker-api--excluded) for the reasoning.
 
-- The Connect API (Phase 7) and Broker API (Phase 10) must be implemented from
-  documentation alone, with no reference implementation to check behaviour
-  against. That is materially riskier than the Trading and Market Data work.
-- The Broker API is far larger than the proposal assumed. It covers account
-  opening, ACH and wire funding, cash journals, agreements, document upload and
-  download, and its own event stream — 115 reference pages in total, which is
-  more than the entire individual Trading and Market Data surface combined.
-- Broker API access requires an enterprise relationship with Webull. We will not
-  be able to test any of it.
-
-**Recommendation:** keep Connect API in scope; it is a bounded OAuth 2.0 flow and
-individual developers can plausibly use it. **Re-scope the Broker API**: I would
-not treat 115 untestable endpoints as a v1.0 requirement. Options are to defer it
-past v1.0, implement it as a documented best-effort with an explicit "unverified"
-warning, or record it as a §3 completeness exception on the grounds that the
-required credential class is unavailable to public developers. This is your call
-and it materially changes the project's size.
+**The Connect API stays in scope** (Phase 7), but with a caveat worth carrying
+forward: it must be implemented from documentation alone, with no reference
+implementation to check against. It is a bounded OAuth 2.0 flow rather than a
+sprawling surface, so this is manageable — but it deserves more careful reading
+of the docs than the Trading endpoints, where the SDKs corroborate behaviour.
 
 ## 3. FIX protocol is documented and absent from the proposal
 
+*Resolved: excluded.*
+
 `fix/about-fix`, `fix/fix-spec` and `fix/faq` document a FIX interface. The
-design proposal never mentions FIX.
+design proposal never mentions it.
 
-A FIX engine is not a small addition to an HTTP/gRPC/MQTT SDK — it is a separate
-protocol stack with its own session semantics, sequence-number recovery and
-persistence requirements, conventionally handled by a dedicated library.
+FIX (Financial Information eXchange) is a decades-old messaging protocol used
+between institutions for order routing and execution reports. It is a persistent
+TCP session with sequence-numbered messages, its own heartbeat and gap-fill
+recovery semantics, and a tag-value wire encoding — architecturally unrelated to
+the HTTP, gRPC and MQTT interfaces this SDK targets. Firms that use FIX normally
+run a dedicated engine such as QuickFIX rather than getting it from a vendor SDK.
 
-**Recommendation:** declare FIX explicitly out of scope in the README and record
-it in the compatibility matrix as a deliberate exclusion rather than an
-oversight. Reversing that later is a clean addition; discovering it silently
-missing at Milestone 11 is not.
+Excluded. It shares essentially no implementation with the rest of the SDK and
+would roughly double the project's surface for an audience already served by
+existing FIX libraries. Recorded in the compatibility matrix as a deliberate
+exclusion so it does not resurface as an apparent gap during the Milestone 11
+completeness audit.
 
-## 4. Sandbox exists, but its base URL is undocumented in the SDKs
+## 4. Sandbox — hosts found, coverage still uncertain
 
-The rate-limits page lists separate Sandbox and Production quotas for every
-endpoint, so a sandbox environment demonstrably exists. But the SDK endpoint
-table contains only production hosts, and no SDK exposes a sandbox toggle.
+*Partially resolved.*
 
-We do not yet know the sandbox hostnames, whether sandbox credentials are issued
-separately, or whether sandbox simulates market hours. All three matter for the
-test harness design agreed earlier.
+Sandbox is a firm project requirement, and the trading and event hosts are
+published in the getting-started guides:
 
-**Recommendation:** sandbox host discovery goes in the validation backlog and is
-the first thing to check once credentials exist.
+- `api.sandbox.webull.com`
+- `events-api.sandbox.webull.com`
+
+What remains unknown is whether market data has a sandbox at all. No
+`data-api.sandbox.webull.com` is published, and the streaming guide names only a
+production MQTT host. See
+[environments.md](environments.md#sandbox) for the detail.
+
+This matters for the test harness: if market data is production-only, then
+market-data integration tests either hit production read-only endpoints or do not
+run at all, and that is a design decision rather than an oversight to discover
+later.
+
+Remaining items are in the sandbox validation backlog in the compatibility
+matrix.
 
 ## 5. Licensing
 
