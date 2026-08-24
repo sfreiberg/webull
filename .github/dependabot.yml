@@ -1,0 +1,29 @@
+version: 2
+
+updates:
+  # Keep the pinned action versions in CI current. Without this, a major
+  # version bump such as codecov-action v5 -> v7 only surfaces when someone
+  # happens to notice it.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - "*"
+
+  # Go module dependencies. The SDK has none yet; gRPC, protobuf and an MQTT
+  # client arrive in later milestones.
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    groups:
+      go-dependencies:
+        patterns:
+          - "*"
