@@ -132,7 +132,7 @@ than being quietly forgotten.
 | 2 | Whether `data-api.sandbox.webull.com` exists, and whether MQTT has any sandbox | Phase 3 |
 | 3 | Whether sandbox credentials are separate from production | Phase 3 |
 | 4 | Whether sandbox simulates market hours | Test harness design |
-| 5 | Whether the server still accepts HMAC-SHA1 signatures | Phase 3 |
+| 5 | Confirm the server accepts our HMAC-SHA256 signature (any successful authenticated request proves it) | Phase 3 |
 | 6 | Whether `token_check_enabled` is true for US production | Phase 3 |
 | 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
 | 8 | Whether streaming requires its own token | Phase 9 |
