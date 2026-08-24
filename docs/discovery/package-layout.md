@@ -73,10 +73,11 @@ Keeping the schema next to its output makes the regeneration step obvious and
 keeps the Apache-2.0 provenance of the definitions in one place. Generated code
 is committed so ordinary users need no protobuf toolchain.
 
-**No `broker` package yet.** Pending the scope decision in
-[open-questions.md](open-questions.md#2). If it proceeds it belongs in its own
-package, since its auth model and domain differ materially from individual
-trading, which is the condition that justifies a separate package.
+**No `broker` package.** The Broker API is out of scope; see
+[../COMPATIBILITY.md](../COMPATIBILITY.md#broker-api--excluded). Were it ever
+added it would belong in its own package, since its authentication model and
+domain differ materially from individual trading — which is exactly why
+excluding it costs nothing structurally.
 
 **No generic utility package.** These accrete unrelated code and have no clear
 owner, and there is no need for one here:

@@ -62,7 +62,7 @@ begins in Phase 3.
 | News | Planned | – | – | 6 | Documented; absent from all SDKs |
 | **Connect API / OAuth** | Planned | – | – | 7 | Documented only; no SDK reference |
 | **gRPC trade events** | Planned | – | – | 8 | `.proto` available; unblocked |
-| **MQTT market data** | Planned | – | – | 9 | `.proto` available; broker host unknown |
+| **MQTT market data** | Planned | – | – | 9 | `.proto` available; no sandbox host published |
 | **Broker API** | Excluded | – | – | – | Out of scope; see below |
 | **FIX** | Excluded | – | – | – | See below |
 
@@ -116,6 +116,8 @@ Phase 9 rather than assumed.
 | Broker API | Excluded | Untestable, no reference implementation, larger than the rest of the SDK |
 | FIX | Excluded | Unrelated protocol stack; served by dedicated engines |
 | Region scope | US only | Other regions are a configuration addition, not a redesign |
+| Package layout | Root package at repo root | [package-layout.md](discovery/package-layout.md) |
+| Sandbox support | Required | Hosts known for trading and events; market data unconfirmed |
 
 ## Sandbox validation backlog
 

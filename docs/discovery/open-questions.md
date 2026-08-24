@@ -139,9 +139,10 @@ implementation should be written from the algorithm description in
 - **`news` and `news-summary`** appear in the reference docs but in no SDK. Their
   request and response shapes are unverified.
 - **Display vs Non-Display market data** are separate documented entitlement
-  tiers with overlapping paths and different rate limits. The SDK does not model
-  the distinction. We need to decide whether the Go API exposes it or hides it —
-  it affects which endpoints a given key can call, so surfacing it as a typed
-  entitlement error is probably better than silently 403ing.
+  tiers with overlapping paths and different rate limits, which the SDKs do not
+  model. The plan is to surface an entitlement failure as its own typed error
+  rather than letting a bare 403 surface, so a caller can tell "your key lacks
+  this tier" from "your request was wrong". Exact behaviour is unverified and is
+  in the validation backlog.
 - **`x-webull-client-source` and `wb-user-id` headers** exist in the SDK header
   constants with no documented explanation.
