@@ -6,25 +6,43 @@ those boundaries are known, this is the concrete proposal.
 
 ## Layout
 
+The root package sits at the repository root, so the import path is
+`github.com/sfreiberg/webull` rather than `github.com/sfreiberg/webull/webull`.
+
 ```
-github.com/sfreiberg/webull
+webull/                     module github.com/sfreiberg/webull
+├── go.mod
+├── client.go               package webull — top-level client
+├── config.go               credentials, options
+├── environment.go          production/sandbox host resolution
+├── errors.go               APIError and classification helpers
+├── version.go              SDK version and User-Agent
+│
+├── trade/                  accounts, positions, orders, options, futures,
+│                           crypto, event contracts, activities
+├── marketdata/             quotes, snapshots, bars, ticks, depth, screeners,
+│                           instruments, fundamentals, watchlists
+├── events/                 gRPC trade event streams
+├── streaming/              MQTT real-time market data
+├── connect/                Connect API and OAuth 2.0
+│
+├── internal/
+│   ├── transport/          HTTP plumbing, retry, response decoding
+│   ├── signing/            canonical string construction and HMAC
+│   ├── wbproto/            vendored .proto files and generated Go bindings
+│   └── testutil/           httptest and bufconn helpers, fixtures, fake clock
+│
+└── examples/               runnable example programs
+```
 
-  webull                  client.go, config.go, environment.go, errors.go,
-                          version.go
-  trade                   accounts, positions, orders, options, futures,
-                          crypto, event contracts, activities
-  marketdata              quotes, snapshots, bars, ticks, depth, screeners,
-                          instruments, fundamentals, watchlists
-  events                  gRPC trade event streams
-  streaming               MQTT real-time market data
-  connect                 Connect API and OAuth 2.0
+Resulting import paths:
 
-  internal/transport      HTTP plumbing, retry, response decoding
-  internal/signing        canonical string construction and HMAC
-  internal/wbproto        vendored .proto files and generated Go bindings
-  internal/testutil       httptest and bufconn helpers, fixtures, fake clock
-
-  examples/...            runnable example programs
+```go
+import (
+    "github.com/sfreiberg/webull"
+    "github.com/sfreiberg/webull/trade"
+    "github.com/sfreiberg/webull/marketdata"
+)
 ```
 
 ## Why this shape
