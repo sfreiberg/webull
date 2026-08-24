@@ -1,8 +1,9 @@
 # API surface
 
-Every endpoint recovered from the current official SDK, grouped by area. Counts
-are of distinct path literals, not of the Go methods we will write — a few paths
-carry more than one operation, distinguished by request body.
+Every endpoint recovered from the current official SDK, grouped by area. These
+are distinct path literals; a few carry more than one operation, distinguished
+by request body, so this is a map of the surface rather than a list of the Go
+methods we will write.
 
 **Read this alongside [open-questions.md](open-questions.md#1-the-documentation-and-the-sdks-describe-different-api-generations).**
 The paths below are what the current SDK calls. The official reference
@@ -10,20 +11,13 @@ documentation describes a *different* path scheme for the same operations. Which
 scheme the server honours is unverified and gates Phase 3. This inventory remains
 valid as a map of *capabilities* either way; only the spelling is in question.
 
-## Totals
+## Coverage gap between docs and SDK
 
-| Source | Count |
-|---|---|
-| Current SDK, `/openapi/*` scheme | 97 |
-| Current SDK, legacy unprefixed scheme | 17 |
-| Docs: individual Trading + Market Data reference pages | 103 |
-| Docs: Broker API reference pages | 115 *(excluded from scope)* |
-| Docs: Connect API reference pages | 4 |
-| Docs: FIX pages | 3 *(excluded from scope)* |
-
-The documentation describes substantially more surface than the SDKs implement.
-The Broker API alone has more reference pages than the entire individual
-Trading and Market Data surface combined.
+The reference documentation describes noticeably more surface than the SDKs
+implement. Two areas — the Connect API and the Broker API — are documented in
+full but appear in no official SDK in any language, so implementing them means
+working from prose with nothing to check behaviour against. That risk is why the
+Broker API was excluded; see [../COMPATIBILITY.md](../COMPATIBILITY.md).
 
 ## Endpoints by area
 

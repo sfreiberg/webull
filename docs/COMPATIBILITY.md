@@ -109,6 +109,15 @@ authentication and domain model are separate anyway.
 older SDKs, superseded by MQTT in the current generation. To be confirmed during
 Phase 9 rather than assumed.
 
+## Recorded decisions
+
+| Decision | Choice | Rationale |
+|---|---|---|
+| Decimal representation | `github.com/shopspring/decimal` | [wire-format.md](discovery/wire-format.md#recommendation-githubcomshopspringdecimal) |
+| Broker API | Excluded | Untestable, no reference implementation, larger than the rest of the SDK |
+| FIX | Excluded | Unrelated protocol stack; served by dedicated engines |
+| Region scope | US only | Other regions are a configuration addition, not a redesign |
+
 ## Sandbox validation backlog
 
 This project has no API credentials. Every item below is an acceptance criterion
@@ -127,3 +136,4 @@ than being quietly forgotten.
 | 8 | Whether streaming requires its own token | Phase 9 |
 | 9 | Timestamp formats per endpoint | Phase 4 |
 | 10 | Display vs Non-Display entitlement behaviour on 403 | Phase 6 |
+| 11 | Whether optional order fields accept an explicit `null` or must be omitted | Phase 4 |

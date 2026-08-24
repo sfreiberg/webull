@@ -10,7 +10,7 @@ known, this is the concrete proposal.
 github.com/sfreiberg/webull
 
   webull                  client.go, config.go, environment.go, errors.go,
-                          decimal.go, version.go
+                          version.go
   trade                   accounts, positions, orders, options, futures,
                           crypto, event contracts, activities
   marketdata              quotes, snapshots, bars, ticks, depth, screeners,
@@ -61,16 +61,15 @@ package, since its auth model and domain differ materially from individual
 trading — exactly the condition §21 describes.
 
 **No generic utility package.** §6 asks us to avoid these and there is no need:
-signing belongs in `internal/signing`, transport concerns in
-`internal/transport`, and the decimal type in the root package where its
-documentation is discoverable.
+signing belongs in `internal/signing` and transport concerns in
+`internal/transport`.
 
 ## Root package contents
 
-`Decimal` lives in the root rather than a subpackage because every service
-package returns it, and a subpackage would create an import that appears in
-almost every public signature for no benefit. See
-[wire-format.md](wire-format.md).
+Monetary and quantity values use `github.com/shopspring/decimal` directly rather
+than a wrapper type of ours — see [wire-format.md](wire-format.md). That is the
+SDK's one non-obvious public dependency, and it appears in service package
+signatures rather than the root.
 
 The top-level `Client` composes the service clients per §8:
 

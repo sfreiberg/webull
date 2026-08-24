@@ -32,8 +32,8 @@ message Snapshot {
 Protobuf has `double`, `float`, `sint64` and well-known decimal conventions
 available. Webull chose `string` for prices, volumes and ratios deliberately.
 
-**2. The Java SDK's domain models.** Counting field declarations across every
-model class:
+**2. The Java SDK's domain models.** Every monetary and quantity field is
+declared `String`. The distribution across all model classes:
 
 | Declared type | Count |
 |---|---|
@@ -58,65 +58,113 @@ option contracts by strike, not response values.
 
 The question §23 poses — "should prices be strings, a decimal type, integers
 plus scale, or another exact representation" — is partly answered for us. Webull
-is already handing us exact decimal strings. Any float64 in our models would be
-a precision loss *we introduce*, converting an exact value into an inexact one
-and back.
+already hands us exact decimal values. Any `float64` in our models would be a
+precision loss *we introduce*, turning an exact value inexact and back again.
 
-The remaining question is what we hand to the caller.
+So `float64` is ruled out. The remaining question is which exact representation
+we hand to the caller.
 
 ## Options
 
-**A. Preserve strings in models, offer conversion helpers.**
-Field is `string`; a method or free function converts to a decimal type on
-demand. Zero dependencies, zero precision loss, round-trips byte-exactly.
-Downside: callers do arithmetic themselves, and `Price string` invites someone
-to `strconv.ParseFloat` it anyway.
+**A. Preserve wire strings, convert on demand.**
+Field is a named `string` type with conversion helpers. No dependency, no
+precision loss, round-trips byte-exactly. Downside: every caller writes the same
+conversion, and a `string` price invites someone to reach for
+`strconv.ParseFloat` and reintroduce the problem we were avoiding.
 
-**B. A decimal type in the public models.**
-Field is `decimal.Decimal` (shopspring) or similar. Ergonomic and safe for
-arithmetic. Downsides: a dependency in every public signature, which §47 asks us
-to justify carefully; it becomes permanently part of our API compatibility
-promise; and round-tripping is not guaranteed byte-exact — `"1.50"` may
-re-serialize as `"1.5"`, which matters when the value is fed back into a signed
-order body whose digest must match.
+**B. A third-party decimal type in the public models.**
+Ergonomic and exact. Costs a dependency that appears in public signatures and so
+becomes part of the API compatibility promise under §42.
 
-**C. A small internal decimal type of our own.**
-Wraps the original string, exposes exact accessors, preserves the source
-representation for round-tripping. No external dependency, full control.
-Downside: we own a numeric type, which is a real maintenance burden and easy to
-get subtly wrong.
+**C. Our own decimal type.**
+Full control, no dependency, but we would own a numeric type — a real
+maintenance burden and easy to get subtly wrong.
 
-## Recommendation
+## Recommendation: `github.com/shopspring/decimal`
 
-**Option A for v0.x, with the door open to C.**
+Option B, using the ecosystem standard.
 
-Rationale: it is the only option that cannot lose information, it adds no
-dependency to the public API, and it round-trips exactly — which matters more
-here than usual, because request bodies are covered by a SHA-256 digest in the
-signature. If we reformat a decimal on the way out, the signature covers bytes
-that differ from what the caller supplied. Strings sidestep that entirely.
+It clears §47's bar that every dependency have a clear reason:
 
-To address the ergonomic gap, define a named type rather than bare `string`:
+- **Exact.** A 29-digit value round-trips untouched. `float64` cannot make that
+  claim, and float64 is what callers will otherwise reach for.
+- **Marshals as a JSON string**, which is exactly Webull's wire format, so it
+  drops into request bodies without special casing.
+- **Stable.** v1 for years, currently v1.4.0, no v2 has ever been published. The
+  API-compatibility risk that argues against putting a dependency in public
+  signatures is empirically small here.
+- **Precedent.** Alpaca's Go SDK — the closest comparable broker client — uses it
+  directly across 30 public entity fields.
+- **Maintained.** ~7.5k stars, active commits.
 
-```go
-// Decimal is an exact decimal value as transmitted by Webull. It preserves the
-// wire representation so that values round-trip byte-exactly, which matters for
-// request bodies covered by the request signature.
-type Decimal string
+### On round-tripping
 
-func (d Decimal) Float64() (float64, error)   // documented as lossy
-func (d Decimal) BigRat() (*big.Rat, bool)
-func (d Decimal) String() string
-```
+An earlier draft of this document argued for wire strings partly on the grounds
+that reformatting a decimal would break the request signature, since request
+bodies are covered by a SHA-256 digest. **That reasoning was wrong.** The digest
+is computed over the bytes actually transmitted, so a reformatted value is
+self-consistent and verifies correctly.
 
-That gives us a place to hang conversion helpers and documentation, makes
-`Price Decimal` self-describing at the call site, and costs nothing. If we later
-decide callers need real arithmetic, `Decimal` can gain methods without breaking
-the field type.
+The real divergence is narrower: shopspring normalises trailing zeros, so `1.50`
+marshals as `1.5`. Those are mathematically identical, and no evidence suggests
+Webull cares about the textual form. Worth knowing, not worth designing around.
 
-**This is a decision gate.** It should be confirmed before Phase 3 writes the
-first model, because reversing it later touches every order, position and quote
-type in the SDK.
+### Distinguishing absent from zero
+
+§23 requires that omission be distinguishable from a zero value, which matters
+acutely for prices — a market order has no limit price, and a limit price of zero
+is a different and dangerous claim.
+
+The plain type cannot express this. Measured behaviour:
+
+| JSON input | `decimal.Decimal` | `decimal.NullDecimal` | `*decimal.Decimal` |
+|---|---|---|---|
+| `{"price":"1.5"}` | `"1.5"` | `Valid=true`, `"1.5"` | set |
+| `{"price":null}` | `"0"` | `Valid=false` | nil |
+| `{}` — omitted | `"0"` | `Valid=false` | nil |
+
+A zero-value `decimal.Decimal` stringifies as `"0"` and reports `IsZero() == true`,
+so "the server sent zero" and "the server sent nothing" are indistinguishable.
+
+`NullDecimal` and pointers both solve it, but they serialise differently when
+unset, and that difference decides where each belongs:
+
+- `NullDecimal` emits `{"price":null}` — an explicit null.
+- `*decimal.Decimal` with `omitempty` emits `{}` — the field is absent.
+
+**Therefore:**
+
+| | Optional field | Always-present field |
+|---|---|---|
+| **Response models** | `decimal.NullDecimal` | `decimal.Decimal` |
+| **Request models** | `*decimal.Decimal` with `omitempty` | `decimal.Decimal` |
+
+This split is principled rather than inconsistent. On responses, `NullDecimal`
+is strictly better than a pointer: `resp.Price.Decimal` is always safe to call,
+whereas a nil `*decimal.Decimal` panics when dereferenced — and the read path is
+the one users touch most. On requests, sending `"limit_price": null` is not
+equivalent to omitting the field, and APIs that accept an absent optional
+parameter may reject an explicit null for it. Omitting is the conservative
+default.
+
+Which of those Webull actually accepts is unverified and is in the sandbox
+validation backlog.
+
+### Performance note
+
+shopspring is `big.Int`-backed and allocates. On a high-rate MQTT tick stream,
+where every field arrives as a protobuf string, parsing them all into decimals
+may show up in profiles.
+
+The right response is to measure before acting. Splitting the public API between
+two numeric representations to chase an unmeasured cost would trade a certain
+loss in coherence for a speculative gain.
+
+### Status
+
+**This is a decision gate and it has been taken.** Confirmed before any model
+code exists, because reversing it later would touch every order, position and
+quote type in the SDK.
 
 ## Timestamps
 
