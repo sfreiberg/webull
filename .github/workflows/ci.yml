@@ -93,7 +93,7 @@ jobs:
       - name: actionlint
         run: |
           go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
-          actionlint
+          "$(go env GOPATH)/bin/actionlint"
 
   vulncheck:
     name: Vulnerabilities
@@ -114,14 +114,20 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
+          # gitleaks scans history, not just the working tree.
           fetch-depth: 0
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
       # GitHub's own push protection does not cover generic, non-provider
       # credentials on a free plan, and Webull keys do not match any known
       # provider pattern. This closes that gap.
       - name: gitleaks
         run: |
           go install github.com/zricethezav/gitleaks/v8@v8.30.1
-          gitleaks detect --source . --redact --verbose
+          # `go install` writes to GOPATH/bin, which is not necessarily on PATH.
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+          "$(go env GOPATH)/bin/gitleaks" detect --source . --redact --verbose
 
   # Single required status check. Depending on this rather than on each job
   # means the Go version matrix can change without editing branch protection.
