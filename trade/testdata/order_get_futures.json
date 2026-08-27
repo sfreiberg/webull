@@ -1,0 +1,42 @@
+{
+  "client_order_id": "clientorder0000000000001",
+  "combo_type": "NORMAL",
+  "combo_order_id": "ORDER000000000000000000001",
+  "orders": [
+    {
+      "symbol": "ESU6",
+      "side": "BUY",
+      "status": "SUBMITTED",
+      "fees": [
+        {
+          "type": "FUT_CLEARING",
+          "actual_value": "0.14",
+          "receivable_value": "0.14"
+        },
+        {
+          "type": "FUT_EXCHANGE",
+          "actual_value": "1.38",
+          "receivable_value": "1.38"
+        },
+        {
+          "type": "FUT_NFA",
+          "actual_value": "0.02",
+          "receivable_value": "0.02"
+        }
+      ],
+      "commission": {},
+      "client_order_id": "clientorder0000000000001",
+      "order_type": "LIMIT",
+      "instrument_type": "FUTURES",
+      "order_id": "ORDER000000000000000000001",
+      "support_trading_session": "CORE",
+      "entrust_type": "QTY",
+      "total_quantity": "1",
+      "filled_quantity": "0",
+      "place_time": "1787870930605",
+      "place_time_at": "2026-08-27T22:48:50.605Z",
+      "time_in_force": "GTC",
+      "limit_price": "1"
+    }
+  ]
+}

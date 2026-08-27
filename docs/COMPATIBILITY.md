@@ -47,7 +47,7 @@ and orders — are implemented. Market data, streaming and Connect are not.
 | Batch place | Unverified | Yes | – | 5b | Constraints enforced locally. **The sandbox account rejects it**: `Account not supported, please contact Webull` |
 | Equity orders | Complete | Yes | Yes | 4b | Placed, replaced and cancelled in sandbox |
 | Option orders | Complete | Yes | Yes | 5a | Single-leg placed live; vertical, iron condor, straddle and covered stock previewed live |
-| Futures orders | Complete | Yes | – | 5b | Previewed live; the placing test skips during the exchange's daily break |
+| Futures orders | Complete | Yes | – | 5b | Placed and cancelled live inside a CME session; the test skips with Webull's code during the daily break |
 | Crypto orders | Complete | Yes | – | 5b | Placed and cancelled live; **the sandbox rejects every crypto preview** with a system error |
 | Event-contract orders | Complete | Yes | – | 5b | Placed and cancelled live, DAY and GTC |
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
@@ -148,6 +148,8 @@ Established against the live sandbox and relied on by the implementation.
 | Preview response | Carries an undocumented `currency` field |
 | Rate limiting | `GET /trading/accounts/list` returned 429 `TOO_MANY_REQUESTS` after roughly eight calls in quick succession across consecutive test runs; the integration suite now fetches it once per run |
 | Asset-class rules | Not in the OpenAPI definition; taken from the trading FAQ and guides, checked against the sandbox, and enforced locally: options no trailing stops; futures and crypto BUY/SELL only; crypto MARKET/LIMIT/STOP_LOSS_LIMIT with ≤8 decimal places; event contracts LIMIT-only, quantity ≤2 decimal places, `event_outcome` required |
+| Option groups and other asset classes | A bracket on futures, crypto or event contracts is rejected with `INVALID_PARAMETER: Inconsistent instrument type in combo`; only equities and single-leg options can be grouped |
+| Option time in force | IOC and FOK are rejected (`invalid time_in_force, value: IOC`). GTD was rejected on `expire_date`, which is inconclusive; excluded on the FAQ's word. A fractional option leg quantity is rejected (`invalid quantity, value: 1.5`) |
 | Option order types | The FAQ says options do not support MARKET orders and that sells are DAY-only. The sandbox previews a market order on a single-leg call, a vertical and an iron condor, and a GTC option sell, so neither is enforced by the SDK. A trailing stop on an option is rejected with `invalid trailing_type` — with no value echoed, unlike a bad value (`invalid trailing_type, value: percentage`), so the field itself is not permitted for options |
 | Trailing stops | `AMOUNT` and `PERCENTAGE` both preview on equities (buy and sell) and futures; values are case-sensitive. The stock guide says trailing stops are DAY-only, but a GTC trailing stop previews |
 | Crypto preview | Every shape returns 417 `OPENAPI_SYSTEM_ERROR` in the sandbox; placement of the same order succeeds. Crypto `order_id`s have a different format (`CO0382…`) and crypto order records carry no `fees` or `commission` |
@@ -192,7 +194,8 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 16 | The wire form of `filled_time_at` on a filled order; decoded as RFC 3339 like `place_time_at` but never observed | when an order fills |
 | 17 | Whether OTO, OCO and OTOCO groups work in production, or need a shape the sandbox does not reveal | when production keys exist, or via Webull support |
 | 18 | Which multi-leg strategies the server validates leg counts for at placement | later |
-| 19 | Futures placement lifecycle, once run inside a trading session (previews verified; placement blocked by the daily break when tested) | next run during CME hours |
+| ~~19~~ | ~~Futures placement lifecycle~~ — **resolved: placed, submitted and cancelled live after the 6 pm ET reopen.** | – |
 | 20 | Batch placement: the sandbox account returns `Account not supported, please contact Webull` (417 `OPENAPI_PARAM_ERR`), so it cannot be verified here | production keys, or Webull support |
 | 21 | Whether crypto previews ever work in the sandbox | – |
 | 22 | Whether option market orders and GTC option sells, which preview, are also accepted at placement; the FAQ says neither is | a run during options hours, with a position to sell |
+| 23 | Whether GTD option orders are accepted with a valid expiry; the one attempt was rejected on `expire_date`, not on the time in force | later |

@@ -1,6 +1,7 @@
 package trade
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -26,8 +27,9 @@ func TestAssetRulesReject(t *testing.T) {
 		"event amount":       {InstrumentType: InstrumentEvent, Symbol: "KX-T6", Side: Buy, Type: Limit, LimitPrice: q, TotalCashAmount: q, EventOutcome: OutcomeYes},
 		"event too precise":  {InstrumentType: InstrumentEvent, Symbol: "KX-T6", Side: Buy, Type: Limit, Quantity: Price("1.005"), LimitPrice: q, EventOutcome: OutcomeYes},
 		"outcome on equity":  {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: q, EventOutcome: OutcomeYes},
-		"unknown instrument": {InstrumentType: "BOND", Symbol: "X", Side: Buy, Type: Market, Quantity: q},
 		"futures in a combo": {InstrumentType: InstrumentFutures, Symbol: "ESZ6", Side: Buy, Type: Limit, Quantity: q, LimitPrice: q, ComboType: RoleMaster},
+		"option ioc":         {Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: q, LimitPrice: q, TimeInForce: IOC, Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}}},
+		"option fok":         {Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: q, LimitPrice: q, TimeInForce: FOK, Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}}},
 	}
 	for name, o := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -61,10 +63,48 @@ func TestAssetRulesAccept(t *testing.T) {
 			if err := o.prepare(); err != nil {
 				t.Errorf("valid order rejected: %v", err)
 			}
+			if o.InstrumentType != InstrumentEquity && o.TradingSession != "" {
+				t.Errorf("the equity session default leaked onto a %s order", o.InstrumentType)
+			}
 		})
 	}
-	if o := cases["futures limit gtc"]; o.TradingSession != "" {
-		t.Error("the equity session default must not leak onto futures")
+}
+
+func TestUnknownValuesAreForwardedNotRejected(t *testing.T) {
+	// Enumerations are open: a value Webull adds later must reach the server.
+	for name, o := range map[string]Order{
+		"instrument": {InstrumentType: "BOND", Symbol: "X", Side: Buy, Type: Market, Quantity: Price("1")},
+		"order type": {Symbol: "AAPL", Side: Buy, Type: "PEGGED", Quantity: Price("1")},
+		"tif":        {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1"), TimeInForce: "GTX"},
+		"side":       {Symbol: "AAPL", Side: "BUY_TO_COVER", Type: Market, Quantity: Price("1")},
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := o.prepare(); err != nil {
+				t.Errorf("unknown value rejected locally: %v", err)
+			}
+		})
+	}
+}
+
+func TestOptionLegQuantityMustBeWhole(t *testing.T) {
+	o := Order{Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: Price("1"), LimitPrice: Price("1"),
+		Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240"), Quantity: Price("1.5")}}}
+	if err := o.prepare(); !errors.Is(err, ErrInvalidOrder) {
+		t.Errorf("fractional option leg accepted: %v", err)
+	}
+}
+
+func TestFuturesOrderDecodes(t *testing.T) {
+	c, _ := newTestClient(t, "/trading/orders/get", "order_get_futures.json")
+	g, err := c.Order(context.Background(), "A", "clientorder0000000000001")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(g.Orders) != 1 || g.Orders[0].InstrumentType != InstrumentFutures || g.Orders[0].Symbol != "ESU6" {
+		t.Errorf("group = %+v", g)
+	}
+	if len(g.Orders[0].Fees) == 0 || g.Orders[0].Fees[0].Type != "FUT_CLEARING" {
+		t.Errorf("fees = %+v", g.Orders[0].Fees)
 	}
 }
 

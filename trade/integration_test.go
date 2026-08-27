@@ -516,19 +516,25 @@ func restingLifecycle(ctx context.Context, t *testing.T, c *trade.Client, acct t
 	poll := func(what string, pred func(*trade.OrderGroup) bool) {
 		t.Helper()
 		var last *trade.OrderGroup
+		var lastErr error
 		for attempt := 0; attempt < 12; attempt++ {
 			g, err := c.Order(ctx, acct.AccountID, o.ClientOrderID)
 			if err == nil && pred(g) {
 				return
 			}
-			last = g
+			last, lastErr = g, err
+			// A fill is terminal: the account now holds a position, and the
+			// order will never become working or cancelled.
+			if err == nil && len(g.Orders) == 1 && g.Orders[0].Status == trade.StatusFilled {
+				t.Fatalf("order filled instead of resting; the sandbox %s account now holds %s %s", acct.AccountClass, o.Symbol, g.Orders[0].TotalQuantity)
+			}
 			select {
 			case <-ctx.Done():
-				t.Fatalf("context ended waiting until order %s: %v", what, ctx.Err())
+				t.Fatalf("context ended waiting until order %s: %v (last error: %v)", what, ctx.Err(), lastErr)
 			case <-time.After(500 * time.Millisecond):
 			}
 		}
-		t.Fatalf("order never %s; last = %+v", what, last)
+		t.Fatalf("order never %s; last = %+v; last error: %v", what, last, lastErr)
 	}
 
 	poll("working", func(g *trade.OrderGroup) bool {
@@ -601,6 +607,7 @@ func TestIntegrationEventContractOrder(t *testing.T) {
 	}
 	for _, tif := range []trade.TimeInForce{trade.Day, trade.GTC} {
 		t.Run(string(tif), func(t *testing.T) {
+			ctx := testutil.IntegrationContext(t) // each lifecycle gets its own budget
 			o := &trade.Order{InstrumentType: trade.InstrumentEvent, Symbol: symbol, Side: trade.Buy, Type: trade.Limit,
 				TimeInForce: tif, Quantity: trade.Price("1"), LimitPrice: trade.Price("0.01"), EventOutcome: trade.OutcomeYes}
 			if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
