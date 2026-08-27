@@ -113,3 +113,10 @@ func TestEnvironmentString(t *testing.T) {
 		t.Error("unexpected Environment.String()")
 	}
 }
+
+func TestConfigHostUnknownService(t *testing.T) {
+	cfg := Config{Environment: Sandbox}
+	if _, err := cfg.host(service("nonexistent")); err == nil {
+		t.Fatal("expected an error for a service with no host entry")
+	}
+}

@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"os"
 	"testing"
 	"time"
 )
@@ -39,9 +38,10 @@ func TestNewIntegrationClientSkipsWithoutCredentials(t *testing.T) {
 }
 
 func TestNewIntegrationClientWithCredentials(t *testing.T) {
-	if os.Getenv("WEBULL_APP_KEY") == "" {
-		t.Skip("integration: WEBULL_APP_KEY is not set")
-	}
+	// NewClient performs no I/O, so placeholder credentials exercise the
+	// whole construction path without touching the network.
+	t.Setenv("WEBULL_APP_KEY", "placeholder-key")
+	t.Setenv("WEBULL_APP_SECRET", "placeholder-secret")
 	c := NewIntegrationClient(t)
 	if c == nil || c.Environment().IsProduction() {
 		t.Fatal("expected a sandbox client")
