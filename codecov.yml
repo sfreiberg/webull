@@ -3,7 +3,7 @@
 # token, or a Codecov outage, cannot quietly weaken the gate.
 #
 # That blocking check is a floor, not a target. The intent is coverage close to
-# 100%; 80% is the point at which the build fails, not the point at which the
+# 100%; 90% is the point at which the build fails, not the point at which the
 # work is done. The settings below are deliberately stricter than the floor so
 # that drift downward is visible long before it reaches it.
 coverage:

@@ -12,7 +12,7 @@ env:
   # The coverage floor at which the build fails - not the target. The intent is
   # coverage close to 100%; this is the backstop. Raising it is welcome,
   # lowering it needs a reason in the pull request.
-  COVERAGE_MIN: "80"
+  COVERAGE_MIN: "90"
 
 jobs:
   test:
