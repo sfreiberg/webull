@@ -206,6 +206,22 @@ Cancel, replace and lookup are keyed by the client order ID, not Webull's own
 `OrderID`. An `Order` value describes one placement: once accepted, its ID is
 consumed, and placing it again returns `trade.ErrDuplicateOrder`.
 
+## Market data
+
+```go
+snaps, err := client.MarketData.Snapshots(ctx, marketdata.SnapshotsRequest{
+    Symbols: []string{"AAPL", "SPY"}, ExtendedHours: true,
+})
+fmt.Println(snaps[0].Price.Decimal, snaps[0].LastTradeTime)
+
+bars, err := client.MarketData.Bars(ctx, marketdata.BarsRequest{
+    Symbols: []string{"AAPL"}, Timespan: marketdata.Daily, Count: 30,
+})
+```
+
+Data the key is not subscribed to fails with `marketdata.ErrNotSubscribed`, and
+the wrapped `*webull.APIError` names the product required.
+
 ## Numbers
 
 Every price, quantity and amount is a `decimal.Decimal` from

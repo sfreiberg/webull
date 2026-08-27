@@ -12,6 +12,9 @@ called out explicitly.
 
 ### Added
 
+- `marketdata` package: stock snapshots, depth, ticks, bars, footprints and
+  auction imbalances, plus company profiles and analyst consensus, reachable
+  as `client.MarketData`. Entitlement failures are `marketdata.ErrNotSubscribed`.
 - Futures, crypto and event-contract orders, with each asset class's
   permitted sides, order types, times in force and quantity precision
   enforced before any request is sent.

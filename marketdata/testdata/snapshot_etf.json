@@ -1,0 +1,30 @@
+[
+  {
+    "symbol": "SPY",
+    "price": "771.1000",
+    "open": "768.5000",
+    "high": "772.3550",
+    "low": "767.1600",
+    "volume": "34524758",
+    "change": "5.020000",
+    "close": "771.1000",
+    "instrument_id": "913243251",
+    "pre_close": "766.080000",
+    "change_ratio": "0.006553",
+    "last_trade_time": 1787860800604,
+    "ask": "769.9600",
+    "ask_size": "125",
+    "bid": "769.8900",
+    "bid_size": "135",
+    "quote_time": 1787873031033,
+    "pe_ratio": "0.0000",
+    "yield": "0.009759",
+    "fifty_two_wk_high": "779.37",
+    "fifty_two_wk_low": "627.663388",
+    "eps": "0",
+    "eps_ttm": "0.0000",
+    "lot_size": "1",
+    "bps": "0",
+    "list_status": "LISTED"
+  }
+]

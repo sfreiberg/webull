@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"github.com/sfreiberg/webull/internal/query"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -89,8 +91,8 @@ type CurrencyAssets struct {
 
 // Balance returns the balance of an account.
 func (c *Client) Balance(ctx context.Context, accountID string) (*Balance, error) {
-	q := params{}
-	q.set("account_id", accountID)
+	q := query.New()
+	q.Set("account_id", accountID)
 	var out Balance
 	if err := c.get(ctx, "/trading/assets/balances/get", q, &out); err != nil {
 		return nil, err
@@ -135,8 +137,8 @@ type PositionLeg struct {
 // Positions lists the open positions in an account. Webull does not paginate
 // this endpoint.
 func (c *Client) Positions(ctx context.Context, accountID string) ([]Position, error) {
-	q := params{}
-	q.set("account_id", accountID)
+	q := query.New()
+	q.Set("account_id", accountID)
 	var out []Position
 	if err := c.get(ctx, "/trading/assets/positions/list", q, &out); err != nil {
 		return nil, err
@@ -184,21 +186,21 @@ const activityTimeLayout = "2006-01-02T15:04:05.000Z"
 // CashActivities returns one page of cash activities. To fetch the next page,
 // set LastActivityID to the ID of the last item returned.
 func (c *Client) CashActivities(ctx context.Context, req CashActivitiesRequest) ([]CashActivity, error) {
-	q := params{}
-	q.set("account_id", req.AccountID)
+	q := query.New()
+	q.Set("account_id", req.AccountID)
 	types := make([]string, 0, len(req.ActivityTypes))
 	for _, t := range req.ActivityTypes {
 		types = append(types, string(t))
 	}
-	q.setList("activity_types", types)
+	q.SetList("activity_types", types)
 	if !req.StartTime.IsZero() {
-		q.set("start_time", req.StartTime.UTC().Format(activityTimeLayout))
+		q.Set("start_time", req.StartTime.UTC().Format(activityTimeLayout))
 	}
 	if !req.EndTime.IsZero() {
-		q.set("end_time", req.EndTime.UTC().Format(activityTimeLayout))
+		q.Set("end_time", req.EndTime.UTC().Format(activityTimeLayout))
 	}
-	q.set("last_activity_id", req.LastActivityID)
-	q.setInt("page_size", req.PageSize)
+	q.Set("last_activity_id", req.LastActivityID)
+	q.SetInt("page_size", req.PageSize)
 
 	var out []CashActivity
 	if err := c.get(ctx, "/trading/activities/cash-activities/list", q, &out); err != nil {

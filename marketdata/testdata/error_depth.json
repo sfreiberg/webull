@@ -1,0 +1,5 @@
+{
+  "error_code": "ILLEGAL_PARAMETER",
+  "message": "depth not more than 1",
+  "status": 417
+}

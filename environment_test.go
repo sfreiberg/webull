@@ -74,7 +74,7 @@ func TestConfigHostOverride(t *testing.T) {
 	}
 
 	// An override for one service must not affect another.
-	other, err := cfg.host(serviceMarketData)
+	other, err := cfg.host(serviceStreaming)
 	if err != nil {
 		t.Fatal(err)
 	}

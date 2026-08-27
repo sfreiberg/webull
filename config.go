@@ -30,7 +30,7 @@ type Config struct {
 
 	// EndpointOverrides replaces the host for a named service, for testing
 	// against a local server or routing through a proxy. Keys are service
-	// names: "trading", "marketdata", "events", "connect".
+	// names: "trading", "marketdata", "streaming", "events", "connect".
 	EndpointOverrides map[string]string
 
 	// UserAgent is appended to the SDK's own User-Agent, identifying the

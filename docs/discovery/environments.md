@@ -23,8 +23,8 @@ Confirmed against the live API with sandbox credentials.
 |---|---|---|
 | Trading / accounts | `api.webull.com` | `api.sandbox.webull.com` (**verified**) |
 | gRPC events | `events-api.webull.com` | `events-api.sandbox.webull.com` |
-| Market data HTTP | `data-api.webull.com` | `data-api.sandbox.webull.com` (unverified) |
-| MQTT streaming | `data-api.webull.com`, ports 1883 and 8883 | not published |
+| Market data HTTP | `api.webull.com` | `api.sandbox.webull.com` (**verified**) |
+| MQTT streaming | `data-api.webull.com` | `data-api.sandbox.webull.com` (resolves; unverified) |
 
 **Sandbox and production credentials are separate.** The same signed requests
 that succeed against `api.sandbox.webull.com` return `404 Route Not Found` from
@@ -41,8 +41,12 @@ key, not a wrong URL.
 authenticates and no access token is required. Whether production differs is
 unverified.
 
-Still unknown: whether market data has a sandbox at all, and whether sandbox
-simulates market hours.
+Market data has a sandbox: the trading host serves live snapshots, ticks and
+bars over HTTP in both environments. The `data-api` hosts that Webull's SDKs
+route market data to resolve but hang on every HTTPS request; their DNS names
+(`us-openapi-push…`, `…-pb-sandbox…`) mark them as the MQTT push brokers, and
+the host table reserves them for streaming. The sandbox also simulates market
+hours for order placement, rejecting DAY orders after the close.
 
 ## Connect API hosts
 

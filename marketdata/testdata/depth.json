@@ -1,0 +1,17 @@
+{
+  "symbol": "AAPL",
+  "asks": [
+    {
+      "price": "314.6600",
+      "size": "8"
+    }
+  ],
+  "bids": [
+    {
+      "price": "314.6300",
+      "size": "64"
+    }
+  ],
+  "instrument_id": "913256135",
+  "quote_time": 1787873072954
+}

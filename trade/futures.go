@@ -4,6 +4,8 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/sfreiberg/webull/internal/query"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -29,8 +31,8 @@ type FuturesProductClass struct {
 
 // FuturesProductClasses lists the classification groups for futures.
 func (c *Client) FuturesProductClasses(ctx context.Context) ([]FuturesProductClass, error) {
-	q := params{}
-	q.set("category", string(CategoryUSFutures))
+	q := query.New()
+	q.Set("category", string(CategoryUSFutures))
 	var out []FuturesProductClass
 	if err := c.get(ctx, "/trading/instruments/futures/product-classes/list", q, &out); err != nil {
 		return nil, err
@@ -50,9 +52,9 @@ type FuturesProduct struct {
 // FuturesProducts lists futures products, optionally within one class.
 // A productClassID of zero means all classes.
 func (c *Client) FuturesProducts(ctx context.Context, productClassID int) ([]FuturesProduct, error) {
-	q := params{}
-	q.set("category", string(CategoryUSFutures))
-	q.setInt("product_class_id", productClassID)
+	q := query.New()
+	q.Set("category", string(CategoryUSFutures))
+	q.SetInt("product_class_id", productClassID)
 	var out []FuturesProduct
 	if err := c.get(ctx, "/trading/instruments/futures/product-codes/list", q, &out); err != nil {
 		return nil, err
@@ -100,11 +102,11 @@ type FuturesContractsRequest struct {
 
 // FuturesContracts looks up futures contract definitions.
 func (c *Client) FuturesContracts(ctx context.Context, req FuturesContractsRequest) ([]FuturesContract, error) {
-	q := params{}
-	q.set("category", string(CategoryUSFutures))
-	q.setList("symbols", req.Symbols)
-	q.set("code", req.Code)
-	q.set("status", string(req.Status))
+	q := query.New()
+	q.Set("category", string(CategoryUSFutures))
+	q.SetList("symbols", req.Symbols)
+	q.Set("code", req.Code)
+	q.Set("status", string(req.Status))
 	var out []FuturesContract
 	if err := c.get(ctx, "/trading/instruments/futures/contracts/list", q, &out); err != nil {
 		return nil, err

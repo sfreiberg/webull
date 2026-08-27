@@ -3,6 +3,8 @@ package trade
 import (
 	"context"
 
+	"github.com/sfreiberg/webull/internal/query"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -60,12 +62,12 @@ type StockProfilesPage struct {
 
 // StockProfiles looks up equity reference data.
 func (c *Client) StockProfiles(ctx context.Context, req StockProfilesRequest) (*StockProfilesPage, error) {
-	q := params{}
-	q.set("category", string(CategoryUSStock))
-	q.setList("symbols", req.Symbols)
-	q.set("status", string(req.Status))
-	q.set("sub_category", string(req.SubCategory))
-	q.set("pagination_key", req.PaginationKey)
+	q := query.New()
+	q.Set("category", string(CategoryUSStock))
+	q.SetList("symbols", req.Symbols)
+	q.Set("status", string(req.Status))
+	q.Set("sub_category", string(req.SubCategory))
+	q.Set("pagination_key", req.PaginationKey)
 
 	var out StockProfilesPage
 	if err := c.get(ctx, "/trading/instruments/stocks/profiles/list", q, &out); err != nil {
@@ -108,11 +110,11 @@ type CryptoProfilesPage struct {
 
 // CryptoProfiles looks up crypto reference data.
 func (c *Client) CryptoProfiles(ctx context.Context, req CryptoProfilesRequest) (*CryptoProfilesPage, error) {
-	q := params{}
-	q.set("category", string(CategoryUSCrypto))
-	q.setList("symbols", req.Symbols)
-	q.set("status", string(req.Status))
-	q.set("pagination_key", req.PaginationKey)
+	q := query.New()
+	q.Set("category", string(CategoryUSCrypto))
+	q.SetList("symbols", req.Symbols)
+	q.Set("status", string(req.Status))
+	q.Set("pagination_key", req.PaginationKey)
 
 	var out CryptoProfilesPage
 	if err := c.get(ctx, "/trading/instruments/crypto/profiles/list", q, &out); err != nil {
@@ -200,27 +202,27 @@ type OptionContractsPage struct {
 
 // OptionContracts looks up option contracts.
 func (c *Client) OptionContracts(ctx context.Context, req OptionContractsRequest) (*OptionContractsPage, error) {
-	q := params{}
-	q.set("category", string(CategoryUSOption))
-	q.setList("option_symbols", req.OptionSymbols)
-	q.setList("underlying_symbols", req.UnderlyingSymbols)
-	q.set("status", string(req.Status))
-	q.set("start_date", req.StartDate)
-	q.set("end_date", req.EndDate)
-	q.set("root_symbol", req.RootSymbol)
-	q.set("option_type", string(req.OptionType))
-	q.set("style", string(req.Style))
+	q := query.New()
+	q.Set("category", string(CategoryUSOption))
+	q.SetList("option_symbols", req.OptionSymbols)
+	q.SetList("underlying_symbols", req.UnderlyingSymbols)
+	q.Set("status", string(req.Status))
+	q.Set("start_date", req.StartDate)
+	q.Set("end_date", req.EndDate)
+	q.Set("root_symbol", req.RootSymbol)
+	q.Set("option_type", string(req.OptionType))
+	q.Set("style", string(req.Style))
 	if req.StrikePriceGTE != nil {
-		q.set("strike_price_gte", req.StrikePriceGTE.String())
+		q.Set("strike_price_gte", req.StrikePriceGTE.String())
 	}
 	if req.StrikePriceLTE != nil {
-		q.set("strike_price_lte", req.StrikePriceLTE.String())
+		q.Set("strike_price_lte", req.StrikePriceLTE.String())
 	}
-	q.setBool("ppind", req.PPInd)
+	q.SetBool("ppind", req.PPInd)
 	if req.ShowDeliverables {
-		q.set("show_deliverables", "TRUE")
+		q.Set("show_deliverables", "TRUE")
 	}
-	q.set("pagination_key", req.PaginationKey)
+	q.Set("pagination_key", req.PaginationKey)
 
 	var out OptionContractsPage
 	if err := c.get(ctx, "/trading/instruments/options/contracts/list", q, &out); err != nil {

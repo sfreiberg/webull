@@ -1,0 +1,15 @@
+{
+  "symbol": "AAPL",
+  "category": "US_STOCK",
+  "company_name": "Apple Inc",
+  "establish_date": "1977-01-03",
+  "exhibition_code": "NASDAQ",
+  "profile": "Apple Inc. designs, manufactures and markets smartphones, personal computers, tablets, wearables and accessories, and sells a variety of related services. Its product categories include iPhone, Mac, iPad, Wearables, Home and Accessories. Its services include advertising, AppleCare, cloud services, digital content, and payment services. The Company operates various platforms, including the App Store, that allow customers to discover and download applications and digital content, such as books, music, video, games and podcasts. It also offers digital content through subscription-based services, including Apple Arcade, Apple Fitness+, Apple Music, Apple News+, and Apple TV+. Its wearables include smartwatches, wireless headphones, and spatial computers. Its products include iPhone 16 Pro, iPhone 16, iPhone 15, iPhone 14, iPhone SE, MacBook Air, MacBook Pro, iMac, Mac mini, Mac Studio, Mac Pro, iPad Pro, iPad Air, AirPods, AirPods Pro, AirPods Max, Apple TV, Apple Vision Pro and others.",
+  "employees": "166000",
+  "address": "One Apple Park Way,CUPERTINO,CA,United States",
+  "ceo": "Timothy D. Cook",
+  "industries": [
+    "Computers, Phones & Household Electronics",
+    "Phones & Handheld Devices"
+  ]
+}

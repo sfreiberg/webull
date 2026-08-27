@@ -30,6 +30,8 @@ webull/                     module github.com/sfreiberg/webull
 │   ├── transport/          HTTP plumbing, retry, response decoding
 │   ├── signing/            canonical string construction and HMAC
 │   ├── wbproto/            vendored .proto files and generated Go bindings
+│   ├── query/            query-string builder shared by service packages
+
 │   └── testutil/           httptest and bufconn helpers, fixtures, fake clock
 │
 └── examples/               runnable example programs

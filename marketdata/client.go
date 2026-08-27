@@ -1,4 +1,4 @@
-package trade
+package marketdata
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/sfreiberg/webull/internal/transport"
 )
 
-// Client calls the Trading API. It is safe for concurrent use.
+// Client calls the Market Data API. It is safe for concurrent use.
 type Client struct {
 	doer *transport.Doer
 	host string
@@ -16,33 +16,33 @@ type Client struct {
 // New returns a Client that sends requests through doer to host.
 //
 // It exists so the root webull package can compose a Client; callers of the
-// SDK should use webull.NewClient, which resolves the host for the configured
-// environment and wires authentication.
+// SDK should use webull.NewClient.
 func New(doer *transport.Doer, host string) *Client {
 	return &Client{doer: doer, host: host}
 }
 
 func (c *Client) get(ctx context.Context, path string, q query.Params, out any) error {
-	return c.doer.Do(ctx, transport.Request{
+	return classify(c.doer.Do(ctx, transport.Request{
 		Method: "GET",
 		Host:   c.host,
 		Path:   path,
 		Query:  q.Values(),
-	}, out)
+	}, out))
 }
 
-// post sends a JSON body. Nothing in this package retries a POST: the
-// transport refuses to replay them because the outcome of a lost response is
-// unknown, and a replayed order is a duplicated order.
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
-	return c.doer.Do(ctx, transport.Request{
+	return classify(c.doer.Do(ctx, transport.Request{
 		Method: "POST",
 		Host:   c.host,
 		Path:   path,
 		Body:   body,
-	}, out)
+	}, out))
 }
 
-// transportResponse is transport.Response, named here so tests need not
-// import the transport package.
-type transportResponse = transport.Response
+// category returns c, or USStock when unset.
+func category(c Category) Category {
+	if c == "" {
+		return USStock
+	}
+	return c
+}

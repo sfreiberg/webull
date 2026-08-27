@@ -331,3 +331,13 @@ func TestNewClientComposesServiceClients(t *testing.T) {
 		t.Fatal("Trade client was not constructed")
 	}
 }
+
+func TestNewClientComposesMarketData(t *testing.T) {
+	c, err := NewClient(Config{AppKey: "k", AppSecret: "s", Environment: Sandbox})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.MarketData == nil {
+		t.Fatal("MarketData client was not constructed")
+	}
+}

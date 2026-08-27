@@ -3,6 +3,8 @@ package trade
 import (
 	"context"
 
+	"github.com/sfreiberg/webull/internal/query"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -48,10 +50,10 @@ type EventSeriesPage struct {
 
 // EventSeries lists event contract series.
 func (c *Client) EventSeries(ctx context.Context, req EventSeriesRequest) (*EventSeriesPage, error) {
-	q := params{}
-	q.set("category", string(req.Category))
-	q.setList("symbols", req.Symbols)
-	q.set("pagination_key", req.PaginationKey)
+	q := query.New()
+	q.Set("category", string(req.Category))
+	q.SetList("symbols", req.Symbols)
+	q.Set("pagination_key", req.PaginationKey)
 	var out EventSeriesPage
 	if err := c.get(ctx, "/trading/instruments/event-contracts/series/list", q, &out); err != nil {
 		return nil, err
@@ -82,10 +84,10 @@ type EventsRequest struct {
 
 // Events lists the events in a series. Webull does not paginate this endpoint.
 func (c *Client) Events(ctx context.Context, req EventsRequest) ([]Event, error) {
-	q := params{}
-	q.set("series_symbol", req.SeriesSymbol)
-	q.setList("symbols", req.Symbols)
-	q.set("status", string(req.Status))
+	q := query.New()
+	q.Set("series_symbol", req.SeriesSymbol)
+	q.SetList("symbols", req.Symbols)
+	q.Set("status", string(req.Status))
 	var out []Event
 	if err := c.get(ctx, "/trading/instruments/event-contracts/events/list", q, &out); err != nil {
 		return nil, err
@@ -145,12 +147,12 @@ type EventMarketsPage struct {
 
 // EventMarkets lists tradable event contract markets.
 func (c *Client) EventMarkets(ctx context.Context, req EventMarketsRequest) (*EventMarketsPage, error) {
-	q := params{}
-	q.set("series_symbol", req.SeriesSymbol)
-	q.set("event_symbol", req.EventSymbol)
-	q.setList("symbols", req.Symbols)
-	q.set("expiration_date_after", req.ExpirationDateAfter)
-	q.set("pagination_key", req.PaginationKey)
+	q := query.New()
+	q.Set("series_symbol", req.SeriesSymbol)
+	q.Set("event_symbol", req.EventSymbol)
+	q.SetList("symbols", req.Symbols)
+	q.Set("expiration_date_after", req.ExpirationDateAfter)
+	q.Set("pagination_key", req.PaginationKey)
 	var out EventMarketsPage
 	if err := c.get(ctx, "/trading/instruments/event-contracts/markets/list", q, &out); err != nil {
 		return nil, err

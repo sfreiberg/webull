@@ -459,36 +459,6 @@ func errorsAs(err error, target **testError) bool {
 	return errors.As(err, target)
 }
 
-func TestParamsHelpers(t *testing.T) {
-	p := params{}
-	p.set("empty", "")
-	p.set("full", "x")
-	p.setList("none", nil)
-	p.setList("list", []string{"a", "b"})
-	p.setInt("zero", 0)
-	p.setInt("n", 7)
-	p.setBool("nilbool", nil)
-	f := false
-	p.setBool("f", &f)
-
-	v := url.Values(p)
-	if _, ok := v["empty"]; ok {
-		t.Error("empty string should be omitted")
-	}
-	if _, ok := v["none"]; ok {
-		t.Error("empty list should be omitted")
-	}
-	if _, ok := v["zero"]; ok {
-		t.Error("zero int should be omitted")
-	}
-	if _, ok := v["nilbool"]; ok {
-		t.Error("nil bool should be omitted")
-	}
-	if v.Get("full") != "x" || v.Get("list") != "a,b" || v.Get("n") != "7" || v.Get("f") != "false" {
-		t.Errorf("values = %v", v)
-	}
-}
-
 // decodeJSON reads a request body into v.
 func decodeJSON(r *http.Request, v any) error {
 	return json.NewDecoder(r.Body).Decode(v)

@@ -24,8 +24,8 @@ working.
 
 ## Summary
 
-The transport layer and the Trading API — accounts, positions, instrument data
-and orders — are implemented. Market data, streaming and Connect are not.
+The transport layer, the Trading API, and stock market data over HTTP are
+implemented. Other asset classes' market data, streaming and Connect are not.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
@@ -53,17 +53,19 @@ and orders — are implemented. Market data, streaming and Connect are not.
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
 | Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
 | OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
-| **Market data (HTTP)** | Planned | – | – | 6 | |
-| Snapshots, quotes, ticks, bars | Planned | – | – | 6 | Stocks, options, futures, crypto, events |
-| Depth of book | Planned | – | – | 6 | Futures and event contracts |
-| Footprint | Planned | – | – | 6 | Stocks and futures |
-| NOII | Planned | – | – | 6 | |
-| Instruments and contracts | Planned | – | – | 6 | Market-data reference endpoints, distinct from the trading instrument lookups |
-| Fundamentals and financials | Planned | – | – | 6 | |
+| **Market data (HTTP)** | Partial | Yes | Yes | 6a | Stocks complete; other asset classes and reference data follow |
+| Stock snapshots, depth, ticks, bars | Complete | Yes | Yes | 6a | Verified live. The documented single-symbol bars path 404s; `Bars` uses the batch endpoint for one or many |
+| Option, futures, crypto, event market data | Planned | – | – | 6b | |
+| Depth of book (futures, events) | Planned | – | – | 6b | Stock depth is in 6a |
+| Footprint (stocks) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`please subscribe to FOOTPRINT`) |
+| NOII (auction imbalance) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`STOCK QUOTES LV2`) |
+| Stock profiles, logos | Blocked | – | – | 6a | The documented paths return `404 Route Not Found` in the sandbox. Profiles are served by `trade.StockProfiles`, which is the same data under the SDK scheme; logos have no equivalent |
+| Company profile, analyst rating, target price | Complete | Yes | – | 6a | Verified live |
+| Financials, capital flow, calendars, filings | Planned | – | – | 6c | |
 | Funds | Planned | – | – | 6 | |
 | Screeners | Planned | – | – | 6 | |
 | Watchlists | Planned | – | – | 6 | |
-| Corporate actions, calendars | Planned | – | – | 6 | |
+| Corporate actions | Blocked | – | – | 6a | Both documented paths and every SDK-scheme alias return 404 in the sandbox |
 | News | Planned | – | – | 6 | Documented; absent from all SDKs |
 | **Connect API / OAuth** | Planned | – | – | 7 | Documented only; credentials are partner-gated |
 | **gRPC trade events** | Planned | – | – | 8 | `.proto` available; unblocked |
@@ -146,6 +148,11 @@ Established against the live sandbox and relied on by the implementation.
 | OTO / OCO / OTOCO in sandbox | Rejected with `OPENAPI_PARAM_ERR: invalid combo_type, value: ["MASTER","OTO"]` for every documented shape, while `MASTER` and `OTO` are accepted as lone roles |
 | Order history freshness | Immediately after a cancel, `get` reports `CANCELLED` while `history` still reports `PENDING` |
 | Preview response | Carries an undocumented `currency` field |
+| Market-data host | HTTP market data is served by the trading host (`api.sandbox.webull.com`). The `data-api` hosts Webull's SDKs list for market data do not answer HTTPS at all; their DNS names (`us-openapi-push…`) identify them as the MQTT brokers |
+| Entitlement errors | `403 MARKET_DATA_NOT_SUBSCRIBED` with the product named in the message (`please subscribe to FOOTPRINT`, `STOCK QUOTES LV2`). Depth beyond the key's level is a `417 ILLEGAL_PARAMETER: depth not more than 1`, not an entitlement error. An unsupported category is `417 UNSUPPORTED_CATEGORY` |
+| Market-data error shape | A third shape: `{error_code, message, status}` |
+| Market-data timestamps | Three forms: integer epoch milliseconds (snapshot `last_trade_time`, `quote_time`), string epoch milliseconds (tick `time`), and ISO 8601 with a `+0000` offset (bar `time`, `effective_start_date`) that RFC 3339 parsing rejects |
+| Undocumented snapshot fields | `quote_time`, `pe_ratio`, `pb_ratio`, `ps_ratio`, `yield`, `market_value`, `neg_market_value`, `total_shares`, `out_standing_shares`, `fifty_two_wk_high/low`, `list_status`; ticks carry `trading_session` |
 | Rate limiting | `GET /trading/accounts/list` returned 429 `TOO_MANY_REQUESTS` after roughly eight calls in quick succession across consecutive test runs; the integration suite now fetches it once per run |
 | Asset-class rules | Not in the OpenAPI definition; taken from the trading FAQ and guides, checked against the sandbox, and enforced locally: options no trailing stops; futures and crypto BUY/SELL only; crypto MARKET/LIMIT/STOP_LOSS_LIMIT with ≤8 decimal places; event contracts LIMIT-only, quantity ≤2 decimal places, `event_outcome` required |
 | Option groups and other asset classes | A bracket on futures, crypto or event contracts is rejected with `INVALID_PARAMETER: Inconsistent instrument type in combo`; only equities and single-leg options can be grouped |
@@ -176,8 +183,9 @@ resolved and are kept for a release or two so the answers are discoverable.
 
 | # | Item | Blocks |
 |---|---|---|
+| ~~2~~ | ~~Whether `data-api.sandbox.webull.com` exists~~ — **resolved: it resolves but is the MQTT broker; HTTP market data is on the trading host, sandbox included.** | – |
 | ~~1~~ | ~~Which endpoint path scheme the server honours~~ — **resolved: both, they are aliases. Using the documented scheme.** | – |
-| 2 | Whether `data-api.sandbox.webull.com` exists, and whether MQTT has any sandbox | Phase 6 / 9 |
+| 2b | Whether MQTT has a sandbox broker (`data-api.sandbox.webull.com` resolves) | Phase 9 |
 | ~~3~~ | ~~Whether sandbox credentials are separate from production~~ — **resolved: yes. A sandbox key 404s every path in production.** | – |
 | ~~4~~ | ~~Whether sandbox simulates market hours~~ — **resolved: yes, for order placement.** A `DAY` order in the `CORE` session is rejected outside regular hours with `OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT`; `GTC` orders and previews are accepted at any time. Integration tests place GTC orders | – |
 | ~~5~~ | ~~Confirm the server accepts our HMAC-SHA256 signature~~ — **resolved: accepted, with and without query parameters.** | – |
@@ -185,7 +193,7 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
 | 8 | Whether streaming requires its own token | Phase 9 |
 | 9 | Timestamp formats per endpoint | Phase 4 |
-| 10 | Display vs Non-Display entitlement behaviour on 403 | Phase 6 |
+| ~~10~~ | ~~Entitlement behaviour on 403~~ — **resolved: `MARKET_DATA_NOT_SUBSCRIBED` naming the product; typed as `marketdata.ErrNotSubscribed`.** | – |
 | ~~11~~ | ~~Whether optional order fields accept an explicit `null`~~ — **resolved: accepted.** | – |
 | 12 | Whether position `last_price`, `cost_price` and `unrealized_profit_loss` are ever absent; modelled as always present per the docs | when a position exists |
 | 13 | The wire form of a finite `day_trades_left`; only `"UNLIMITED"` has been observed | when a cash account is available |
@@ -199,3 +207,5 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 21 | Whether crypto previews ever work in the sandbox | – |
 | 22 | Whether option market orders and GTC option sells, which preview, are also accepted at placement; the FAQ says neither is | a run during options hours, with a position to sell |
 | 23 | Whether GTD option orders are accepted with a valid expiry; the one attempt was rejected on `expire_date`, not on the time in force | later |
+| 24 | Footprint and NOII decoding against real data; the sandbox key is not subscribed, so the models rest on the documented schema | a subscribed key |
+| 25 | Whether corporate actions, stock profiles and logos exist in production; every path 404s in the sandbox | production keys |
