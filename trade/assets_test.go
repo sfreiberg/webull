@@ -10,9 +10,7 @@ import (
 func TestAssetRulesReject(t *testing.T) {
 	q := Price("1")
 	cases := map[string]Order{
-		"option market":      {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: q, Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}}},
 		"option trailing":    {Symbol: "AAPL", Side: Buy, Type: TrailingStopLoss, Quantity: q, TrailingType: TrailByAmount, TrailingStopStep: q, Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}}},
-		"option sell gtc":    {Symbol: "AAPL", Side: Sell, Type: Limit, Quantity: q, LimitPrice: q, TimeInForce: GTC, Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}}},
 		"option fractional":  {Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: Price("1.5"), LimitPrice: q, Legs: []OrderLeg{{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}}},
 		"futures short":      {InstrumentType: InstrumentFutures, Symbol: "ESZ6", Side: Short, Type: Limit, Quantity: q, LimitPrice: q},
 		"futures ioc":        {InstrumentType: InstrumentFutures, Symbol: "ESZ6", Side: Buy, Type: Limit, Quantity: q, LimitPrice: q, TimeInForce: IOC},
@@ -45,6 +43,8 @@ func TestAssetRulesAccept(t *testing.T) {
 	leg := OrderLeg{Symbol: "AAPL", OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("240")}
 	cases := map[string]Order{
 		"option buy gtc":  {Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: q, LimitPrice: q, TimeInForce: GTC, Legs: []OrderLeg{leg}},
+		"option market":   {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: q, Legs: []OrderLeg{leg}}, // FAQ says no; the sandbox previews it
+		"option sell gtc": {Symbol: "AAPL", Side: Sell, Type: Limit, Quantity: q, LimitPrice: q, TimeInForce: GTC, Legs: []OrderLeg{leg}},
 		"option sell day": {Symbol: "AAPL", Side: Sell, Type: Limit, Quantity: q, LimitPrice: q, Legs: []OrderLeg{leg}},
 		"covered stock market": {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: q, OptionStrategy: StrategyCoveredStock,
 			Legs: []OrderLeg{{Symbol: "AAPL", Side: Buy, Quantity: Price("100"), InstrumentType: InstrumentEquity}, {Symbol: "AAPL", Side: Sell, OptionType: Call, ExpireDate: "2026-12-18", StrikePrice: Price("260")}}},

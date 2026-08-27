@@ -147,7 +147,8 @@ Established against the live sandbox and relied on by the implementation.
 | Order history freshness | Immediately after a cancel, `get` reports `CANCELLED` while `history` still reports `PENDING` |
 | Preview response | Carries an undocumented `currency` field |
 | Rate limiting | `GET /trading/accounts/list` returned 429 `TOO_MANY_REQUESTS` after roughly eight calls in quick succession across consecutive test runs; the integration suite now fetches it once per run |
-| Asset-class rules | Not in the OpenAPI definition; taken from the trading FAQ and guides and enforced locally: options no MARKET/trailing (single-leg) and sells DAY-only; futures and crypto BUY/SELL only; crypto MARKET/LIMIT/STOP_LOSS_LIMIT with ≤8 decimal places; event contracts LIMIT-only, quantity ≤2 decimal places, `event_outcome` required |
+| Asset-class rules | Not in the OpenAPI definition; taken from the trading FAQ and guides, checked against the sandbox, and enforced locally: options no trailing stops; futures and crypto BUY/SELL only; crypto MARKET/LIMIT/STOP_LOSS_LIMIT with ≤8 decimal places; event contracts LIMIT-only, quantity ≤2 decimal places, `event_outcome` required |
+| Option order types | The FAQ says options do not support MARKET orders and that sells are DAY-only. The sandbox previews a market order on a single-leg call, a vertical and an iron condor, and a GTC option sell, so neither is enforced by the SDK. A trailing stop on an option is rejected with `invalid trailing_type` |
 | Crypto preview | Every shape returns 417 `OPENAPI_SYSTEM_ERROR` in the sandbox; placement of the same order succeeds. Crypto `order_id`s have a different format (`CO0382…`) and crypto order records carry no `fees` or `commission` |
 | Crypto minimum | `OPENAPI_CRYPTO_ORDER_BUY_SELL_LIMIT_MINIMUM`: $2.00 per order |
 | Batch placement | Rejected for the sandbox margin account with `Account not supported, please contact Webull` — a feature flag rather than a validation error |
@@ -193,3 +194,4 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 19 | Futures placement lifecycle, once run inside a trading session (previews verified; placement blocked by the daily break when tested) | next run during CME hours |
 | 20 | Batch placement: the sandbox account returns `Account not supported, please contact Webull` (417 `OPENAPI_PARAM_ERR`), so it cannot be verified here | production keys, or Webull support |
 | 21 | Whether crypto previews ever work in the sandbox | – |
+| 22 | Whether option market orders and GTC option sells, which preview, are also accepted at placement; the FAQ says neither is | a run during options hours, with a position to sell |

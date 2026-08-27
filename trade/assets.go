@@ -32,10 +32,11 @@ var assetRules = map[InstrumentType]assetRule{
 	},
 	InstrumentOption: {
 		sides: []Side{Buy, Sell, Short},
-		// Single-leg options do not support market or trailing orders. A
-		// multi-leg strategy may be a market order - Webull's own covered
-		// stock example is one - and validateAsset widens the rule for those.
-		orderTypes: []OrderType{Limit, StopLoss, StopLossLimit},
+		// Webull's FAQ says options do not support market orders. The
+		// sandbox previews market orders on single-leg and multi-leg option
+		// orders alike, so that is not enforced here. Trailing stops are
+		// rejected by the server ("invalid trailing_type") and are excluded.
+		orderTypes: []OrderType{Market, Limit, StopLoss, StopLossLimit},
 		tifs:       []TimeInForce{Day, GTC},
 		entrust:    []EntrustType{ByQuantity},
 		maxScale:   0,
@@ -86,9 +87,7 @@ func (o *Order) validateAsset(problems []string) []string {
 	if o.Side != "" && !contains(rule.sides, o.Side) {
 		problems = append(problems, fmt.Sprintf("%s orders do not support side %s", o.InstrumentType, o.Side))
 	}
-	multiLeg := o.InstrumentType == InstrumentOption && o.OptionStrategy != "" && o.OptionStrategy != StrategySingle
-	marketStrategy := multiLeg && o.Type == Market
-	if o.Type != "" && !contains(rule.orderTypes, o.Type) && !marketStrategy {
+	if o.Type != "" && !contains(rule.orderTypes, o.Type) {
 		problems = append(problems, fmt.Sprintf("%s orders do not support order type %s", o.InstrumentType, o.Type))
 	}
 	if !contains(rule.tifs, o.TimeInForce) {
@@ -106,10 +105,9 @@ func (o *Order) validateAsset(problems []string) []string {
 	if !rule.needOutcome && o.EventOutcome != "" {
 		problems = append(problems, "EventOutcome applies only to event contract orders")
 	}
-	// Option sells are DAY only; GTC is buy-side only.
-	if o.InstrumentType == InstrumentOption && o.Side != Buy && o.TimeInForce != Day {
-		problems = append(problems, "option sell orders support only DAY time in force")
-	}
+	// Webull's FAQ also says option sells are DAY only. The sandbox previews
+	// a GTC option sell, so that is not enforced here either; the server
+	// remains the authority at placement.
 	if o.ComboType != Normal && !rule.combos {
 		problems = append(problems, fmt.Sprintf("%s orders cannot be part of a combo", o.InstrumentType))
 	}
