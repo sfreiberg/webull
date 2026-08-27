@@ -44,7 +44,7 @@ called out explicitly.
 - API compatibility matrix and discovery documentation covering the Webull US
   OpenAPI surface, authentication, streaming protocols and wire format.
 - Continuous integration: tests on Go 1.27 and 1.26, race detector, linting,
-  vulnerability scanning, secret scanning, and an enforced 80% coverage floor.
+  vulnerability scanning, secret scanning, and an enforced 90% coverage floor.
 - `Version` and `UserAgent` for identifying the SDK in outgoing requests.
 
 ### Notes

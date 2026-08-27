@@ -34,8 +34,8 @@ CI additionally runs `govulncheck` and `gitleaks`.
 
 ## Testing
 
-**Coverage must not fall below 80%, and that is a floor rather than a target.**
-The build fails below 80%; the intent is to stay close to 100%. New code should
+**Coverage must not fall below 90%, and that is a floor rather than a target.**
+The build fails below 90%; the intent is to stay close to 100%. New code should
 arrive with tests, not acquire them later. Codecov holds changed lines to a
 higher bar than the codebase average, because code written today has no legacy
 excuse.

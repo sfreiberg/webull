@@ -219,3 +219,16 @@ func TestDecodeAPIErrorRecordsTruncation(t *testing.T) {
 			"is not mistaken for an unrecognised error shape")
 	}
 }
+
+func TestAPIErrorCodeAccessor(t *testing.T) {
+	err := &APIError{Code: "OPENAPI_PARAM_ERR"}
+	if err.ErrorCode() != "OPENAPI_PARAM_ERR" {
+		t.Errorf("ErrorCode() = %q", err.ErrorCode())
+	}
+	// The accessor is what lets other packages classify by code without
+	// importing this one.
+	var coded interface{ ErrorCode() string }
+	if !errors.As(error(err), &coded) {
+		t.Error("APIError should satisfy the ErrorCode interface through errors.As")
+	}
+}

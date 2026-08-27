@@ -343,3 +343,62 @@ func TestMultiLegPreviewSendsAllLegs(t *testing.T) {
 		t.Error("option orders should not carry the equity session default")
 	}
 }
+
+func TestComboErrorsPropagate(t *testing.T) {
+	c := newClientFor(t, &bodyFixture{fixture: fixture{t: t, body: loadFixture(t, "combo_rejected_oco.json"), status: http.StatusExpectationFailed}})
+	ctx := context.Background()
+	var te *testError
+	if _, err := c.PlaceCombo(ctx, "A", Bracket(buyLimit("1"), sellLimit("9"), nil)); !errors.As(err, &te) {
+		t.Errorf("PlaceCombo: got %v", err)
+	}
+	if _, err := c.PreviewCombo(ctx, "A", Bracket(buyLimit("1"), sellLimit("9"), nil)); !errors.As(err, &te) {
+		t.Errorf("PreviewCombo: got %v", err)
+	}
+	if _, err := c.PlaceCombo(ctx, "A", OCO(buyLimit("1"))); !errors.Is(err, ErrInvalidOrder) {
+		t.Errorf("PlaceCombo must validate locally first: %v", err)
+	}
+}
+
+func TestPlaceComboClassifiesDuplicates(t *testing.T) {
+	c := newClientFor(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusExpectationFailed) }))
+	c.doer.DecodeError = func(transportResponse) error { return &codedError{code: duplicateOrderCode} }
+	_, err := c.PlaceCombo(context.Background(), "A", Bracket(buyLimit("1"), sellLimit("9"), nil))
+	if !errors.Is(err, ErrDuplicateOrder) {
+		t.Errorf("got %v, want ErrDuplicateOrder", err)
+	}
+}
+
+func TestAlreadyDoneIgnoresUncodedErrors(t *testing.T) {
+	if alreadyDone(errors.New("network down")) {
+		t.Error("an error without a code cannot mean the order was already gone")
+	}
+	if alreadyDone(&codedError{code: "OPENAPI_SYSTEM_ERROR"}) {
+		t.Error("only the not-found and cannot-cancel codes mean already done")
+	}
+	if !alreadyDone(&codedError{code: "OPENAPI_ORDER_NOT_FOUND"}) {
+		t.Error("not-found means already done")
+	}
+}
+
+func TestOppositeSides(t *testing.T) {
+	for _, tc := range []struct {
+		a, b Side
+		want bool
+	}{
+		{Buy, Sell, true}, {Sell, Buy, true}, {Short, Buy, true},
+		{Buy, Buy, false}, {Sell, Sell, false}, {Buy, Short, false}, {"", Buy, false},
+	} {
+		if got := opposite(tc.a, tc.b); got != tc.want {
+			t.Errorf("opposite(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+		}
+	}
+}
+
+func TestCancelComboSkipsNilAndReportsNothingForNoOrders(t *testing.T) {
+	c := newClientFor(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { _, _ = w.Write(loadFixture(t, "order_place.json")) }))
+	combo := &Combo{Orders: []*Order{nil, buyLimit("1")}}
+	combo.Orders[1].ClientOrderID = "clientorder0000000001"
+	if err := c.CancelCombo(context.Background(), "A", combo); err != nil {
+		t.Errorf("nil entries should be skipped, got %v", err)
+	}
+}
