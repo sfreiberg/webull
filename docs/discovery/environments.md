@@ -17,39 +17,32 @@ a parameter, and `/openapi/config` is the likely discovery mechanism. Unverified
 
 ## Sandbox
 
-Sandbox hosts are published in the getting-started guides, though not in any SDK
-endpoint table:
+Confirmed against the live API with sandbox credentials.
 
 | API type | Production | Sandbox |
 |---|---|---|
-| Trading / accounts | `api.webull.com` | `api.sandbox.webull.com` |
+| Trading / accounts | `api.webull.com` | `api.sandbox.webull.com` (**verified**) |
 | gRPC events | `events-api.webull.com` | `events-api.sandbox.webull.com` |
-| Market data HTTP | `data-api.webull.com` | **unconfirmed** |
-| MQTT streaming | `data-api.webull.com` | **not published** |
+| Market data HTTP | `data-api.webull.com` | `data-api.sandbox.webull.com` (unverified) |
+| MQTT streaming | `data-api.webull.com`, ports 1883 and 8883 | not published |
 
-The pattern is to insert `.sandbox` before `.webull.com`, so
-`data-api.sandbox.webull.com` is the obvious guess — but it is a guess, and the
-market-data getting-started page muddies it further by listing the trading hosts
-(`api.webull.com` / `api.sandbox.webull.com`) as its "API Endpoints" while the
-SDK routes HTTP market data to `data-api.webull.com`. That is a second
-docs-versus-SDK discrepancy of the same family as the path-scheme one.
+**Sandbox and production credentials are separate.** The same signed requests
+that succeed against `api.sandbox.webull.com` return `404 Route Not Found` from
+`api.webull.com` — every path, including ones that certainly exist there. The
+gateway appears not to route at all for a key that is not provisioned for the
+environment, so a production key is a separate issuance rather than the same key
+with wider scope.
 
-For streaming the documentation names only a **Production MQTT** host. No sandbox
-equivalent is given anywhere. Real-time market data may simply not have a
-sandbox, which would be consistent with market data being an entitlement rather
-than a simulated account.
+That 404-rather-than-401 behaviour is worth remembering when diagnosing: a 404
+from a path known to be correct means the wrong environment or an unprovisioned
+key, not a wrong URL.
 
-Still unresolved:
+`token_check_enabled` is **false** in sandbox, so the signature alone
+authenticates and no access token is required. Whether production differs is
+unverified.
 
-1. Whether `data-api.sandbox.webull.com` exists.
-2. Whether MQTT streaming has any sandbox at all.
-3. Whether sandbox credentials are issued separately from production.
-4. Whether sandbox simulates market hours. This determines how much market-hours
-   machinery the test harness needs — possibly none.
-
-The first two are answerable with a DNS lookup and one connection attempt once
-we have credentials; the rate-limits page listing separate sandbox quotas for
-every market-data endpoint is weak evidence that a sandbox does exist for them.
+Still unknown: whether market data has a sandbox at all, and whether sandbox
+simulates market hours.
 
 ## Connect API hosts
 

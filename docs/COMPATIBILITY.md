@@ -16,9 +16,11 @@ Scope is the **US** market.
 | Excluded | Deliberately out of scope; reason required |
 | Unverified | Implemented against documentation but never exercised against a live endpoint |
 
-`Unverified` exists because this project currently has no API credentials. Any
-coverage claim not exercised against a real endpoint is marked as such rather
-than being presented as working.
+`Unverified` exists because coverage is not the same as proof. Sandbox
+credentials are available, so most work can now be exercised against a real
+endpoint; anything that cannot — production-only behaviour, or an API whose
+credentials are partner-gated — is marked `Unverified` rather than presented as
+working.
 
 ## Summary
 
@@ -27,11 +29,11 @@ begins in Phase 3.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
-| **Transport and signing** | Planned | – | – | 3 | HMAC-SHA256, centralised |
-| Request signing | Planned | – | – | 3 | Algorithm documented |
-| Token lifecycle | Planned | – | – | 3 | Conditional on `/openapi/config` |
+| **Transport and signing** | Complete | Yes | – | 3 | HMAC-SHA256, verified against live sandbox |
+| Request signing | Complete | Yes | – | 3 | Golden-vector tests plus live verification |
+| Token lifecycle | Partial | Yes | – | 3 | `token_check_enabled` is false in sandbox, so untested in anger |
 | Client token | Planned | – | – | 3 | Documented only; no SDK reference |
-| Environments | Partial | – | – | 3 | Production hosts known; sandbox host unknown |
+| Environments | Complete | Yes | – | 3 | Sandbox verified; production unverified (no keys) |
 | **Accounts** | Planned | – | – | 4 | |
 | Account list | Planned | – | – | 4 | |
 | Balances | Planned | – | – | 4 | |
@@ -118,22 +120,38 @@ Phase 9 rather than assumed.
 | Region scope | US only | Other regions are a configuration addition, not a redesign |
 | Package layout | Root package at repo root | [package-layout.md](discovery/package-layout.md) |
 | Sandbox support | Required | Hosts known for trading and events; market data unconfirmed |
+| Endpoint path scheme | Documented (`/trading/*`) | Both schemes are live aliases; the documented one is the source of truth — [open-questions.md](discovery/open-questions.md#1-the-documentation-and-the-sdks-describe-different-api-generations) |
 | Connect API | In scope, likely unverifiable | No new endpoints; cost is a host and a credential — [connect-api.md](discovery/connect-api.md#implementation-cost) |
+
+## Observed API behaviour
+
+Established against the live sandbox and relied on by the implementation.
+
+| Behaviour | Detail |
+|---|---|
+| Parameter validation status | **HTTP 417**, not 400, with code `OPENAPI_PARAM_ERR` |
+| Two error shapes | Application errors return `error_code` + `message`; gateway errors, such as an unrouted path, return only `error_msg` |
+| Wrong environment or unprovisioned key | `404 Route Not Found`, not 401 |
+| Missing credentials | 401 with `MISSING_APP_KEY` |
+| Account not accessible | 403 with `ACCOUNT_ACCESS_DENIED` |
+| Pagination bounds | `page_size` must be between 10 and 100 |
+| Decimal encoding | Confirmed on the wire: `"total_cash_balance":"1000000.00"` — a string, with trailing zeros preserved |
 
 ## Sandbox validation backlog
 
-This project has no API credentials. Every item below is an acceptance criterion
-deferred until credentials exist, tracked here so the gap stays visible rather
-than being quietly forgotten.
+Sandbox credentials are available; production credentials are not. Items below
+are acceptance criteria that remain unverified, tracked here so the gap stays
+visible rather than being quietly forgotten. Struck-through items have been
+resolved and are kept for a release or two so the answers are discoverable.
 
 | # | Item | Blocks |
 |---|---|---|
-| 1 | Which endpoint path scheme the server honours — documented or SDK | Phase 3 |
-| 2 | Whether `data-api.sandbox.webull.com` exists, and whether MQTT has any sandbox | Phase 3 |
-| 3 | Whether sandbox credentials are separate from production | Phase 3 |
+| ~~1~~ | ~~Which endpoint path scheme the server honours~~ — **resolved: both, they are aliases. Using the documented scheme.** | – |
+| 2 | Whether `data-api.sandbox.webull.com` exists, and whether MQTT has any sandbox | Phase 6 / 9 |
+| ~~3~~ | ~~Whether sandbox credentials are separate from production~~ — **resolved: yes. A sandbox key 404s every path in production.** | – |
 | 4 | Whether sandbox simulates market hours | Test harness design |
-| 5 | Confirm the server accepts our HMAC-SHA256 signature (any successful authenticated request proves it) | Phase 3 |
-| 6 | Whether `token_check_enabled` is true for US production | Phase 3 |
+| ~~5~~ | ~~Confirm the server accepts our HMAC-SHA256 signature~~ — **resolved: accepted, with and without query parameters.** | – |
+| 6 | Whether `token_check_enabled` is true in production (it is **false** in sandbox) | when production keys exist |
 | 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
 | 8 | Whether streaming requires its own token | Phase 9 |
 | 9 | Timestamp formats per endpoint | Phase 4 |

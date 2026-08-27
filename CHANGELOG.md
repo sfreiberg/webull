@@ -12,6 +12,15 @@ called out explicitly.
 
 ### Added
 
+- `Client`, `Config` and `Environment`: the SDK entry point, with sandbox and
+  production host resolution and per-service endpoint overrides.
+- Webull request signing (HMAC-SHA256), verified against the live sandbox.
+- `APIError` with sentinel errors for authentication, permission, invalid
+  request, not found, rate limiting and server failures, usable with
+  `errors.Is` and `errors.As`.
+- Conservative retry policy: idempotent requests only, never `POST`.
+- `Client.TokenCheckEnabled` reports whether a deployment requires an access
+  token in addition to the signature.
 - API compatibility matrix and discovery documentation covering the Webull US
   OpenAPI surface, authentication, streaming protocols and wire format.
 - Continuous integration: tests on Go 1.27 and 1.26, race detector, linting,
@@ -20,7 +29,10 @@ called out explicitly.
 
 ### Notes
 
-- No SDK functionality is implemented yet. The Broker API and FIX are out of
-  scope; see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+- Endpoint paths follow Webull's documented scheme (`/trading/...`). The
+  `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
+  handlers and are not implemented.
+- No trading or market data operations are implemented yet. The Broker API and
+  FIX are out of scope; see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 [Unreleased]: https://github.com/sfreiberg/webull/commits/main

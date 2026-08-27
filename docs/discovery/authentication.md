@@ -8,8 +8,13 @@ only in the Connect API, which no SDK implements.
 
 The algorithm below was reconstructed from three independent official
 implementations — Python, Java, and Webull's own Go CLI — which agree with each
-other. It is described here so that our implementation can be written from the
-description rather than transcribed from Apache-2.0 source.
+other, and is described here so that our implementation could be written from
+the description rather than transcribed from Apache-2.0 source.
+
+**It is verified.** Signatures built to this description are accepted by the
+live sandbox, for requests with and without query parameters. The integration
+test `TestIntegrationSignatureIsAccepted` exercises it on every run where
+credentials are present.
 
 ## Signature headers
 
