@@ -159,6 +159,30 @@ receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
 })
 ```
 
+### Other asset classes
+
+Set `InstrumentType`; the rules for each asset class are checked locally.
+
+```go
+// Crypto, sized in coins (up to eight decimal places), $2 minimum.
+client.Trade.PlaceOrder(ctx, cryptoAcct.AccountID, &trade.Order{
+    InstrumentType: trade.InstrumentCrypto, Symbol: "BTCUSD",
+    Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC,
+    Quantity: trade.Price("0.001"), LimitPrice: trade.Price("60000"),
+})
+
+// Event contracts are limit-only and need the outcome being bought.
+client.Trade.PlaceOrder(ctx, eventsAcct.AccountID, &trade.Order{
+    InstrumentType: trade.InstrumentEvent, Symbol: "KXRATECUTCOUNT-26DEC31-T3",
+    Side: trade.Buy, Type: trade.Limit,
+    Quantity: trade.Price("5"), LimitPrice: trade.Price("0.10"),
+    EventOutcome: trade.OutcomeYes,
+})
+```
+
+Futures, crypto and event contracts each have their own account; use the one
+whose `AccountClass` matches.
+
 ### Changing a working order
 
 Only the fields you set are changed; the rest are left as they are.

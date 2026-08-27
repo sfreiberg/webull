@@ -114,6 +114,12 @@ Write for a Go developer. Do not restate Webull's documentation; link to it for
 authoritative broker semantics, and be explicit where Webull's own documentation
 is ambiguous.
 
+**Verified behaviour belongs in godoc, not only in the compatibility matrix.**
+When a live check establishes how Webull actually behaves — a rule the docs
+get wrong, a sandbox limitation, a required field the spec calls optional —
+record it on the type, constant or method it affects, so that a user reading
+`go doc` sees it. The matrix is the project's ledger; godoc is what users read.
+
 ## Pull requests
 
 - Branch from `main`. `main` is protected; direct pushes are rejected.

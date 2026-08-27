@@ -1,0 +1,32 @@
+{
+  "client_order_id": "clientorder0000000000001",
+  "combo_type": "NORMAL",
+  "combo_order_id": "ORDER000000000000000000001",
+  "orders": [
+    {
+      "symbol": "KXRATECUTCOUNT-26DEC31-T6",
+      "side": "BUY",
+      "status": "SUBMITTED",
+      "fees": [
+        {
+          "type": "EXCHANGE_FEE",
+          "actual_value": "0.01",
+          "receivable_value": "0.01"
+        }
+      ],
+      "commission": {},
+      "client_order_id": "clientorder0000000000001",
+      "order_type": "LIMIT",
+      "instrument_type": "EVENT",
+      "order_id": "ORDER000000000000000000001",
+      "entrust_type": "QTY",
+      "total_quantity": "1",
+      "filled_quantity": "0",
+      "place_time": "1787865453058",
+      "place_time_at": "2026-08-27T21:17:33.058Z",
+      "time_in_force": "GTC",
+      "limit_price": "0.0100",
+      "event_outcome": "yes"
+    }
+  ]
+}

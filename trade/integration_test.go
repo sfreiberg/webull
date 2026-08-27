@@ -476,3 +476,177 @@ func TestIntegrationOTOGroupsInSandbox(t *testing.T) {
 		})
 	}
 }
+
+func accountOfClass(ctx context.Context, t *testing.T, c *trade.Client, class trade.AccountClass) trade.Account {
+	t.Helper()
+	return accountWhere(ctx, t, c, string(class)+" account", func(a trade.Account) bool { return a.AccountClass == class })
+}
+
+// skipIfCode skips the test when err carries one of the given Webull codes,
+// reporting the message, so that a sandbox limitation is visible rather than
+// silently green.
+func skipIfCode(t *testing.T, err error, codes ...string) {
+	t.Helper()
+	var apiErr *webull.APIError
+	if errors.As(err, &apiErr) {
+		for _, code := range codes {
+			if apiErr.Code == code {
+				t.Skipf("integration: sandbox: %s (%s)", apiErr.Message, apiErr.Code)
+			}
+		}
+	}
+}
+
+// restingLifecycle places o, confirms it is working, cancels it and confirms
+// the cancellation. o must be priced so that it cannot fill. Order state is
+// polled rather than assumed after a fixed delay.
+func restingLifecycle(ctx context.Context, t *testing.T, c *trade.Client, acct trade.Account, o *trade.Order) {
+	t.Helper()
+	receipt, err := c.PlaceOrder(ctx, acct.AccountID, o)
+	if err != nil {
+		skipIfCode(t, err, "OPENAPI_FUTURES_CAN_NOT_TRADING_FOR_NON_TRADING_HOURS", "OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT")
+		t.Fatalf("PlaceOrder: %v", err)
+	}
+	// The cleanup runs after ctx has been cancelled, so it needs its own.
+	t.Cleanup(func() { _, _ = c.CancelOrder(context.Background(), acct.AccountID, o.ClientOrderID) }) //nolint:contextcheck // see above
+	if receipt.OrderID == "" {
+		t.Fatalf("receipt = %+v", receipt)
+	}
+
+	poll := func(what string, pred func(*trade.OrderGroup) bool) {
+		t.Helper()
+		var last *trade.OrderGroup
+		var lastErr error
+		for attempt := 0; attempt < 12; attempt++ {
+			g, err := c.Order(ctx, acct.AccountID, o.ClientOrderID)
+			if err == nil && pred(g) {
+				return
+			}
+			last, lastErr = g, err
+			// A fill is terminal: the account now holds a position, and the
+			// order will never become working or cancelled.
+			if err == nil && len(g.Orders) == 1 && g.Orders[0].Status == trade.StatusFilled {
+				t.Fatalf("order filled instead of resting; the sandbox %s account now holds %s %s", acct.AccountClass, o.Symbol, g.Orders[0].TotalQuantity)
+			}
+			select {
+			case <-ctx.Done():
+				t.Fatalf("context ended waiting until order %s: %v (last error: %v)", what, ctx.Err(), lastErr)
+			case <-time.After(500 * time.Millisecond):
+			}
+		}
+		t.Fatalf("order never %s; last = %+v; last error: %v", what, last, lastErr)
+	}
+
+	poll("working", func(g *trade.OrderGroup) bool {
+		return len(g.Orders) == 1 && g.Orders[0].InstrumentType == o.InstrumentType &&
+			(g.Orders[0].Status == trade.StatusSubmitted || g.Orders[0].Status == trade.StatusPending)
+	})
+	if _, err := c.CancelOrder(ctx, acct.AccountID, o.ClientOrderID); err != nil {
+		t.Fatalf("CancelOrder: %v", err)
+	}
+	poll("cancelled", func(g *trade.OrderGroup) bool {
+		return len(g.Orders) == 1 && g.Orders[0].Status == trade.StatusCancelled
+	})
+}
+
+func TestIntegrationFuturesOrder(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := accountOfClass(ctx, t, c, trade.AccountClassFutures)
+	contracts, err := c.FuturesContracts(ctx, trade.FuturesContractsRequest{Code: "ES"})
+	if err != nil || len(contracts) == 0 {
+		t.Fatalf("FuturesContracts: %v (%d)", err, len(contracts))
+	}
+	o := &trade.Order{InstrumentType: trade.InstrumentFutures, Symbol: contracts[0].Symbol, Side: trade.Buy, Type: trade.Limit,
+		TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")}
+	if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
+		t.Fatalf("PreviewOrder: %v", err)
+	}
+	// Futures do not trade during the exchange's daily break; the lifecycle
+	// skips with Webull's reason when that is the case.
+	restingLifecycle(ctx, t, c, acct, o)
+}
+
+func TestIntegrationCryptoOrder(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := accountOfClass(ctx, t, c, trade.AccountClassCrypto)
+	// $5 notional: Webull's minimum is $2.
+	o := &trade.Order{InstrumentType: trade.InstrumentCrypto, Symbol: "BTCUSD", Side: trade.Buy, Type: trade.Limit,
+		TimeInForce: trade.GTC, Quantity: trade.Price("0.001"), LimitPrice: trade.Price("5000")}
+
+	// The sandbox answers every crypto preview with a system error while
+	// accepting the same order for placement. Record it rather than fail.
+	if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
+		var apiErr *webull.APIError
+		if errors.As(err, &apiErr) && apiErr.Code == "OPENAPI_SYSTEM_ERROR" {
+			t.Logf("integration: sandbox rejects crypto previews with %s; placement is verified below", apiErr.Code)
+		} else {
+			t.Fatalf("PreviewOrder: %v", err)
+		}
+	} else {
+		t.Log("the sandbox now accepts crypto previews; update the compatibility matrix")
+	}
+	restingLifecycle(ctx, t, c, acct, o)
+}
+
+func TestIntegrationEventContractOrder(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := accountOfClass(ctx, t, c, trade.AccountClassEventsCash)
+	markets, err := c.EventMarkets(ctx, trade.EventMarketsRequest{SeriesSymbol: "KXRATECUTCOUNT"})
+	if err != nil || len(markets.Markets) == 0 {
+		t.Fatalf("EventMarkets: %v", err)
+	}
+	var symbol string
+	for _, m := range markets.Markets {
+		if m.TradableStatus == trade.Tradable {
+			symbol = m.Symbol
+			break
+		}
+	}
+	if symbol == "" {
+		t.Skip("integration: no tradable event market in the series")
+	}
+	for _, tif := range []trade.TimeInForce{trade.Day, trade.GTC} {
+		t.Run(string(tif), func(t *testing.T) {
+			ctx := testutil.IntegrationContext(t) // each lifecycle gets its own budget
+			o := &trade.Order{InstrumentType: trade.InstrumentEvent, Symbol: symbol, Side: trade.Buy, Type: trade.Limit,
+				TimeInForce: tif, Quantity: trade.Price("1"), LimitPrice: trade.Price("0.01"), EventOutcome: trade.OutcomeYes}
+			if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
+				t.Fatalf("PreviewOrder: %v", err)
+			}
+			restingLifecycle(ctx, t, c, acct, o)
+		})
+	}
+}
+
+func TestIntegrationBatchPlace(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := marginAccount(ctx, t, c)
+	orders := []*trade.Order{
+		{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")},
+		{Symbol: "MSFT", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")},
+	}
+	result, err := c.PlaceOrders(ctx, acct.AccountID, orders)
+	if err != nil {
+		// Batches are DAY only, so outside regular hours this cannot run;
+		// and the sandbox account is not enabled for batch placement at all.
+		skipIfCode(t, err, "OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT")
+		var apiErr *webull.APIError
+		if errors.As(err, &apiErr) && strings.Contains(apiErr.Message, "Account not supported") {
+			t.Skipf("integration: sandbox: batch placement is not enabled for this account: %s", apiErr.Message)
+		}
+		t.Fatalf("PlaceOrders: %v", err)
+	}
+	t.Cleanup(func() {
+		for _, o := range orders {
+			_, _ = c.CancelOrder(context.Background(), acct.AccountID, o.ClientOrderID)
+		}
+	})
+	if result.Total != 2 {
+		t.Errorf("result = %+v", result)
+	}
+	for _, r := range result.Orders {
+		if r.Code != "" {
+			t.Errorf("order %s rejected: %s %s", r.ClientOrderID, r.Code, r.Message)
+		}
+	}
+}

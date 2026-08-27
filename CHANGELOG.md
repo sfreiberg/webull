@@ -12,6 +12,9 @@ called out explicitly.
 
 ### Added
 
+- Futures, crypto and event-contract orders, with each asset class's
+  permitted sides, order types, times in force and quantity precision
+  enforced before any request is sent.
 - Order groups: `Bracket`, `OTO`, `OCO` and `OTOCO` build a `Combo`, placed
   with `PlaceCombo`, previewed with `PreviewCombo` and cancelled with
   `CancelCombo`. Webull's per-role rules are enforced locally.
@@ -52,7 +55,8 @@ called out explicitly.
 - Endpoint paths follow Webull's documented scheme (`/trading/...`). The
   `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
   handlers and are not implemented.
-- No trading or market data operations are implemented yet. The Broker API and
-  FIX are out of scope; see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+- Market data, streaming and the Connect API are not implemented yet. The
+  Broker API and FIX are out of scope; see
+  [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 [Unreleased]: https://github.com/sfreiberg/webull/commits/main
