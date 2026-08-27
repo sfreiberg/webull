@@ -84,7 +84,10 @@ const (
 	European OptionStyle = "EUROPEAN"
 )
 
-// OptionStrategy classifies a multi-leg position.
+// OptionStrategy classifies an option order or position. StrategySingle is
+// one leg; every other value is a multi-leg order that needs at least two
+// Legs and cannot be part of a Combo. Covered and collar strategies include a
+// stock leg, and may be market orders.
 type OptionStrategy string
 
 // Option strategies. Any value other than StrategySingle is a multi-leg order
@@ -246,7 +249,9 @@ const (
 	EventMarketUnrecognized EventMarketStatus = "UNRECOGNIZED"
 )
 
-// EventOutcome is the side of an event contract position.
+// EventOutcome is the side of an event contract: which binary outcome is
+// being bought or sold. It is required on every event contract order and
+// must not be set on any other kind.
 type EventOutcome string
 
 // Event outcomes.

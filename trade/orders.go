@@ -24,6 +24,11 @@ const (
 )
 
 // OrderType determines how an order executes.
+//
+// Not every type is available to every asset class: event contracts accept
+// Limit only, crypto accepts Market, Limit and StopLossLimit, and options do
+// not accept TrailingStopLoss. Batch placement accepts Market and Limit. An
+// order of a type its instrument does not permit fails locally.
 type OrderType string
 
 // Order types.
@@ -39,6 +44,11 @@ const (
 )
 
 // TimeInForce is how long an order remains active.
+//
+// Equities accept every value; options and futures accept Day and GTC;
+// crypto accepts Day, GTC and IOC. Webull enforces regular trading hours for
+// Day orders, rejecting one placed after the close, so anything that must
+// run at any hour should use GTC.
 type TimeInForce string
 
 // Time-in-force values. GTD requires Order.ExpireDate.
@@ -83,7 +93,8 @@ const (
 	RoleOTOCO ComboType = "OTOCO"
 )
 
-// EntrustType is whether quantity is expressed in units or in cash.
+// EntrustType is whether quantity is expressed in units or in cash. ByAmount
+// is accepted for equities (fractional shares) and crypto only.
 type EntrustType string
 
 // Entrust types.
@@ -113,7 +124,10 @@ const (
 	SellToClose PositionIntent = "SELL_TO_CLOSE"
 )
 
-// TrailingType is how a trailing stop's offset is expressed.
+// TrailingType is how a trailing stop's offset is expressed. Both kinds are
+// accepted for equities and futures, on either side and with GTC as well as
+// Day. Options do not accept trailing stops at all. The wire values are
+// case-sensitive.
 type TrailingType string
 
 // Trailing types.

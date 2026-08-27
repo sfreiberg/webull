@@ -3,6 +3,24 @@
 // This is an independent open-source project and is not affiliated with,
 // maintained by, or endorsed by Webull.
 //
+// Construct a Client with NewClient and use its service clients:
+//
+//	client, err := webull.NewClient(webull.Config{
+//		AppKey:      os.Getenv("WEBULL_APP_KEY"),
+//		AppSecret:   os.Getenv("WEBULL_APP_SECRET"),
+//		Environment: webull.Sandbox,
+//	})
+//	accounts, err := client.Trade.Accounts(ctx)
+//
+// There is no default Environment: sandbox and production are different
+// deployments with separately issued credentials, and a sandbox key returns
+// "404 Route Not Found" for every production path.
+//
+// Every request is signed automatically. Failures from Webull are returned as
+// *APIError, which matches the package's sentinel errors with errors.Is. The
+// client never retries a POST, because in this API a replayed order is a
+// duplicated order.
+//
 // The package is under active development and its public API is not yet
 // stable.
 package webull
