@@ -149,10 +149,11 @@ set to zero      -> {"quantity":"10","limit_price":"0"}
 | **Request models** | `decimal.NullDecimal` with `omitzero` | `decimal.Decimal` |
 
 `trade.Price("180.00")` returns a set `NullDecimal` for request literals. One
-edge is documented rather than defended against: a `NullDecimal` built by hand
-with `Valid: false` and a nonzero payload is not the zero value, so `omitzero`
-keeps it and it marshals as `null`. Nothing in the normal API produces that
-shape.
+edge needs defending against: a `NullDecimal` with `Valid: false` and a nonzero
+payload is not the zero value, so `omitzero` keeps it and it marshals as
+`null`. That shape is reachable — `NullDecimal.UnmarshalJSON(null)` clears
+`Valid` but keeps the previous payload — so request preparation resets every
+unset `NullDecimal` to the zero value before marshalling.
 
 An earlier revision of this document chose pointers with `omitempty` for
 requests on the grounds that an explicit `null` might be rejected. The sandbox

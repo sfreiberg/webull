@@ -58,19 +58,24 @@ type testError struct{ status int }
 
 func (e *testError) Error() string { return fmt.Sprintf("status %d", e.status) }
 
-func newTestClient(t *testing.T, wantPath, file string) (*Client, *fixture) {
+// newClientFor wires a Client to any handler with the test transport: no
+// retries, no sleeps, and errors decoded into *testError.
+func newClientFor(t *testing.T, h http.Handler) *Client {
 	t.Helper()
-	f := &fixture{t: t, wantPath: wantPath, body: loadFixture(t, file)}
-	srv := httptest.NewTLSServer(f)
+	srv := httptest.NewTLSServer(h)
 	t.Cleanup(srv.Close)
-
-	doer := &transport.Doer{
+	return New(&transport.Doer{
 		HTTPClient:  srv.Client(),
 		Signer:      signing.New("k", "s"),
 		DecodeError: func(r transport.Response) error { return &testError{status: r.StatusCode} },
 		Retry:       transport.RetryPolicy{MaxAttempts: 1},
-	}
-	return New(doer, strings.TrimPrefix(srv.URL, "https://")), f
+	}, strings.TrimPrefix(srv.URL, "https://"))
+}
+
+func newTestClient(t *testing.T, wantPath, file string) (*Client, *fixture) {
+	t.Helper()
+	f := &fixture{t: t, wantPath: wantPath, body: loadFixture(t, file)}
+	return newClientFor(t, f), f
 }
 
 func mustDecimal(t *testing.T, s string) decimal.Decimal {
@@ -421,15 +426,7 @@ func TestEventMarkets(t *testing.T) {
 // TestErrorsPropagate drives every method through a 403 so that no call path
 // swallows the decoded error.
 func TestErrorsPropagate(t *testing.T) {
-	f := &fixture{t: t, body: loadFixture(t, "positions.json"), status: http.StatusForbidden}
-	srv := httptest.NewTLSServer(f)
-	t.Cleanup(srv.Close)
-	c := New(&transport.Doer{
-		HTTPClient:  srv.Client(),
-		Signer:      signing.New("k", "s"),
-		DecodeError: func(r transport.Response) error { return &testError{status: r.StatusCode} },
-		Retry:       transport.RetryPolicy{MaxAttempts: 1},
-	}, strings.TrimPrefix(srv.URL, "https://"))
+	c := newClientFor(t, &fixture{t: t, body: loadFixture(t, "positions.json"), status: http.StatusForbidden})
 	ctx := context.Background()
 
 	calls := map[string]func() error{

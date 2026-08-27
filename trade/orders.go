@@ -174,6 +174,11 @@ type Order struct {
 	// account. If empty, PlaceOrder and PreviewOrder generate one and write it
 	// back here before sending, so the caller holds it even if no response
 	// arrives.
+	//
+	// An ID is consumed once Webull accepts the order, so an Order value
+	// describes one placement: placing it a second time returns
+	// ErrDuplicateOrder. A rejected placement does not consume the ID, so a
+	// corrected Order may be resent as is.
 	ClientOrderID string `json:"client_order_id"`
 
 	// InstrumentType defaults to InstrumentEquity, or to InstrumentOption when
@@ -229,7 +234,7 @@ type Order struct {
 	LegDirection   LegDirection   `json:"leg_in_or_out,omitzero"`
 	PositionID     string         `json:"position_id,omitzero"`
 	LegInStrategy  LegInStrategy  `json:"leg_in_strategy,omitzero"`
-	Legs           []OrderLeg     `json:"legs,omitzero"`
+	Legs           []OrderLeg     `json:"legs,omitempty"`
 }
 
 // OrderLeg is one leg of an option order. LegFromSymbol builds one from an
@@ -240,7 +245,9 @@ type OrderLeg struct {
 	// Market defaults to "US"; InstrumentType to InstrumentOption.
 	Market         string         `json:"market,omitzero"`
 	InstrumentType InstrumentType `json:"instrument_type,omitzero"`
-	// Symbol is the underlying, such as "AAPL".
+	// Symbol is the option's root symbol, such as "AAPL" or "SPXW". For index
+	// weeklies this differs from the underlying ("SPX"), and Webull rejects the
+	// underlying; LegFromSymbol sets it correctly.
 	Symbol      string              `json:"symbol"`
 	StrikePrice decimal.NullDecimal `json:"strike_price,omitzero"`
 	// ExpireDate is yyyy-MM-dd.
@@ -250,10 +257,11 @@ type OrderLeg struct {
 
 // occSymbol matches an OCC option symbol as Webull renders it: root, yymmdd,
 // C or P, and the strike times 1000 as eight digits.
-var occSymbol = regexp.MustCompile(`^([A-Z][A-Z0-9.]*?)(\d{6})([CP])(\d{8})$`)
+var occSymbol = regexp.MustCompile(`^([A-Z][A-Z0-9.]*)(\d{6})([CP])(\d{8})$`)
 
 // LegFromSymbol builds a leg from an OCC option symbol such as
-// "AAPL261218C00240000", the form returned by OptionContracts. Side and
+// "AAPL261218C00240000", the form returned by OptionContracts. The symbol's
+// root becomes the leg's Symbol, which is what Webull expects. Side and
 // Quantity are left for the caller.
 func LegFromSymbol(symbol string) (OrderLeg, error) {
 	m := occSymbol.FindStringSubmatch(symbol)
@@ -264,25 +272,51 @@ func LegFromSymbol(symbol string) (OrderLeg, error) {
 	if err != nil {
 		return OrderLeg{}, fmt.Errorf("trade: %q has an invalid expiry: %w", symbol, err)
 	}
-	strike, err := decimal.NewFromString(m[4])
-	if err != nil {
-		return OrderLeg{}, fmt.Errorf("trade: %q has an invalid strike: %w", symbol, err)
-	}
 	optType := Call
 	if m[3] == "P" {
 		optType = Put
 	}
+	// The strike is eight digits in thousandths; the pattern guarantees it
+	// parses.
+	strike := decimal.RequireFromString(m[4]).Shift(-3)
 	return OrderLeg{
 		Symbol:      m[1],
 		ExpireDate:  expiry.Format("2006-01-02"),
 		OptionType:  optType,
-		StrikePrice: decimal.NewNullDecimal(strike.Div(decimal.NewFromInt(1000))),
+		StrikePrice: decimal.NewNullDecimal(strike),
 	}, nil
 }
 
 // ErrInvalidOrder wraps local validation failures, which are detected before
 // any request is sent.
 var ErrInvalidOrder = errors.New("trade: invalid order")
+
+// ErrDuplicateOrder is returned when Webull rejects a placement because the
+// ClientOrderID was already accepted for another order. The underlying
+// *webull.APIError remains reachable with errors.As.
+var ErrDuplicateOrder = errors.New("trade: client order id already used")
+
+// duplicateOrderCode is Webull's code for a reused client order ID.
+const duplicateOrderCode = "OPENAPI_TRADE_PLACE_ORDER_REPEAT"
+
+// classify wraps errors carrying codes this package gives a name to.
+func classify(err error) error {
+	var coded interface{ ErrorCode() string }
+	if errors.As(err, &coded) && coded.ErrorCode() == duplicateOrderCode {
+		return fmt.Errorf("%w: %w", ErrDuplicateOrder, err)
+	}
+	return err
+}
+
+// clear resets an unset NullDecimal to its zero value so that omitzero omits
+// it. A NullDecimal that has been assigned and then unmarshalled from null
+// keeps its old payload with Valid false, which would otherwise serialise as
+// an explicit null.
+func clear(d *decimal.NullDecimal) {
+	if !d.Valid {
+		*d = decimal.NullDecimal{}
+	}
+}
 
 const (
 	clientOrderIDMin = 10
@@ -331,6 +365,13 @@ func (o *Order) prepare() error {
 	}
 	if o.TimeInForce == "" {
 		o.TimeInForce = Day
+	}
+	for _, d := range []*decimal.NullDecimal{&o.Quantity, &o.TotalCashAmount, &o.LimitPrice, &o.StopPrice,
+		&o.TrailingStopStep, &o.CurrentAsk, &o.CurrentBid, &o.TargetVolPercent, &o.MaxTargetPercent} {
+		clear(d)
+	}
+	if len(o.Legs) == 0 {
+		o.Legs = nil
 	}
 
 	var problems []string
@@ -392,6 +433,7 @@ func (o *Order) prepare() error {
 			if !leg.Quantity.Valid {
 				leg.Quantity = o.Quantity
 			}
+			clear(&leg.StrikePrice)
 			if leg.InstrumentType == InstrumentOption {
 				if leg.Symbol == "" || !leg.StrikePrice.Valid || leg.ExpireDate == "" || leg.OptionType == "" {
 					problems = append(problems, fmt.Sprintf("leg %d needs Symbol, StrikePrice, ExpireDate and OptionType", i))
@@ -425,9 +467,16 @@ type OrderPreview struct {
 }
 
 type orderEnvelope struct {
-	AccountID          string  `json:"account_id"`
-	ClientComboOrderID string  `json:"client_combo_order_id,omitzero"`
-	NewOrders          []Order `json:"new_orders"`
+	AccountID string  `json:"account_id"`
+	NewOrders []Order `json:"new_orders"`
+}
+
+// forPlacement returns a copy of o with preview-only fields removed, so that
+// previewing and then placing the same Order value does not forward them.
+func (o *Order) forPlacement() Order {
+	c := *o
+	c.CurrentAsk, c.CurrentBid = decimal.NullDecimal{}, decimal.NullDecimal{}
+	return c
 }
 
 // PreviewOrder estimates cost and fees for an order without placing it. It
@@ -454,8 +503,8 @@ func (c *Client) PlaceOrder(ctx context.Context, accountID string, order *Order)
 		return nil, err
 	}
 	var out OrderReceipt
-	if err := c.post(ctx, "/trading/orders/place", orderEnvelope{AccountID: accountID, NewOrders: []Order{*order}}, &out); err != nil {
-		return nil, err
+	if err := c.post(ctx, "/trading/orders/place", orderEnvelope{AccountID: accountID, NewOrders: []Order{order.forPlacement()}}, &out); err != nil {
+		return nil, classify(err)
 	}
 	return &out, nil
 }
@@ -478,19 +527,32 @@ type OrderModification struct {
 	AlgoEndTime      string              `json:"algo_end_time,omitzero"`
 
 	// Legs modifies option leg quantities by leg ID, as returned by Order.
-	Legs []LegModification `json:"legs,omitzero"`
+	Legs []LegModification `json:"legs,omitempty"`
 }
 
-// LegModification changes the quantity of one option leg.
+// LegModification changes the quantity of one option leg. Both fields are
+// required.
 type LegModification struct {
-	ID       string          `json:"id"`
-	Quantity decimal.Decimal `json:"quantity"`
+	ID       string              `json:"id"`
+	Quantity decimal.NullDecimal `json:"quantity,omitzero"`
 }
 
 // ReplaceOrder modifies a working order.
 func (c *Client) ReplaceOrder(ctx context.Context, accountID string, mod OrderModification) (*OrderReceipt, error) {
 	if mod.ClientOrderID == "" {
 		return nil, fmt.Errorf("%w: ClientOrderID is required", ErrInvalidOrder)
+	}
+	for _, d := range []*decimal.NullDecimal{&mod.Quantity, &mod.LimitPrice, &mod.StopPrice, &mod.TrailingStopStep,
+		&mod.TargetVolPercent, &mod.MaxTargetPercent} {
+		clear(d)
+	}
+	if len(mod.Legs) == 0 {
+		mod.Legs = nil
+	}
+	for i, leg := range mod.Legs {
+		if leg.ID == "" || !leg.Quantity.Valid {
+			return nil, fmt.Errorf("%w: leg %d needs ID and Quantity", ErrInvalidOrder, i)
+		}
 	}
 	body := struct {
 		AccountID    string              `json:"account_id"`
@@ -605,6 +667,9 @@ type Fee struct {
 
 // Order retrieves an order by its client order ID.
 func (c *Client) Order(ctx context.Context, accountID, clientOrderID string) (*OrderGroup, error) {
+	if clientOrderID == "" {
+		return nil, fmt.Errorf("%w: clientOrderID is required", ErrInvalidOrder)
+	}
 	q := params{}
 	q.set("account_id", accountID)
 	q.set("client_order_id", clientOrderID)
@@ -692,6 +757,10 @@ func (c *Client) PlaceOrders(ctx context.Context, accountID string, orders []*Or
 		switch {
 		case o.InstrumentType != InstrumentEquity:
 			return nil, fmt.Errorf("%w: order %d: batch orders must be equities", ErrInvalidOrder, i)
+		case o.ComboType != Normal:
+			return nil, fmt.Errorf("%w: order %d: batch orders must be NORMAL combo", ErrInvalidOrder, i)
+		case o.EntrustType != ByQuantity:
+			return nil, fmt.Errorf("%w: order %d: batch orders must be by quantity", ErrInvalidOrder, i)
 		case o.Type != Market && o.Type != Limit:
 			return nil, fmt.Errorf("%w: order %d: batch orders must be MARKET or LIMIT", ErrInvalidOrder, i)
 		case o.TimeInForce != Day:
@@ -699,7 +768,7 @@ func (c *Client) PlaceOrders(ctx context.Context, accountID string, orders []*Or
 		case o.Side == Short:
 			return nil, fmt.Errorf("%w: order %d: batch orders cannot be SHORT", ErrInvalidOrder, i)
 		}
-		batch = append(batch, *o)
+		batch = append(batch, o.forPlacement())
 	}
 	body := struct {
 		AccountID   string  `json:"account_id"`
@@ -707,7 +776,7 @@ func (c *Client) PlaceOrders(ctx context.Context, accountID string, orders []*Or
 	}{accountID, batch}
 	var out BatchResult
 	if err := c.post(ctx, "/trading/orders/batch-place", body, &out); err != nil {
-		return nil, err
+		return nil, classify(err)
 	}
 	return &out, nil
 }

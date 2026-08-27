@@ -80,8 +80,9 @@ Webull's Python or Java SDKs.
 - Errors wrap with `%w` and are inspectable with `errors.Is` and `errors.As`.
 - Monetary and quantity values use `github.com/shopspring/decimal`, never
   `float64`. See [docs/discovery/wire-format.md](docs/discovery/wire-format.md).
-- Optional fields distinguish absent from zero: `decimal.NullDecimal` in
-  responses, pointers with `omitempty` in requests.
+- Optional decimal fields are `decimal.NullDecimal` in both directions, with
+  the `omitzero` tag on request fields, so absent is distinguishable from zero
+  and unset fields are omitted rather than sent as `null`.
 - No panics for recoverable errors. No package-level mutable state.
 - Anything holding a connection or a goroutine exposes `Close`, and every
   goroutine has a defined path to exit.

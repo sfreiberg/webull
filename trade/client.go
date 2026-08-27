@@ -45,6 +45,10 @@ func (c *Client) post(ctx context.Context, path string, body, out any) error {
 	}, out)
 }
 
+// transportResponse is transport.Response, named here so tests need not
+// import the transport package.
+type transportResponse = transport.Response
+
 // params accumulates query parameters, omitting empty values so that an unset
 // optional field is not sent as an empty string.
 type params url.Values

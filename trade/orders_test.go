@@ -6,14 +6,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/http/httptest"
 	"strings"
 	"testing"
 
 	"github.com/shopspring/decimal"
-
-	"github.com/sfreiberg/webull/internal/signing"
-	"github.com/sfreiberg/webull/internal/transport"
 )
 
 // bodyFixture serves a fixture and captures the JSON body it received.
@@ -32,14 +28,7 @@ func (f *bodyFixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func newBodyClient(t *testing.T, wantPath, file string) (*Client, *bodyFixture) {
 	t.Helper()
 	f := &bodyFixture{fixture: fixture{t: t, wantPath: wantPath, body: loadFixture(t, file)}}
-	srv := httptest.NewTLSServer(f)
-	t.Cleanup(srv.Close)
-	return New(&transport.Doer{
-		HTTPClient:  srv.Client(),
-		Signer:      signing.New("k", "s"),
-		DecodeError: func(r transport.Response) error { return &testError{status: r.StatusCode} },
-		Retry:       transport.DefaultRetryPolicy(),
-	}, strings.TrimPrefix(srv.URL, "https://")), f
+	return newClientFor(t, f), f
 }
 
 func firstOrder(t *testing.T, body map[string]any, key string) map[string]any {
@@ -385,15 +374,7 @@ func TestPlaceOrdersSendsBatch(t *testing.T) {
 }
 
 func TestOrderErrorsPropagate(t *testing.T) {
-	f := &bodyFixture{fixture: fixture{t: t, body: loadFixture(t, "order_preview_badleg.json"), status: http.StatusExpectationFailed}}
-	srv := httptest.NewTLSServer(f)
-	t.Cleanup(srv.Close)
-	c := New(&transport.Doer{
-		HTTPClient:  srv.Client(),
-		Signer:      signing.New("k", "s"),
-		DecodeError: func(r transport.Response) error { return &testError{status: r.StatusCode} },
-		Retry:       transport.DefaultRetryPolicy(),
-	}, strings.TrimPrefix(srv.URL, "https://"))
+	c := newClientFor(t, &bodyFixture{fixture: fixture{t: t, body: loadFixture(t, "order_preview_badleg.json"), status: http.StatusExpectationFailed}})
 	ctx := context.Background()
 	valid := func() *Order { return &Order{Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1")} }
 	calls := map[string]func() error{

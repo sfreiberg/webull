@@ -40,9 +40,9 @@ and orders — are implemented. Market data, streaming and Connect are not.
 | Positions | Unverified | Yes | – | 4a | Decodes per the documented schema, but the sandbox account holds no positions so no live response has been seen. The SDK-only position-detail path has no documented equivalent and is not implemented |
 | Activities | Complete | Yes | – | 4a | Keyset pagination via `last_activity_id`; `page_size` 1–200 verified |
 | Trading instruments | Complete | Yes | – | 4a | Stocks, options, futures, crypto, event contracts; cursor pagination |
-| **Trading** | Complete | Yes | Yes | 4b | Full lifecycle verified against sandbox |
+| **Trading** | Partial | Yes | Yes | 4b | Equity and single-leg option orders verified live; see sub-rows |
 | Order place / preview | Complete | Yes | Yes | 4b | Local validation before any request |
-| Order replace / cancel | Complete | Yes | Yes | 4b | Keyed by `client_order_id` |
+| Order replace / cancel | Complete | Yes | Yes | 4b | Keyed by `client_order_id`; a price-only replace verified live |
 | Order query, history, open | Complete | Yes | – | 4b | History status lags a fresh cancel |
 | Batch place | Unverified | Yes | – | 4b | Constraints enforced locally; not exercised live |
 | Equity orders | Complete | Yes | Yes | 4b | Placed, replaced and cancelled in sandbox |
@@ -136,6 +136,8 @@ Established against the live sandbox and relied on by the implementation.
 | `support_trading_session` | Documented optional; **required** for US equity orders (417 without it), optional for options. The SDK defaults it to `CORE` |
 | `client_order_id` length | Documented as at most 32; the server requires **10 to 40** |
 | Explicit `null` on an optional order field | Accepted |
+| `client_order_id` lifetime | Consumed once an order is accepted (`OPENAPI_TRADE_PLACE_ORDER_REPEAT` on reuse); a rejected placement does not consume it |
+| Option leg symbol | The OCC root (`SPXW`), not the underlying (`SPX`), which is rejected |
 | Order history freshness | Immediately after a cancel, `get` reports `CANCELLED` while `history` still reports `PENDING` |
 | Preview response | Carries an undocumented `currency` field |
 | Parameter validation status | **HTTP 417**, not 400, with code `OPENAPI_PARAM_ERR` |
@@ -170,3 +172,4 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 13 | The wire form of a finite `day_trades_left`; only `"UNLIMITED"` has been observed | when a cash account is available |
 | 14 | Batch place against the sandbox, and whether a partially failed batch returns 200 | Phase 5 |
 | 15 | Whether `OrderHistory` reconciles to the cancelled status after a delay | Phase 5 |
+| 16 | The wire form of `filled_time_at` on a filled order; decoded as RFC 3339 like `place_time_at` but never observed | when an order fills |

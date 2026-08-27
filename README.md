@@ -6,8 +6,9 @@
 
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
-> **Status: pre-release.** Accounts, positions, instrument data and orders are
-> implemented and verified against Webull's sandbox. Market data, streaming and
+> **Status: pre-release.** Accounts, instrument data and orders are implemented
+> and verified against Webull's sandbox; positions decode per the documented
+> schema but no live response has been seen yet. Market data, streaming and
 > the Connect API are not yet. The public API may change without notice until
 > v1.0.0.
 
@@ -123,6 +124,17 @@ receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
 })
 ```
 
+### Changing a working order
+
+Only the fields you set are changed; the rest are left as they are.
+
+```go
+_, err = client.Trade.ReplaceOrder(ctx, acct.AccountID, trade.OrderModification{
+    ClientOrderID: order.ClientOrderID,
+    LimitPrice:    trade.Price("182.00"),
+})
+```
+
 ### Cancelling
 
 ```go
@@ -130,7 +142,8 @@ _, err = client.Trade.CancelOrder(ctx, acct.AccountID, order.ClientOrderID)
 ```
 
 Cancel, replace and lookup are keyed by the client order ID, not Webull's own
-`OrderID`.
+`OrderID`. An `Order` value describes one placement: once accepted, its ID is
+consumed, and placing it again returns `trade.ErrDuplicateOrder`.
 
 ## Numbers
 
