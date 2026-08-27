@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/sfreiberg/webull/actions/workflows/ci.yml/badge.svg)](https://github.com/sfreiberg/webull/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sfreiberg/webull/graph/badge.svg)](https://codecov.io/gh/sfreiberg/webull)
+[![Go Reference](https://pkg.go.dev/badge/github.com/sfreiberg/webull.svg)](https://pkg.go.dev/github.com/sfreiberg/webull)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
@@ -23,6 +24,7 @@ You are responsible for any orders it places on your behalf.
 
 ## Documentation
 
+- [API reference on pkg.go.dev](https://pkg.go.dev/github.com/sfreiberg/webull) — every exported type and method, with the behaviour verified against Webull's sandbox recorded on the items it affects
 - [API compatibility matrix](docs/COMPATIBILITY.md) — what is implemented, what is planned, and what is out of scope
 - [Discovery findings](docs/discovery/) — inventory of the Webull OpenAPI surface, authentication, streaming and wire format
 
