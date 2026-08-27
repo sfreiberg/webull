@@ -1,0 +1,47 @@
+[
+  {
+    "category_id": 6,
+    "category_code": "CLIMATE_WEATHER",
+    "category_name": "Climate and Weather"
+  },
+  {
+    "category_id": 1,
+    "category_code": "ECONOMICS",
+    "category_name": "Economics"
+  },
+  {
+    "category_id": 11,
+    "category_code": "COMMODITIES",
+    "category_name": "Commodities"
+  },
+  {
+    "category_id": 4,
+    "category_code": "ENTERTAINMENT",
+    "category_name": "Entertainment"
+  },
+  {
+    "category_id": 9,
+    "category_code": "SPORTS",
+    "category_name": "Sports"
+  },
+  {
+    "category_id": 5,
+    "category_code": "SCIENCE_TECHNOLOGY",
+    "category_name": "Science and Technology"
+  },
+  {
+    "category_id": 13,
+    "category_code": "ELECTIONS",
+    "category_name": "Elections"
+  },
+  {
+    "category_id": 8,
+    "category_code": "CRYPTO",
+    "category_name": "Crypto"
+  },
+  {
+    "category_id": 2,
+    "category_code": "FINANCIALS",
+    "category_name": "Financials"
+  }
+]

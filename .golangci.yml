@@ -26,6 +26,10 @@ linters:
         # Integer conversion overflow. Noisy on protobuf field decoding, where
         # the widths are fixed by the schema.
         - G115
+    misspell:
+      ignore-rules:
+        # A real term in brokerage: whether a security may be bought on margin.
+        - marginable
     revive:
       rules:
         - name: exported

@@ -109,11 +109,16 @@ share its lifetime, which they do not.
 
 ## Import direction
 
-Service packages depend on `internal/*` and on the root package for shared types.
-The root package must not import service packages, or `Client` composing them
-creates a cycle. In practice this means shared types — `Decimal`, `APIError`,
-`Environment`, the config struct — live in the root, and the root's `Client`
-constructor is the one place that reaches into service packages.
+The root package imports the service packages in order to compose them, so
+the service packages must not import the root package or there is a cycle.
 
-This is worth stating now because it is the constraint most likely to be violated
-accidentally in Phase 4, and unwinding a cycle later is disruptive.
+Service packages therefore depend only on `internal/*` and on third-party
+types such as `decimal.Decimal`. Anything a service package needs from the
+root — the resolved host, the signing transport, the error decoder — is handed
+to it at construction rather than imported. Errors surface as `*webull.APIError`
+without `trade` naming that type, because the decoder that builds them is
+injected into the transport by the root package.
+
+The practical consequence is that `trade.New` takes an `internal/transport`
+type. That is deliberate: it makes the constructor unusable outside this module,
+which is the point — `webull.NewClient` is the supported way to obtain one.

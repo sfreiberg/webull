@@ -34,11 +34,11 @@ begins in Phase 3.
 | Token lifecycle | Partial | Yes | – | 3 | `token_check_enabled` is false in sandbox, so untested in anger |
 | Client token | Planned | – | – | 3 | Documented only; no SDK reference |
 | Environments | Complete | Yes | – | 3 | Sandbox verified; production unverified (no keys) |
-| **Accounts** | Planned | – | – | 4 | |
-| Account list | Planned | – | – | 4 | |
-| Balances | Planned | – | – | 4 | |
-| Positions | Planned | – | – | 4 | Including position detail |
-| Activities | Planned | – | – | 4 | |
+| **Accounts** | Complete | Yes | – | 4a | Verified against sandbox |
+| Account list | Complete | Yes | – | 4a | |
+| Balances | Complete | Yes | – | 4a | `open_margin_calls` is a list on the wire, not the documented string |
+| Positions | Complete | Yes | – | 4a | Model from docs only: the sandbox account holds no positions |
+| Activities | Complete | Yes | – | 4a | Keyset pagination via `last_activity_id` |
 | **Trading** | Planned | – | – | 4 | |
 | Order place / preview | Planned | – | – | 4 | |
 | Order replace / cancel | Planned | – | – | 4 | |
@@ -55,7 +55,7 @@ begins in Phase 3.
 | Depth of book | Planned | – | – | 6 | Futures and event contracts |
 | Footprint | Planned | – | – | 6 | Stocks and futures |
 | NOII | Planned | – | – | 6 | |
-| Instruments and contracts | Planned | – | – | 6 | |
+| Instruments and contracts | Complete | Yes | – | 4a | Stocks, options, futures, crypto, event contracts; cursor pagination |
 | Fundamentals and financials | Planned | – | – | 6 | |
 | Funds | Planned | – | – | 6 | |
 | Screeners | Planned | – | – | 6 | |
@@ -129,6 +129,9 @@ Established against the live sandbox and relied on by the implementation.
 
 | Behaviour | Detail |
 |---|---|
+| Documented types that are wrong on the wire | `unit` (futures) and `category_id` (events) are integers, not strings; `open_margin_calls` is an array, not a string |
+| Undocumented fields | `single_stock_etf`, `inverse_etf` on stock profiles; `init_expiration_date` on option contracts |
+| Instrument page size | Fixed by the server at 1000; `pagination_key` is absent on the last page |
 | Parameter validation status | **HTTP 417**, not 400, with code `OPENAPI_PARAM_ERR` |
 | Two error shapes | Application errors return `error_code` + `message`; gateway errors, such as an unrouted path, return only `error_msg` |
 | Wrong environment or unprovisioned key | `404 Route Not Found`, not 401 |

@@ -1,0 +1,32 @@
+[
+  {
+    "code": "AVAJ26-AVA",
+    "product_class_id": 3,
+    "product_class_name": "Cryptocurrencies",
+    "exchange_code": "CDE"
+  },
+  {
+    "code": "XRPJ26-XRP",
+    "product_class_id": 3,
+    "product_class_name": "Cryptocurrencies",
+    "exchange_code": "CDE"
+  },
+  {
+    "code": "SHBH26-SHB",
+    "product_class_id": 3,
+    "product_class_name": "Cryptocurrencies",
+    "exchange_code": "CDE"
+  },
+  {
+    "code": "ADAH26-ADA",
+    "product_class_id": 3,
+    "product_class_name": "Cryptocurrencies",
+    "exchange_code": "CDE"
+  },
+  {
+    "code": "XLMH26-XLM",
+    "product_class_id": 3,
+    "product_class_name": "Cryptocurrencies",
+    "exchange_code": "CDE"
+  }
+]

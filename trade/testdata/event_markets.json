@@ -1,0 +1,82 @@
+{
+  "data": [
+    {
+      "symbol": "KXRATECUTCOUNT-26DEC31-T6",
+      "name": "Will the Fed cut rates 6 times?",
+      "instrument_id": "501073821",
+      "series_id": "1051",
+      "series_name": "Number of Rate Cuts",
+      "series_symbol": "KXRATECUTCOUNT",
+      "yes_condition": "Exactly 6 cuts",
+      "last_trading_date": "2026-12-31",
+      "status": "LISTING",
+      "tradable_status": "OC",
+      "can_close_early": true,
+      "expected_exp_date": "2026-12-31",
+      "latest_exp_date": "2027-01-01",
+      "payout_date": "2026-12-31",
+      "fractionable": true,
+      "price_ranges": [
+        {
+          "start": "0.0000",
+          "end": "1.0000",
+          "step": "0.0010"
+        }
+      ],
+      "event_name": "Number of rate cuts in 2026?",
+      "event_symbol": "KXRATECUTCOUNT-26DEC31"
+    },
+    {
+      "symbol": "KXRATECUTCOUNT-26DEC31-T4",
+      "name": "Will the Fed cut rates 4 times?",
+      "instrument_id": "501073822",
+      "series_id": "1051",
+      "series_name": "Number of Rate Cuts",
+      "series_symbol": "KXRATECUTCOUNT",
+      "yes_condition": "Exactly 4 cuts",
+      "last_trading_date": "2026-12-31",
+      "status": "LISTING",
+      "tradable_status": "OC",
+      "can_close_early": true,
+      "expected_exp_date": "2026-12-31",
+      "latest_exp_date": "2027-01-01",
+      "payout_date": "2026-12-31",
+      "fractionable": true,
+      "price_ranges": [
+        {
+          "start": "0.0000",
+          "end": "1.0000",
+          "step": "0.0010"
+        }
+      ],
+      "event_name": "Number of rate cuts in 2026?",
+      "event_symbol": "KXRATECUTCOUNT-26DEC31"
+    },
+    {
+      "symbol": "KXRATECUTCOUNT-26DEC31-T15",
+      "name": "Will the Fed cut rates 15 times?",
+      "instrument_id": "501073823",
+      "series_id": "1051",
+      "series_name": "Number of Rate Cuts",
+      "series_symbol": "KXRATECUTCOUNT",
+      "yes_condition": "Exactly 15 cuts",
+      "last_trading_date": "2026-12-31",
+      "status": "LISTING",
+      "tradable_status": "OC",
+      "can_close_early": true,
+      "expected_exp_date": "2026-12-31",
+      "latest_exp_date": "2027-01-01",
+      "payout_date": "2026-12-31",
+      "fractionable": true,
+      "price_ranges": [
+        {
+          "start": "0.0000",
+          "end": "1.0000",
+          "step": "0.0010"
+        }
+      ],
+      "event_name": "Number of rate cuts in 2026?",
+      "event_symbol": "KXRATECUTCOUNT-26DEC31"
+    }
+  ]
+}

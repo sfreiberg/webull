@@ -11,6 +11,7 @@ import (
 
 	"github.com/sfreiberg/webull/internal/signing"
 	"github.com/sfreiberg/webull/internal/transport"
+	"github.com/sfreiberg/webull/trade"
 )
 
 // Client is the entry point to the Webull OpenAPI.
@@ -23,6 +24,10 @@ import (
 // are created explicitly so that their lifetime, and the goroutines they run,
 // belong to the caller.
 type Client struct {
+	// Trade covers accounts, balances, positions, activities and instrument
+	// reference data.
+	Trade *trade.Client
+
 	cfg  Config
 	doer *transport.Doer
 }
@@ -48,15 +53,25 @@ func NewClient(cfg Config) (*Client, error) {
 		cfg.EndpointOverrides = maps.Clone(cfg.EndpointOverrides)
 	}
 
+	doer := &transport.Doer{
+		HTTPClient:  cfg.httpClient(),
+		Signer:      signing.New(cfg.AppKey, cfg.AppSecret),
+		UserAgent:   userAgent,
+		DecodeError: decodeAPIError,
+		Retry:       transport.DefaultRetryPolicy(),
+	}
+
+	// Hosts are resolved once here. Overrides were cloned above, so the
+	// resolution cannot change under a running client.
+	tradingHost, err := cfg.host(serviceTrading)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Client{
-		cfg: cfg,
-		doer: &transport.Doer{
-			HTTPClient:  cfg.httpClient(),
-			Signer:      signing.New(cfg.AppKey, cfg.AppSecret),
-			UserAgent:   userAgent,
-			DecodeError: decodeAPIError,
-			Retry:       transport.DefaultRetryPolicy(),
-		},
+		Trade: trade.New(doer, tradingHost),
+		cfg:   cfg,
+		doer:  doer,
 	}, nil
 }
 

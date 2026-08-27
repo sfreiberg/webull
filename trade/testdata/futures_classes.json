@@ -1,0 +1,42 @@
+[
+  {
+    "product_class_id": 1,
+    "product_class_name": "Energy"
+  },
+  {
+    "product_class_id": 2,
+    "product_class_name": "Equities"
+  },
+  {
+    "product_class_id": 3,
+    "product_class_name": "Cryptocurrencies"
+  },
+  {
+    "product_class_id": 4,
+    "product_class_name": "Interest Rate"
+  },
+  {
+    "product_class_id": 5,
+    "product_class_name": "Agriculture"
+  },
+  {
+    "product_class_id": 6,
+    "product_class_name": "FX"
+  },
+  {
+    "product_class_id": 7,
+    "product_class_name": "Metals"
+  },
+  {
+    "product_class_id": 8,
+    "product_class_name": "Others"
+  },
+  {
+    "product_class_id": 9,
+    "product_class_name": "Real Estate"
+  },
+  {
+    "product_class_id": 10,
+    "product_class_name": "Weather"
+  }
+]

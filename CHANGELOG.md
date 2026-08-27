@@ -12,6 +12,10 @@ called out explicitly.
 
 ### Added
 
+- `trade` package: accounts, balances, positions, cash activities, and
+  reference data for stocks, options, futures, crypto and event contracts,
+  reachable as `client.Trade`. Monetary values are `decimal.Decimal`, with
+  `decimal.NullDecimal` where Webull may omit a field.
 - `Client`, `Config` and `Environment`: the SDK entry point, with sandbox and
   production host resolution and per-service endpoint overrides.
 - Webull request signing (HMAC-SHA256), verified against the live sandbox.

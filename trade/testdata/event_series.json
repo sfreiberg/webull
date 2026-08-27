@@ -1,0 +1,74 @@
+{
+  "data": [
+    {
+      "symbol": "KXFEDDECISION",
+      "category": "ECONOMICS",
+      "frequency": "CUSTOM",
+      "name": "Fed Meeting",
+      "series_id": "1002"
+    },
+    {
+      "symbol": "KXAAAGASM",
+      "category": "ECONOMICS",
+      "frequency": "MONTHLY",
+      "name": "US gas price",
+      "series_id": "1005"
+    },
+    {
+      "symbol": "KXPAYROLLS",
+      "category": "ECONOMICS",
+      "frequency": "MONTHLY",
+      "name": "Jobs numbers",
+      "series_id": "1006"
+    },
+    {
+      "symbol": "KXCPIYOY",
+      "category": "ECONOMICS",
+      "frequency": "MONTHLY",
+      "name": "Inflation",
+      "series_id": "1007"
+    },
+    {
+      "symbol": "KXU3",
+      "category": "ECONOMICS",
+      "frequency": "MONTHLY",
+      "name": "Unemployment",
+      "series_id": "1008"
+    },
+    {
+      "symbol": "KXGDP",
+      "category": "ECONOMICS",
+      "frequency": "CUSTOM",
+      "name": "US GDP growth",
+      "series_id": "1009"
+    },
+    {
+      "symbol": "KXRATECUTCOUNT",
+      "category": "ECONOMICS",
+      "frequency": "ANNUAL",
+      "name": "Number of Rate Cuts",
+      "series_id": "1051"
+    },
+    {
+      "symbol": "KXFED",
+      "category": "ECONOMICS",
+      "frequency": "CUSTOM",
+      "name": "Fed funds rate",
+      "series_id": "1052"
+    },
+    {
+      "symbol": "KXCPI",
+      "category": "ECONOMICS",
+      "frequency": "MONTHLY",
+      "name": "CPI",
+      "series_id": "1055"
+    },
+    {
+      "symbol": "KXCOSTCOHOTDOG",
+      "category": "ECONOMICS",
+      "frequency": "CUSTOM",
+      "name": "Costco Hot Dog Price Increase",
+      "series_id": "2166"
+    }
+  ]
+}

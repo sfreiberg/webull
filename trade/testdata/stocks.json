@@ -1,0 +1,53 @@
+{
+  "data": [
+    {
+      "name": "APPLE INC",
+      "category": "US_STOCK",
+      "symbol": "AAPL",
+      "status": "OC",
+      "currency": "USD",
+      "instrument_id": "913256135",
+      "exchange_code": "NSQ",
+      "shortable": true,
+      "fractionable": true,
+      "marginable": true,
+      "overnight_trading_supported": true,
+      "margin_requirement_long": "0.5000000000",
+      "margin_requirement_short": "0.5000000000",
+      "easy_to_borrow": true,
+      "lot_size": "1.0000000000",
+      "etf_leveraged_flag": "NO",
+      "maintenance_margin_long": "0.2500000000",
+      "maintenance_margin_short": "0.3000000000",
+      "intraday_margin_long": "0.2500000000",
+      "intraday_margin_short": "0.2500000000",
+      "sub_category": "COMMON_STOCK"
+    },
+    {
+      "name": "State Street\u00ae SPDR\u00ae S&P 500\u00ae ETF Trust",
+      "category": "US_STOCK",
+      "symbol": "SPY",
+      "status": "OC",
+      "currency": "USD",
+      "instrument_id": "913243251",
+      "exchange_code": "PSE",
+      "shortable": true,
+      "fractionable": true,
+      "marginable": true,
+      "overnight_trading_supported": true,
+      "margin_requirement_long": "0.5000000000",
+      "margin_requirement_short": "0.5000000000",
+      "easy_to_borrow": true,
+      "lot_size": "1.0000000000",
+      "etf_leveraged_flag": "NO",
+      "etf_leveraged_factor": "0",
+      "crypto_etf": false,
+      "single_stock_etf": false,
+      "maintenance_margin_long": "0.2500000000",
+      "maintenance_margin_short": "0.3000000000",
+      "intraday_margin_long": "0.2500000000",
+      "intraday_margin_short": "0.2500000000",
+      "sub_category": "ETF"
+    }
+  ]
+}
