@@ -4,52 +4,31 @@ Ordered by how much they block implementation.
 
 ## 1. The documentation and the SDKs describe different API generations
 
-**This is the most consequential finding of Phase 1 and it needs a decision
-before Phase 3.**
+*Resolved by testing against the live sandbox: both schemes work.*
 
-The official reference documentation and the official SDKs do not agree on
-endpoint paths. They are not variations in spelling; they are different schemes.
+The documentation and the SDKs disagree on endpoint paths — not in spelling, but
+in scheme:
 
 | Operation | Documentation | Current Python/Java SDK |
 |---|---|---|
 | List accounts | `GET /trading/accounts/list` | `/openapi/account/list` |
-| Stock snapshot | `GET /market-data/stocks/snapshots/list` | `/openapi/market-data/stock/snapshot` |
+| Balances | `GET /trading/assets/balances/get` | `/openapi/assets/balance` |
+| Open orders | `GET /trading/orders/open-orders/list` | `/openapi/trade/order/open` |
 | Create token | `POST /auth/tokens/create` | `/openapi/auth/token/create` |
-| Top actives | `GET /market-data/screeners/top-actives/list` | `/openapi/market-data/screener/top-active` |
 
-The documented scheme is consistently RESTful — plural collection nouns, an
-explicit `/list` or `/get` verb suffix, no `/openapi` prefix. The SDK scheme is
-singular and prefixed.
+Signed requests were sent to both schemes for eight endpoint pairs. **Every pair
+returned an identical status and an identical response body.** No path returned
+404 under either scheme. They are live aliases of the same handlers, not
+competing generations.
 
-Counting generations found across all sources, there are at least three and
-arguably four:
+**Decision: use the documented scheme.** It is the stated source of truth, its
+naming is internally consistent, and the rate-limits page enumerates it in full,
+which gives us a checkable inventory. The `/openapi/*` paths are treated as
+legacy aliases and are not implemented.
 
-1. **v1, unprefixed** — `/trade/order/place`, `/account/balance`. Still present
-   in the current SDK.
-2. **v2, `/openapi/account/orders/*`** — only in the previous-generation SDK.
-3. **v3, `/openapi/trade/*`** — what the current SDK actually calls.
-4. **The documented scheme** — `/trading/*`, `/market-data/*`, `/auth/*`.
-
-Note that the current SDK ships *all* of generations 1 and 3 simultaneously, with
-`v2`/`v3` subpackages layering over the same operations.
-
-**Why this can't be settled from the desk:** both sources are official and
-current. The Python SDK was updated the same week as this research; the docs are
-the nominal source of truth. One plausible
-reading is that the documented scheme is a gateway that the SDKs have not
-migrated to; another is that the docs describe a forthcoming version. Nothing in
-either source states which.
-
-**Resolving it requires credentials** — one signed request against each scheme
-tells us which the server honours, and whether both do.
-
-**Recommendation:** treat this as the first item in the sandbox validation
-backlog and make it a gate on Phase 3. Until then, design the transport layer so
-the path scheme is a single centralised mapping rather than string literals
-scattered across service methods, which is good practice regardless. That way the answer
-changes one file instead of eighty. Do not begin implementing trading endpoints
-until this is settled — building against the wrong generation would waste most of
-Phases 4 through 6.
+One exception: `/openapi/config`, which reports whether token authentication is
+required, has no documented equivalent that we could find. It is used under its
+`/openapi/` path for that reason, and the exception is noted where it is called.
 
 ## 2. Connect API and Broker API exist in the docs but not in any SDK
 
