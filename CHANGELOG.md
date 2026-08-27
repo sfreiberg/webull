@@ -12,6 +12,12 @@ called out explicitly.
 
 ### Added
 
+- Orders: `PreviewOrder`, `PlaceOrder`, `ReplaceOrder`, `CancelOrder`,
+  `Order`, `OpenOrders`, `OrderHistory` and `PlaceOrders`. Orders are
+  validated locally before any request; a `ClientOrderID` is generated and
+  written back before sending so a lost response can be reconciled;
+  `PlaceOrder` never retries. `LegFromSymbol` builds an option leg from an
+  OCC symbol.
 - `trade` package: accounts, balances, positions, cash activities, and
   reference data for stocks, options, futures, crypto and event contracts,
   reachable as `client.Trade`. Monetary values are `decimal.Decimal`, with

@@ -105,6 +105,10 @@ func (e *APIError) Is(target error) bool {
 	return false
 }
 
+// ErrorCode returns Webull's machine-readable code, or "" if none. It lets
+// packages that cannot import this one classify errors by code.
+func (e *APIError) ErrorCode() string { return e.Code }
+
 // Temporary reports whether retrying the same request might succeed.
 //
 // It is deliberately conservative: it never reports true for a client error,

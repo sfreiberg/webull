@@ -131,23 +131,34 @@ unset, and that difference decides where each belongs:
 - `NullDecimal` emits `{"price":null}` — an explicit null.
 - `*decimal.Decimal` with `omitempty` emits `{}` — the field is absent.
 
-**Therefore:**
+Go 1.24's `omitzero` struct tag resolves the request side without pointers.
+`NullDecimal`'s zero value is `Valid: false`, so `omitzero` omits an unset field
+and sends a set one — including one deliberately set to zero:
+
+```
+unset            -> {"quantity":"10"}
+set 180.00       -> {"quantity":"10","limit_price":"180"}
+set to zero      -> {"quantity":"10","limit_price":"0"}
+```
+
+**Therefore, one rule for both directions:**
 
 | | Optional field | Always-present field |
 |---|---|---|
 | **Response models** | `decimal.NullDecimal` | `decimal.Decimal` |
-| **Request models** | `*decimal.Decimal` with `omitempty` | `decimal.Decimal` |
+| **Request models** | `decimal.NullDecimal` with `omitzero` | `decimal.Decimal` |
 
-This split is principled rather than inconsistent. On responses, `NullDecimal`
-is strictly better than a pointer: `resp.Price.Decimal` is always safe to call,
-whereas a nil `*decimal.Decimal` panics when dereferenced — and the read path is
-the one users touch most. On requests, sending `"limit_price": null` is not
-equivalent to omitting the field, and APIs that accept an absent optional
-parameter may reject an explicit null for it. Omitting is the conservative
-default.
+`trade.Price("180.00")` returns a set `NullDecimal` for request literals. One
+edge needs defending against: a `NullDecimal` with `Valid: false` and a nonzero
+payload is not the zero value, so `omitzero` keeps it and it marshals as
+`null`. That shape is reachable — `NullDecimal.UnmarshalJSON(null)` clears
+`Valid` but keeps the previous payload — so request preparation resets every
+unset `NullDecimal` to the zero value before marshalling.
 
-Which of those Webull actually accepts is unverified and is in the sandbox
-validation backlog.
+An earlier revision of this document chose pointers with `omitempty` for
+requests on the grounds that an explicit `null` might be rejected. The sandbox
+accepts an explicit `null` for an optional order field, so that concern was
+unfounded, and `omitzero` makes the question moot anyway.
 
 ### Performance note
 
