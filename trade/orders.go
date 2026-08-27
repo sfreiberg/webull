@@ -248,7 +248,8 @@ type Order struct {
 
 // OrderLeg is one leg of an option order. LegFromSymbol builds one from an
 // OCC symbol. Covered and collar strategies also take a stock leg, with
-// InstrumentType set to InstrumentEquity and no option fields.
+// InstrumentType set to InstrumentEquity, no option fields, and Quantity in
+// shares — it is never defaulted from the order's contract count.
 type OrderLeg struct {
 	Side     Side                `json:"side"`
 	Quantity decimal.NullDecimal `json:"quantity,omitzero"`
@@ -432,6 +433,9 @@ func (o *Order) prepare() error {
 		if o.OptionStrategy == "" && len(o.Legs) > 1 {
 			problems = append(problems, "multi-leg option orders need an OptionStrategy")
 		}
+		if o.OptionStrategy == StrategySingle && len(o.Legs) != 1 {
+			problems = append(problems, "SINGLE takes exactly one leg")
+		}
 		if o.OptionStrategy != "" && o.OptionStrategy != StrategySingle {
 			// Webull does not validate leg counts at preview time, so a
 			// malformed strategy would surface only on placement.
@@ -453,19 +457,25 @@ func (o *Order) prepare() error {
 			if leg.Side == "" {
 				leg.Side = o.Side
 			}
-			if !leg.Quantity.Valid {
-				leg.Quantity = o.Quantity
-			}
 			clear(&leg.StrikePrice)
 			switch leg.InstrumentType {
 			case InstrumentOption:
+				// An option leg's quantity is in contracts, like the order's.
+				if !leg.Quantity.Valid {
+					leg.Quantity = o.Quantity
+				}
 				if leg.Symbol == "" || !leg.StrikePrice.Valid || leg.ExpireDate == "" || leg.OptionType == "" {
 					problems = append(problems, fmt.Sprintf("leg %d needs Symbol, StrikePrice, ExpireDate and OptionType", i))
 				}
 			case InstrumentEquity:
-				// A stock leg of a covered or collar strategy.
+				// A stock leg of a covered or collar strategy is sized in
+				// shares, so the order's contract count is never a sensible
+				// default; the caller must set it.
 				if leg.Symbol == "" {
 					problems = append(problems, fmt.Sprintf("leg %d needs Symbol", i))
+				}
+				if !leg.Quantity.Valid {
+					problems = append(problems, fmt.Sprintf("leg %d: a stock leg needs its Quantity in shares", i))
 				}
 			default:
 				problems = append(problems, fmt.Sprintf("leg %d: legs must be OPTION or EQUITY", i))

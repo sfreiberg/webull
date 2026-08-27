@@ -2,6 +2,7 @@ package trade
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -101,6 +102,57 @@ func TestComboValidShapes(t *testing.T) {
 	}
 }
 
+func TestConstructorsToleratedNilOrders(t *testing.T) {
+	for name, c := range map[string]*Combo{
+		"oto nil master":   OTO(nil, sellLimit("9")),
+		"oto nil child":    OTO(buyLimit("1"), nil),
+		"oco nil":          OCO(buyLimit("1"), nil),
+		"otoco nil master": OTOCO(nil, sellLimit("9")),
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := c.prepare(); !errors.Is(err, ErrInvalidOrder) {
+				t.Errorf("got %v, want ErrInvalidOrder rather than a panic", err)
+			}
+		})
+	}
+}
+
+func TestBracketExitsMustCloseTheMaster(t *testing.T) {
+	sameSide := Bracket(buyLimit("1"), buyLimit("9"), nil)
+	if err := sameSide.prepare(); !errors.Is(err, ErrInvalidOrder) {
+		t.Error("a take-profit on the same side as the master must be rejected")
+	}
+	other := sellLimit("9")
+	other.Symbol = "MSFT"
+	if err := Bracket(buyLimit("1"), other, nil).prepare(); !errors.Is(err, ErrInvalidOrder) {
+		t.Error("an exit on a different symbol must be rejected")
+	}
+	shortMaster := &Order{Symbol: "AAPL", Side: Short, Type: Limit, Quantity: Price("1"), LimitPrice: Price("999")}
+	if err := Bracket(shortMaster, buyLimit("1"), nil).prepare(); err != nil {
+		t.Errorf("a buy exit closes a short: %v", err)
+	}
+}
+
+func TestComboIDLengthIsValidated(t *testing.T) {
+	c := Bracket(buyLimit("1"), sellLimit("9"), nil)
+	c.ClientComboOrderID = "short"
+	if err := c.prepare(); !errors.Is(err, ErrInvalidOrder) {
+		t.Error("a combo id outside 10-40 characters must be rejected")
+	}
+}
+
+func TestPreviewComboKeepsPreviewOnlyFields(t *testing.T) {
+	c, f := newBodyClient(t, "/trading/orders/preview", "order_preview.json")
+	m := buyLimit("1")
+	m.CurrentAsk, m.CurrentBid = Price("181"), Price("180")
+	if _, err := c.PreviewCombo(context.Background(), "A", Bracket(m, sellLimit("9"), nil)); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(f.gotRaw), `"current_ask"`) {
+		t.Error("preview must forward the caller's quotes, as PreviewOrder does")
+	}
+}
+
 func TestComboRejectsDuplicateClientIDs(t *testing.T) {
 	a, b := buyLimit("1"), sellLimit("999")
 	a.ClientOrderID, b.ClientOrderID = "same-id-000001", "same-id-000001"
@@ -158,39 +210,62 @@ func TestComboSubOrderLookup(t *testing.T) {
 	}
 }
 
-func TestCancelComboCancelsMasterOrEachExit(t *testing.T) {
+func TestCancelComboAttemptsEveryOrderAndToleratesGoneOnes(t *testing.T) {
 	var cancelled []string
-	c, f := newBodyClient(t, "/trading/orders/cancel", "order_place.json")
-	_ = f
-	c2 := newClientFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	var fail map[string]string
+	c := newClientFor(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var body struct {
 			ID string `json:"client_order_id"`
 		}
 		_ = decodeJSON(r, &body)
 		cancelled = append(cancelled, body.ID)
+		if code, ok := fail[body.ID]; ok {
+			w.WriteHeader(http.StatusExpectationFailed)
+			_, _ = w.Write([]byte(`{"error_code":"` + code + `","message":"x"}`))
+			return
+		}
 		_, _ = w.Write(loadFixture(t, "order_place.json"))
 	}))
-	_ = c
-
-	withMaster := Bracket(buyLimit("1"), sellLimit("9"), sellStop("0.5"))
-	_ = withMaster.prepare()
-	if err := c2.CancelCombo(context.Background(), "A", withMaster); err != nil {
-		t.Fatal(err)
-	}
-	if len(cancelled) != 1 || cancelled[0] != withMaster.Orders[0].ClientOrderID {
-		t.Errorf("cancelled %v; a group with a master is cancelled through the master", cancelled)
+	c.doer.DecodeError = func(r transportResponse) error {
+		var p struct {
+			Code string `json:"error_code"`
+		}
+		_ = json.Unmarshal(r.Body, &p)
+		return &codedError{code: p.Code}
 	}
 
+	combo := Bracket(buyLimit("1"), sellLimit("9"), sellStop("0.5"))
+	_ = combo.prepare()
+	master, tp, sl := combo.Orders[0].ClientOrderID, combo.Orders[1].ClientOrderID, combo.Orders[2].ClientOrderID
+
+	// Master filled and cannot be cancelled; the exits are live and must be.
+	fail = map[string]string{master: "OPENAPI_ORDER_CAN_NOT_BE_CANCEL"}
+	if err := c.CancelCombo(context.Background(), "A", combo); err != nil {
+		t.Fatalf("a filled master is not a failure: %v", err)
+	}
+	if len(cancelled) != 3 {
+		t.Errorf("cancelled %v; every order must be attempted", cancelled)
+	}
+
+	// Siblings already cancelled along with the first one.
 	cancelled = nil
-	exitsOnly := Bracket(nil, sellLimit("9"), sellStop("0.5"))
-	_ = exitsOnly.prepare()
-	if err := c2.CancelCombo(context.Background(), "A", exitsOnly); err != nil {
-		t.Fatal(err)
+	fail = map[string]string{tp: "OPENAPI_ORDER_NOT_FOUND", sl: "OPENAPI_ORDER_NOT_FOUND"}
+	if err := c.CancelCombo(context.Background(), "A", combo); err != nil {
+		t.Fatalf("already-gone siblings are not failures: %v", err)
 	}
-	if len(cancelled) != 2 {
-		t.Errorf("cancelled %v; an exits-only bracket is cancelled order by order", cancelled)
+
+	// A real failure is reported, after the others were still attempted.
+	cancelled = nil
+	fail = map[string]string{tp: "OPENAPI_SYSTEM_ERROR"}
+	err := c.CancelCombo(context.Background(), "A", combo)
+	if err == nil || !strings.Contains(err.Error(), tp) {
+		t.Errorf("expected the failing order in the error, got %v", err)
 	}
-	if err := c2.CancelCombo(context.Background(), "A", nil); !errors.Is(err, ErrInvalidOrder) {
+	if len(cancelled) != 3 {
+		t.Errorf("a failure must not stop the remaining cancels: %v", cancelled)
+	}
+
+	if err := c.CancelCombo(context.Background(), "A", nil); !errors.Is(err, ErrInvalidOrder) {
 		t.Error("nil combo must be rejected")
 	}
 }
@@ -226,6 +301,18 @@ func TestMultiLegValidation(t *testing.T) {
 	}
 	if covered.Legs[0].InstrumentType != InstrumentEquity || covered.Legs[0].StrikePrice.Valid {
 		t.Errorf("stock leg mangled: %+v", covered.Legs[0])
+	}
+
+	singleTwoLegs := vertical()
+	singleTwoLegs.OptionStrategy = StrategySingle
+	if err := singleTwoLegs.prepare(); !errors.Is(err, ErrInvalidOrder) {
+		t.Error("SINGLE with two legs must be rejected")
+	}
+
+	unsizedStock := &Order{Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1"), OptionStrategy: StrategyCoveredStock,
+		Legs: []OrderLeg{{Symbol: "AAPL", Side: Buy, InstrumentType: InstrumentEquity}, call(Sell, "260")}}
+	if err := unsizedStock.prepare(); !errors.Is(err, ErrInvalidOrder) {
+		t.Error("a stock leg without a share quantity must be rejected, not defaulted to the contract count")
 	}
 
 	badLeg := vertical()

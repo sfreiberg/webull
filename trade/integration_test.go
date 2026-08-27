@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -20,10 +21,24 @@ func newClient(t *testing.T) (*trade.Client, context.Context) {
 	return testutil.NewIntegrationClient(t).Trade, testutil.IntegrationContext(t)
 }
 
+// accountList is fetched once per test binary. Every integration test needs
+// it, and fetching it per test trips the sandbox's rate limit on the
+// accounts endpoint when the suite is run repeatedly.
+var (
+	accountsOnce sync.Once
+	accountList  []trade.Account
+	accountsErr  error
+)
+
+func cachedAccounts(ctx context.Context, c *trade.Client) ([]trade.Account, error) {
+	accountsOnce.Do(func() { accountList, accountsErr = c.Accounts(ctx) })
+	return accountList, accountsErr
+}
+
 // accountWhere returns the first account matching pred, or skips.
 func accountWhere(ctx context.Context, t *testing.T, c *trade.Client, what string, pred func(trade.Account) bool) trade.Account {
 	t.Helper()
-	accounts, err := c.Accounts(ctx)
+	accounts, err := cachedAccounts(ctx, c)
 	if err != nil {
 		t.Fatalf("Accounts: %v", err)
 	}
@@ -189,12 +204,15 @@ func marginAccount(ctx context.Context, t *testing.T, c *trade.Client) trade.Acc
 // TestIntegrationOrderLifecycle places a real order in the sandbox: a $1.00
 // limit buy that cannot fill. It is cancelled by the test, and again by a
 // cleanup so that a failure part-way through does not leave it working.
+//
+// The order is GTC: the sandbox enforces regular trading hours for DAY
+// orders, and these tests must run at any time of day.
 func TestIntegrationOrderLifecycle(t *testing.T) {
 	c, ctx := newClient(t)
 	acct := marginAccount(ctx, t, c)
 
 	order := &trade.Order{
-		Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit,
+		Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC,
 		Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00"),
 	}
 
@@ -335,7 +353,7 @@ func TestIntegrationServerRejectionIsClassified(t *testing.T) {
 		Legs: []trade.OrderLeg{{Symbol: "AAPL", OptionType: trade.Call, ExpireDate: "2026-12-18", StrikePrice: trade.Price("999999")}},
 	})
 	if err == nil {
-		t.Skip("integration: the server accepted an order this test expected it to reject")
+		t.Fatal("the server accepted a contract at strike 999999; pick a different deterministic rejection")
 	}
 	if !errors.Is(err, webull.ErrInvalidRequest) {
 		t.Errorf("server rejection did not classify as ErrInvalidRequest: %v", err)
@@ -349,10 +367,11 @@ func TestIntegrationBracketLifecycle(t *testing.T) {
 	c, ctx := newClient(t)
 	acct := marginAccount(ctx, t, c)
 
+	// GTC throughout: the sandbox rejects DAY orders outside regular hours.
 	combo := trade.Bracket(
-		&trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")},
-		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("999")},
-		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, Quantity: trade.Price("1"), StopPrice: trade.Price("0.50")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("999")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, TimeInForce: trade.GTC, Quantity: trade.Price("1"), StopPrice: trade.Price("0.50")},
 	)
 	if _, err := c.PreviewCombo(ctx, acct.AccountID, combo); err != nil {
 		t.Fatalf("PreviewCombo: %v", err)
@@ -407,6 +426,10 @@ func TestIntegrationMultiLegPreviews(t *testing.T) {
 		"covered stock": {Symbol: "AAPL", Side: trade.Buy, Type: trade.Market, Quantity: trade.Price("1"),
 			OptionStrategy: trade.StrategyCoveredStock, Legs: []trade.OrderLeg{
 				{Symbol: "AAPL", Side: trade.Buy, Quantity: trade.Price("100"), InstrumentType: trade.InstrumentEquity}, call(trade.Sell, "260", trade.Call)}},
+		"straddle": {Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00"),
+			OptionStrategy: trade.StrategyStraddle, Legs: []trade.OrderLeg{call(trade.Buy, "240", trade.Call), call(trade.Buy, "240", trade.Put)}},
+		"trailing stop": {Symbol: "AAPL", Side: trade.Buy, Type: trade.TrailingStopLoss, Quantity: trade.Price("1"),
+			TrailingType: trade.TrailByPercentage, TrailingStopStep: trade.Price("0.05")},
 	} {
 		t.Run(name, func(t *testing.T) {
 			p, err := c.PreviewOrder(ctx, acct.AccountID, o)
@@ -442,7 +465,7 @@ func TestIntegrationOTOGroupsInSandbox(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, err := c.PreviewCombo(ctx, acct.AccountID, combo)
 			if err == nil {
-				t.Logf("%s: the sandbox now accepts this group; update the compatibility matrix", name)
+				t.Errorf("%s: the sandbox now accepts this group; update the compatibility matrix and backlog item 17", name)
 				return
 			}
 			var apiErr *webull.APIError
