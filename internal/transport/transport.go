@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,10 +26,29 @@ import (
 // error page.
 const maxErrorBody = 8 << 10
 
+// maxResponseBody bounds a successful response. Exceeding it is reported as an
+// error rather than silently truncated, because a truncated body would surface
+// as a confusing JSON parse failure.
+const maxResponseBody = 32 << 20
+
+// ErrResponseTooLarge is returned when a response exceeds maxResponseBody.
+var ErrResponseTooLarge = errors.New("webull: response body exceeds the maximum size")
+
+// Response is a failed HTTP response handed to an ErrorDecoder.
+type Response struct {
+	StatusCode int
+	Header     http.Header
+	// Body is the response body, truncated to maxErrorBody.
+	Body []byte
+	// Truncated reports whether Body was cut short, so a decoder does not
+	// mistake unparseable truncated JSON for an unrecognised error shape.
+	Truncated bool
+}
+
 // ErrorDecoder turns a failed HTTP response into an error. The SDK supplies
 // this so that transport need not import the public error types, which would
 // create an import cycle.
-type ErrorDecoder func(status int, requestID string, body []byte) error
+type ErrorDecoder func(Response) error
 
 // Doer performs signed requests.
 type Doer struct {
@@ -75,11 +95,18 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 	for attempt := 0; attempt < attempts; attempt++ {
 		if attempt > 0 {
 			if err := d.sleep(ctx, d.Retry.backoff(attempt)); err != nil {
+				// Preserve why we were retrying. Returning only the context
+				// error would discard the *APIError from the previous attempt,
+				// leaving the caller unable to tell a timeout during backoff
+				// from a timeout with no server response at all.
+				if lastErr != nil {
+					return errors.Join(err, lastErr)
+				}
 				return err
 			}
 		}
 
-		status, respBody, requestID, err := d.attempt(ctx, req, body)
+		resp, err := d.attempt(ctx, req, body)
 		if err != nil {
 			// A transport-level failure. Retrying is only safe when the
 			// request is idempotent, because the server may have processed a
@@ -91,19 +118,26 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 			return err
 		}
 
-		if status >= 200 && status < 300 {
-			if out == nil || len(respBody) == 0 {
+		if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+			if out == nil {
 				return nil
 			}
-			if err := json.Unmarshal(respBody, out); err != nil {
+			if len(resp.Body) == 0 {
+				// A caller that asked for a decoded result must not silently
+				// receive a zero value. Reading a flag such as
+				// token_check_enabled from an empty body would report false,
+				// which is indistinguishable from the server saying false.
+				return fmt.Errorf("webull: expected a response body, got none (HTTP %d)", resp.StatusCode)
+			}
+			if err := json.Unmarshal(resp.Body, out); err != nil {
 				return fmt.Errorf("webull: decoding response: %w", err)
 			}
 			return nil
 		}
 
-		apiErr := d.DecodeError(status, requestID, respBody)
+		apiErr := d.DecodeError(resp)
 		lastErr = apiErr
-		if d.Retry.retryStatus(status, req.Method) && attempt < attempts-1 {
+		if d.Retry.retryStatus(resp.StatusCode, req.Method) && attempt < attempts-1 {
 			continue
 		}
 		return apiErr
@@ -112,7 +146,7 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 }
 
 // attempt performs a single signed request.
-func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (int, []byte, string, error) {
+func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (Response, error) {
 	u := url.URL{Scheme: "https", Host: req.Host, Path: req.Path}
 	if len(req.Query) > 0 {
 		u.RawQuery = req.Query.Encode()
@@ -125,7 +159,7 @@ func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (int, []by
 
 	httpReq, err := http.NewRequestWithContext(ctx, req.Method, u.String(), reader)
 	if err != nil {
-		return 0, nil, "", fmt.Errorf("webull: building request: %w", err)
+		return Response{}, fmt.Errorf("webull: building request: %w", err)
 	}
 
 	for k, v := range d.Signer.Sign(signing.Request{
@@ -136,7 +170,11 @@ func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (int, []by
 	}) {
 		httpReq.Header.Set(k, v)
 	}
-	httpReq.Header.Set("Content-Type", "application/json")
+	// Only set on requests that actually carry a body: a Content-Type on a
+	// bodyless GET is meaningless and some gateways reject it.
+	if len(body) > 0 {
+		httpReq.Header.Set("Content-Type", "application/json")
+	}
 	httpReq.Header.Set("Accept", "application/json")
 	if d.UserAgent != "" {
 		httpReq.Header.Set("User-Agent", d.UserAgent)
@@ -146,30 +184,42 @@ func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (int, []by
 	if err != nil {
 		// The URL is included by net/http in this error but the headers, which
 		// hold the signature, are not.
-		return 0, nil, "", fmt.Errorf("webull: request failed: %w", err)
+		return Response{}, fmt.Errorf("webull: request failed: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
+	success := resp.StatusCode >= 200 && resp.StatusCode < 300
+
 	limit := int64(maxErrorBody)
-	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		limit = 1 << 24 // 16 MiB, ample for any documented response
+	if success {
+		limit = maxResponseBody
 	}
-	respBody, err := io.ReadAll(io.LimitReader(resp.Body, limit))
+
+	// Read one byte past the limit so that hitting it is detectable rather
+	// than silently truncating.
+	respBody, err := io.ReadAll(io.LimitReader(resp.Body, limit+1))
 	if err != nil {
-		return 0, nil, "", fmt.Errorf("webull: reading response: %w", err)
+		return Response{}, fmt.Errorf("webull: reading response: %w", err)
 	}
 
-	return resp.StatusCode, respBody, requestIDOf(resp), nil
-}
-
-// requestIDOf extracts a correlation identifier if the response carries one.
-func requestIDOf(resp *http.Response) string {
-	for _, h := range []string{"X-Request-Id", "X-Request-ID", "Request-Id"} {
-		if v := resp.Header.Get(h); v != "" {
-			return v
-		}
+	truncated := int64(len(respBody)) > limit
+	if truncated {
+		respBody = respBody[:limit]
+		// Drain the remainder so the connection can be reused rather than
+		// being closed and re-established.
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, maxResponseBody))
 	}
-	return ""
+
+	if success && truncated {
+		return Response{}, fmt.Errorf("%w (limit %d bytes)", ErrResponseTooLarge, maxResponseBody)
+	}
+
+	return Response{
+		StatusCode: resp.StatusCode,
+		Header:     resp.Header,
+		Body:       respBody,
+		Truncated:  truncated,
+	}, nil
 }
 
 func (d *Doer) sleep(ctx context.Context, dur time.Duration) error {
@@ -184,14 +234,6 @@ func (d *Doer) sleep(ctx context.Context, dur time.Duration) error {
 	case <-t.C:
 		return nil
 	}
-}
-
-// TrimBody bounds a body for inclusion in an error.
-func TrimBody(b []byte) []byte {
-	if len(b) <= maxErrorBody {
-		return b
-	}
-	return append(bytes.Clone(b[:maxErrorBody]), []byte("…")...)
 }
 
 // isIdempotent reports whether replaying the method is safe. POST is excluded:

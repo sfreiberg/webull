@@ -2,7 +2,6 @@ package transport
 
 import (
 	"math"
-	"net/http"
 	"time"
 )
 
@@ -34,11 +33,17 @@ func DefaultRetryPolicy() RetryPolicy {
 }
 
 // retryStatus reports whether a response status warrants another attempt.
+//
+// A 429 is deliberately not retried. Webull's per-endpoint limits are as tight
+// as ten requests in ten seconds, so replaying inside a sub-second backoff
+// would turn one quota violation into three and deepen the throttle. The
+// rate-limit error carries Webull's own Retry-After instead, leaving the wait
+// to the caller, who knows whether waiting is appropriate at all.
 func (p RetryPolicy) retryStatus(status int, method string) bool {
 	if !isIdempotent(method) {
 		return false
 	}
-	return status == http.StatusTooManyRequests || status >= 500
+	return status >= 500
 }
 
 // retryTransport reports whether a transport failure warrants another attempt.

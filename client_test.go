@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -234,5 +235,89 @@ func TestClientSurfacesHostResolutionErrors(t *testing.T) {
 	c := &Client{cfg: Config{Environment: "staging"}}
 	if _, err := c.TokenCheckEnabled(context.Background()); err == nil {
 		t.Fatal("expected host resolution to fail")
+	}
+}
+
+func TestClientRefusesRedirects(t *testing.T) {
+	// Go strips only Authorization and Cookie across hosts, so following a
+	// redirect would forward the app key and signature to the target.
+	var hits int32
+	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		atomic.AddInt32(&hits, 1)
+		if r.Header.Get("x-app-key") != "" {
+			t.Error("signature headers were forwarded to the redirect target")
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer target.Close()
+
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		http.Redirect(w, &http.Request{}, target.URL, http.StatusFound)
+	}))
+	defer srv.Close()
+
+	c, err := NewClient(Config{
+		AppKey: "k", AppSecret: "s", Environment: Sandbox,
+		HTTPClient:        srv.Client(),
+		EndpointOverrides: map[string]string{"trading": strings.TrimPrefix(srv.URL, "https://")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := c.TokenCheckEnabled(context.Background()); err == nil {
+		t.Fatal("expected the redirect to be refused")
+	} else if !errors.Is(err, ErrRedirectNotAllowed) {
+		t.Errorf("got %v, want ErrRedirectNotAllowed", err)
+	}
+	if got := atomic.LoadInt32(&hits); got != 0 {
+		t.Errorf("the redirect target was contacted %d times", got)
+	}
+}
+
+func TestClientDoesNotMutateCallerHTTPClient(t *testing.T) {
+	caller := &http.Client{Timeout: time.Minute}
+	_, err := NewClient(Config{
+		AppKey: "k", AppSecret: "s", Environment: Sandbox, HTTPClient: caller,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if caller.CheckRedirect != nil {
+		t.Error("NewClient mutated the caller's http.Client")
+	}
+}
+
+func TestClientClonesEndpointOverrides(t *testing.T) {
+	// Client documents itself as safe for concurrent use; sharing the caller's
+	// map would make that untrue as soon as they mutated it.
+	overrides := map[string]string{"trading": "first.example.com"}
+	c, err := NewClient(Config{
+		AppKey: "k", AppSecret: "s", Environment: Sandbox, EndpointOverrides: overrides,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	overrides["trading"] = "second.example.com"
+
+	got, err := c.cfg.host(serviceTrading)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != "first.example.com" {
+		t.Errorf("host = %q; the caller's later mutation leaked into the client", got)
+	}
+}
+
+func TestClientRejectsEmptyBodyWhenAResultIsExpected(t *testing.T) {
+	// Returning (false, nil) for an empty body is indistinguishable from the
+	// server reporting false, which would silently disable token auth.
+	c, _ := newTestClient(t, func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	if _, err := c.TokenCheckEnabled(context.Background()); err == nil {
+		t.Fatal("an empty body must not decode as a zero value")
 	}
 }

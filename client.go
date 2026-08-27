@@ -3,7 +3,11 @@ package webull
 import (
 	"context"
 	"encoding/json"
+	"maps"
+	"net/http"
 	"net/url"
+	"strconv"
+	"time"
 
 	"github.com/sfreiberg/webull/internal/signing"
 	"github.com/sfreiberg/webull/internal/transport"
@@ -35,6 +39,13 @@ func NewClient(cfg Config) (*Client, error) {
 	userAgent := UserAgent()
 	if cfg.UserAgent != "" {
 		userAgent = cfg.UserAgent + " " + userAgent
+	}
+
+	// Clone the override map. Client documents itself as safe for concurrent
+	// use, and sharing the caller's map would make that untrue the moment they
+	// mutated it.
+	if cfg.EndpointOverrides != nil {
+		cfg.EndpointOverrides = maps.Clone(cfg.EndpointOverrides)
 	}
 
 	return &Client{
@@ -91,20 +102,53 @@ type errorPayload struct {
 }
 
 // decodeAPIError builds an *APIError from a failed response.
-func decodeAPIError(status int, requestID string, body []byte) error {
+func decodeAPIError(resp transport.Response) error {
 	err := &APIError{
-		StatusCode: status,
-		RequestID:  requestID,
-		Body:       transport.TrimBody(body),
+		StatusCode: resp.StatusCode,
+		RequestID:  requestIDOf(resp.Header),
+		RetryAfter: retryAfterOf(resp.Header),
+		Body:       resp.Body,
+		Truncated:  resp.Truncated,
 	}
 
+	// Decode on a best-effort basis. encoding/json populates the fields it
+	// understood before returning a type error, so a mismatch on one field
+	// must not discard a message that decoded perfectly well.
 	var payload errorPayload
-	if jsonErr := json.Unmarshal(body, &payload); jsonErr == nil {
-		err.Code = payload.Code
-		err.Message = payload.Message
-		if err.Message == "" {
-			err.Message = payload.GwMessage
-		}
+	_ = json.Unmarshal(resp.Body, &payload)
+
+	err.Code = payload.Code
+	err.Message = payload.Message
+	if err.Message == "" {
+		err.Message = payload.GwMessage
 	}
 	return err
+}
+
+// requestIDOf extracts a correlation identifier if the response carries one.
+func requestIDOf(h http.Header) string {
+	for _, name := range []string{"X-Request-Id", "X-Request-ID", "Request-Id"} {
+		if v := h.Get(name); v != "" {
+			return v
+		}
+	}
+	return ""
+}
+
+// retryAfterOf parses a Retry-After header, which may be either a number of
+// seconds or an HTTP date. It returns zero when absent or unparseable.
+func retryAfterOf(h http.Header) time.Duration {
+	v := h.Get("Retry-After")
+	if v == "" {
+		return 0
+	}
+	if secs, err := strconv.Atoi(v); err == nil && secs >= 0 {
+		return time.Duration(secs) * time.Second
+	}
+	if t, err := http.ParseTime(v); err == nil {
+		if d := time.Until(t); d > 0 {
+			return d
+		}
+	}
+	return 0
 }

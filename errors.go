@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 )
 
 // Sentinel errors for conditions callers commonly branch on. Match them with
@@ -53,10 +54,23 @@ type APIError struct {
 	// RequestID correlates the request with Webull support, when the response
 	// carries one.
 	RequestID string
+	// RetryAfter is the delay Webull asked the caller to wait, taken from the
+	// Retry-After header. Zero when the response did not carry one.
+	//
+	// The SDK does not retry rate-limited requests automatically: how long to
+	// wait, and whether waiting is appropriate at all, is the caller's
+	// decision. This value is what they need to make it.
+	RetryAfter time.Duration
+
 	// Body is the raw response body, bounded in size. It is retained because
 	// Webull's error catalogue is not exhaustively documented, and the raw
 	// payload is often the only way to diagnose an unfamiliar failure.
 	Body []byte
+
+	// Truncated reports that Body was cut short at the size limit, so an empty
+	// Code or Message may reflect unparseable truncated JSON rather than an
+	// error shape the SDK does not recognise.
+	Truncated bool
 }
 
 // Error implements error.

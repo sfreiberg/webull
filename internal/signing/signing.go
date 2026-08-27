@@ -149,9 +149,13 @@ func canonical(req Request, headers map[string]string) string {
 		pairs = append(pairs, k+"="+params[k])
 	}
 
+	// With no path the canonical string is just the joined pairs. Emitting a
+	// leading ampersand would produce a signature the server rejects.
 	var sb strings.Builder
-	sb.WriteString(req.Path)
-	sb.WriteString("&")
+	if req.Path != "" {
+		sb.WriteString(req.Path)
+		sb.WriteString("&")
+	}
 	sb.WriteString(strings.Join(pairs, "&"))
 
 	if len(req.Body) > 0 {

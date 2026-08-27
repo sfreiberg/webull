@@ -5,7 +5,19 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/sfreiberg/webull/internal/transport"
 )
+
+// headerWithRequestID builds a header carrying a request id, or an empty one.
+func headerWithRequestID(id string) http.Header {
+	h := http.Header{}
+	if id != "" {
+		h.Set("X-Request-Id", id)
+	}
+	return h
+}
 
 func TestAPIErrorMatchesSentinels(t *testing.T) {
 	for _, tc := range []struct {
@@ -93,7 +105,7 @@ func TestAPIErrorTemporary(t *testing.T) {
 
 func TestDecodeAPIErrorHandlesBothShapes(t *testing.T) {
 	t.Run("application error", func(t *testing.T) {
-		err := decodeAPIError(417, "rid", []byte(`{"message":"invalid page_size","error_code":"OPENAPI_PARAM_ERR"}`))
+		err := decodeAPIError(transport.Response{StatusCode: 417, Header: headerWithRequestID("rid"), Body: []byte(`{"message":"invalid page_size","error_code":"OPENAPI_PARAM_ERR"}`)})
 		var apiErr *APIError
 		errors.As(err, &apiErr)
 		if apiErr.Code != "OPENAPI_PARAM_ERR" || apiErr.Message != "invalid page_size" {
@@ -102,7 +114,7 @@ func TestDecodeAPIErrorHandlesBothShapes(t *testing.T) {
 	})
 
 	t.Run("gateway error uses a different key", func(t *testing.T) {
-		err := decodeAPIError(404, "", []byte(`{"error_msg":"404 Route Not Found"}`))
+		err := decodeAPIError(transport.Response{StatusCode: 404, Header: headerWithRequestID(""), Body: []byte(`{"error_msg":"404 Route Not Found"}`)})
 		var apiErr *APIError
 		errors.As(err, &apiErr)
 		if apiErr.Message != "404 Route Not Found" {
@@ -114,7 +126,7 @@ func TestDecodeAPIErrorHandlesBothShapes(t *testing.T) {
 	})
 
 	t.Run("unparseable body is preserved", func(t *testing.T) {
-		err := decodeAPIError(502, "", []byte("<html>gateway</html>"))
+		err := decodeAPIError(transport.Response{StatusCode: 502, Header: headerWithRequestID(""), Body: []byte("<html>gateway</html>")})
 		var apiErr *APIError
 		errors.As(err, &apiErr)
 		if !strings.Contains(string(apiErr.Body), "gateway") {
@@ -130,5 +142,80 @@ func TestAPIErrorIsRejectsUnknownTarget(t *testing.T) {
 	err := &APIError{StatusCode: http.StatusForbidden}
 	if err.Is(errors.New("some other error")) {
 		t.Error("Is must return false for unrelated targets")
+	}
+}
+
+func TestDecodeAPIErrorKeepsMessageWhenAnotherFieldMismatches(t *testing.T) {
+	// encoding/json populates what it understood before returning a type
+	// error. A mismatch on error_code must not discard a message that decoded
+	// perfectly well.
+	err := decodeAPIError(transport.Response{
+		StatusCode: 400,
+		Header:     http.Header{},
+		Body:       []byte(`{"error_code":123,"message":"a real message"}`),
+	})
+
+	var apiErr *APIError
+	errors.As(err, &apiErr)
+	if apiErr.Message != "a real message" {
+		t.Errorf("message was discarded: %+v", apiErr)
+	}
+}
+
+func TestDecodeAPIErrorReadsRetryAfterSeconds(t *testing.T) {
+	h := http.Header{}
+	h.Set("Retry-After", "30")
+
+	err := decodeAPIError(transport.Response{StatusCode: 429, Header: h, Body: []byte(`{}`)})
+
+	var apiErr *APIError
+	errors.As(err, &apiErr)
+	if apiErr.RetryAfter != 30*time.Second {
+		t.Errorf("RetryAfter = %v, want 30s", apiErr.RetryAfter)
+	}
+}
+
+func TestDecodeAPIErrorReadsRetryAfterHTTPDate(t *testing.T) {
+	h := http.Header{}
+	h.Set("Retry-After", time.Now().Add(90*time.Second).UTC().Format(http.TimeFormat))
+
+	err := decodeAPIError(transport.Response{StatusCode: 429, Header: h, Body: []byte(`{}`)})
+
+	var apiErr *APIError
+	errors.As(err, &apiErr)
+	if apiErr.RetryAfter <= 0 || apiErr.RetryAfter > 91*time.Second {
+		t.Errorf("RetryAfter = %v, want roughly 90s", apiErr.RetryAfter)
+	}
+}
+
+func TestDecodeAPIErrorIgnoresUnusableRetryAfter(t *testing.T) {
+	for _, v := range []string{"", "not-a-number", "-5", "Mon, 02 Jan 2006 15:04:05 GMT"} {
+		h := http.Header{}
+		if v != "" {
+			h.Set("Retry-After", v)
+		}
+		err := decodeAPIError(transport.Response{StatusCode: 429, Header: h, Body: []byte(`{}`)})
+
+		var apiErr *APIError
+		errors.As(err, &apiErr)
+		if apiErr.RetryAfter != 0 {
+			t.Errorf("Retry-After %q gave %v, want 0", v, apiErr.RetryAfter)
+		}
+	}
+}
+
+func TestDecodeAPIErrorRecordsTruncation(t *testing.T) {
+	err := decodeAPIError(transport.Response{
+		StatusCode: 500,
+		Header:     http.Header{},
+		Body:       []byte(`{"message":"cut off`),
+		Truncated:  true,
+	})
+
+	var apiErr *APIError
+	errors.As(err, &apiErr)
+	if !apiErr.Truncated {
+		t.Error("truncation should be visible to the caller, so an empty Code " +
+			"is not mistaken for an unrecognised error shape")
 	}
 }

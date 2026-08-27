@@ -1,6 +1,7 @@
 package transport
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -24,8 +25,8 @@ type stubError struct {
 
 func (e *stubError) Error() string { return fmt.Sprintf("status %d", e.Status) }
 
-func decodeStub(status int, _ string, body []byte) error {
-	return &stubError{Status: status, Body: string(body)}
+func decodeStub(resp Response) error {
+	return &stubError{Status: resp.StatusCode, Body: string(resp.Body)}
 }
 
 // newDoer returns a Doer aimed at srv, with sleeping stubbed out so retry
@@ -65,7 +66,7 @@ func TestDoDecodesSuccess(t *testing.T) {
 }
 
 func TestDoAcceptsNilOut(t *testing.T) {
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"ignored":true}`))
 	}))
 	defer srv.Close()
@@ -165,23 +166,22 @@ func TestDoDoesNotRetryClientErrors(t *testing.T) {
 	}
 }
 
-func TestDoRetriesRateLimitForIdempotent(t *testing.T) {
+// Retrying a 429 inside a sub-second backoff deepens the throttle rather than
+// relieving it, so the SDK surfaces it and lets the caller decide.
+func TestDoDoesNotRetryRateLimits(t *testing.T) {
 	var calls int32
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.AddInt32(&calls, 1) == 1 {
-			w.WriteHeader(http.StatusTooManyRequests)
-			return
-		}
-		_, _ = w.Write([]byte(`{}`))
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&calls, 1)
+		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer srv.Close()
 
 	if err := newDoer(t, srv, DefaultRetryPolicy()).Do(context.Background(),
-		Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil); err != nil {
-		t.Fatal(err)
+		Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil); err == nil {
+		t.Fatal("expected the rate-limit error to surface")
 	}
-	if atomic.LoadInt32(&calls) != 2 {
-		t.Error("expected one retry after 429")
+	if got := atomic.LoadInt32(&calls); got != 1 {
+		t.Errorf("429 was retried %d times; that deepens the throttle", got)
 	}
 }
 
@@ -274,9 +274,9 @@ func TestDoCapturesRequestID(t *testing.T) {
 
 	var captured string
 	d := newDoer(t, srv, RetryPolicy{MaxAttempts: 1})
-	d.DecodeError = func(status int, requestID string, body []byte) error {
-		captured = requestID
-		return &stubError{Status: status}
+	d.DecodeError = func(resp Response) error {
+		captured = resp.Header.Get("X-Request-Id")
+		return &stubError{Status: resp.StatusCode}
 	}
 	_ = d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil)
 
@@ -293,16 +293,6 @@ func TestDoRejectsUnmarshalableBody(t *testing.T) {
 	}, nil)
 	if err == nil {
 		t.Fatal("expected a marshalling error")
-	}
-}
-
-func TestTrimBodyBoundsSize(t *testing.T) {
-	if got := TrimBody([]byte("short")); string(got) != "short" {
-		t.Errorf("short bodies should pass through, got %q", got)
-	}
-	big := make([]byte, maxErrorBody*2)
-	if got := TrimBody(big); len(got) <= maxErrorBody || len(got) > maxErrorBody+4 {
-		t.Errorf("trimmed length = %d, want just over %d", len(got), maxErrorBody)
 	}
 }
 
@@ -413,5 +403,101 @@ func TestDoTreatsZeroMaxAttemptsAsOne(t *testing.T) {
 	}
 	if got := atomic.LoadInt32(&calls); got != 1 {
 		t.Errorf("made %d attempts, want 1", got)
+	}
+}
+
+func TestDoPreservesAPIErrorWhenContextExpiresDuringBackoff(t *testing.T) {
+	// A caller whose deadline expires during the retry sleep must still be
+	// able to see why the SDK was retrying: the *APIError from the previous
+	// attempt carries the status, code and request ID.
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusServiceUnavailable)
+	}))
+	defer srv.Close()
+
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Sleep = func(context.Context, time.Duration) error { return context.DeadlineExceeded }
+
+	err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil)
+	if err == nil {
+		t.Fatal("expected an error")
+	}
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Errorf("context error was lost: %v", err)
+	}
+	var stub *stubError
+	if !errors.As(err, &stub) || stub.Status != http.StatusServiceUnavailable {
+		t.Errorf("the API error from the failed attempt was discarded: %v", err)
+	}
+}
+
+func TestDoReportsOversizedSuccessResponse(t *testing.T) {
+	// Silent truncation would surface as a baffling JSON parse error pointing
+	// the user at a decoding bug rather than a size limit.
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write([]byte(`{"data":"`))
+		filler := bytes.Repeat([]byte("x"), 64<<10)
+		for written := 0; written <= maxResponseBody; written += len(filler) {
+			_, _ = w.Write(filler)
+		}
+		_, _ = w.Write([]byte(`"}`))
+	}))
+	defer srv.Close()
+
+	var out map[string]string
+	err := newDoer(t, srv, RetryPolicy{MaxAttempts: 1}).Do(context.Background(),
+		Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, &out)
+	if !errors.Is(err, ErrResponseTooLarge) {
+		t.Fatalf("got %v, want ErrResponseTooLarge", err)
+	}
+}
+
+func TestDoMarksTruncatedErrorBodies(t *testing.T) {
+	big := append([]byte(`{"message":"`), bytes.Repeat([]byte("e"), maxErrorBody*2)...)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+		_, _ = w.Write(append(big, []byte(`"}`)...))
+	}))
+	defer srv.Close()
+
+	var got Response
+	d := newDoer(t, srv, RetryPolicy{MaxAttempts: 1})
+	d.DecodeError = func(resp Response) error {
+		got = resp
+		return &stubError{Status: resp.StatusCode}
+	}
+	_ = d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil)
+
+	if !got.Truncated {
+		t.Error("an oversized error body must be flagged as truncated")
+	}
+	if len(got.Body) != maxErrorBody {
+		t.Errorf("body length = %d, want exactly %d", len(got.Body), maxErrorBody)
+	}
+}
+
+func TestDoOmitsContentTypeOnBodylessRequests(t *testing.T) {
+	var contentType string
+	var present bool
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		contentType, present = r.Header.Get("Content-Type"), r.Header.Values("Content-Type") != nil
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer srv.Close()
+
+	d := newDoer(t, srv, RetryPolicy{MaxAttempts: 1})
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if present {
+		t.Errorf("bodyless GET carried Content-Type %q; some gateways reject that", contentType)
+	}
+
+	if err := d.Do(context.Background(), Request{Method: "POST", Host: hostOf(srv), Path: "/p",
+		Body: map[string]int{"a": 1}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if contentType != "application/json" {
+		t.Errorf("POST with a body should carry application/json, got %q", contentType)
 	}
 }

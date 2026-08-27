@@ -185,3 +185,17 @@ func TestSignerIsSafeForConcurrentUse(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+func TestCanonicalOmitsPathSeparatorWhenPathIsEmpty(t *testing.T) {
+	// With no path the canonical string is just the joined pairs. A leading
+	// ampersand would produce a signature the server rejects.
+	got := canonical(Request{Host: "h"}, map[string]string{HeaderAppKey: "k"})
+	decoded, _ := url.QueryUnescape(got)
+
+	if strings.HasPrefix(decoded, "&") {
+		t.Errorf("canonical string has a leading ampersand: %q", decoded)
+	}
+	if decoded != "host=h&x-app-key=k" {
+		t.Errorf("canonical = %q", decoded)
+	}
+}

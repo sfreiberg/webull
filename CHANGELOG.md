@@ -18,7 +18,12 @@ called out explicitly.
 - `APIError` with sentinel errors for authentication, permission, invalid
   request, not found, rate limiting and server failures, usable with
   `errors.Is` and `errors.As`.
-- Conservative retry policy: idempotent requests only, never `POST`.
+- Conservative retry policy: idempotent requests only, never `POST`, and
+  never on a rate limit. `APIError.RetryAfter` carries Webull's requested
+  delay so the caller can decide how long to wait.
+- Redirects are refused (`ErrRedirectNotAllowed`) so signature headers are
+  never forwarded to another host. Oversized responses are reported as
+  `ErrResponseTooLarge` rather than silently truncated.
 - `Client.TokenCheckEnabled` reports whether a deployment requires an access
   token in addition to the signature.
 - API compatibility matrix and discovery documentation covering the Webull US

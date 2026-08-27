@@ -53,10 +53,28 @@ func (c *Config) validate() error {
 	return nil
 }
 
-// httpClient returns the configured client, or a default.
+// ErrRedirectNotAllowed is returned when Webull responds with a redirect.
+var ErrRedirectNotAllowed = errors.New("webull: refusing to follow a redirect")
+
+// httpClient returns the client to use, with redirects refused.
+//
+// Redirects must not be followed. Go strips only Authorization and Cookie
+// across hosts, so the signature headers — including the app key — would be
+// forwarded verbatim to a redirect target, and Go permits an https-to-http
+// downgrade. The request could not succeed anyway, because the host is part of
+// the signed canonical string.
+//
+// A caller-supplied client is shallow-copied rather than mutated, so the
+// caller's own client is left alone. The copy shares its Transport, which is
+// what keeps connection pooling intact.
 func (c *Config) httpClient() *http.Client {
+	client := &http.Client{Timeout: DefaultTimeout}
 	if c.HTTPClient != nil {
-		return c.HTTPClient
+		cp := *c.HTTPClient
+		client = &cp
 	}
-	return &http.Client{Timeout: DefaultTimeout}
+	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return ErrRedirectNotAllowed
+	}
+	return client
 }
