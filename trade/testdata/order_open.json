@@ -1,0 +1,28 @@
+[
+  {
+    "client_order_id": "clientorder00000000000000000001",
+    "combo_type": "NORMAL",
+    "combo_order_id": "ORDER000000000000000000001",
+    "orders": [
+      {
+        "symbol": "AAPL",
+        "side": "BUY",
+        "status": "SUBMITTED",
+        "fees": [],
+        "commission": {},
+        "client_order_id": "clientorder00000000000000000001",
+        "order_type": "LIMIT",
+        "instrument_type": "EQUITY",
+        "order_id": "ORDER000000000000000000001",
+        "support_trading_session": "CORE",
+        "entrust_type": "QTY",
+        "total_quantity": "1",
+        "filled_quantity": "0",
+        "place_time": "1787851972205",
+        "place_time_at": "2026-08-27T17:32:52.205Z",
+        "time_in_force": "DAY",
+        "limit_price": "1.00"
+      }
+    ]
+  }
+]

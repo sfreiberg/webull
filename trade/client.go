@@ -33,6 +33,18 @@ func (c *Client) get(ctx context.Context, path string, query params, out any) er
 	}, out)
 }
 
+// post sends a JSON body. Nothing in this package retries a POST: the
+// transport refuses to replay them because the outcome of a lost response is
+// unknown, and a replayed order is a duplicated order.
+func (c *Client) post(ctx context.Context, path string, body, out any) error {
+	return c.doer.Do(ctx, transport.Request{
+		Method: "POST",
+		Host:   c.host,
+		Path:   path,
+		Body:   body,
+	}, out)
+}
+
 // params accumulates query parameters, omitting empty values so that an unset
 // optional field is not sent as an empty string.
 type params url.Values
