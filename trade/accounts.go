@@ -2,7 +2,6 @@ package trade
 
 import (
 	"context"
-	"net/url"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -93,7 +92,7 @@ func (c *Client) Balance(ctx context.Context, accountID string) (*Balance, error
 	q := params{}
 	q.set("account_id", accountID)
 	var out Balance
-	if err := c.get(ctx, "/trading/assets/balances/get", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/assets/balances/get", q, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -112,10 +111,10 @@ type Position struct {
 	UnrealizedProfitLoss decimal.Decimal `json:"unrealized_profit_loss"`
 
 	// EventOutcome is set only for event contract positions.
-	EventOutcome EventOutcome `json:"event_outcome,omitempty"`
+	EventOutcome EventOutcome `json:"event_outcome"`
 
 	// Legs is populated for option positions.
-	Legs []PositionLeg `json:"legs,omitempty"`
+	Legs []PositionLeg `json:"legs"`
 }
 
 // PositionLeg is one leg of an option position.
@@ -124,13 +123,13 @@ type PositionLeg struct {
 	Symbol   string              `json:"symbol"`
 	Quantity decimal.NullDecimal `json:"quantity"`
 
-	OptionType OptionType `json:"option_type,omitempty"`
+	OptionType OptionType `json:"option_type"`
 	// ExpireDate is in yyyy-MM-dd form.
-	ExpireDate          string              `json:"option_expire_date,omitempty"`
+	ExpireDate          string              `json:"option_expire_date"`
 	ExercisePrice       decimal.NullDecimal `json:"option_exercise_price"`
 	ContractMultiplier  decimal.NullDecimal `json:"option_contract_multiplier"`
 	ContractDeliverable decimal.NullDecimal `json:"option_contract_deliverable"`
-	ExpirationType      string              `json:"expiration_type,omitempty"`
+	ExpirationType      string              `json:"expiration_type"`
 }
 
 // Positions lists the open positions in an account. Webull does not paginate
@@ -139,7 +138,7 @@ func (c *Client) Positions(ctx context.Context, accountID string) ([]Position, e
 	q := params{}
 	q.set("account_id", accountID)
 	var out []Position
-	if err := c.get(ctx, "/trading/assets/positions/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/assets/positions/list", q, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -153,8 +152,8 @@ type CashActivity struct {
 	ActivityType    ActivityType    `json:"activity_type"`
 	ActivitySubType ActivitySubType `json:"activity_sub_type"`
 	Currency        string          `json:"currency"`
-	Market          string          `json:"market,omitempty"`
-	Symbol          string          `json:"symbol,omitempty"`
+	Market          string          `json:"market"`
+	Symbol          string          `json:"symbol"`
 	// TradeDate is the accounting date, in yyyy-MM-dd form.
 	TradeDate string `json:"trade_date"`
 	// NetAmount is positive for a credit and negative for a debit.
@@ -202,7 +201,7 @@ func (c *Client) CashActivities(ctx context.Context, req CashActivitiesRequest) 
 	q.setInt("page_size", req.PageSize)
 
 	var out []CashActivity
-	if err := c.get(ctx, "/trading/activities/cash-activities/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/activities/cash-activities/list", q, &out); err != nil {
 		return nil, err
 	}
 	return out, nil

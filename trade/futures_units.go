@@ -1,8 +1,9 @@
 package trade
 
-// FuturesUnitNames describes each FuturesUnit code. The table is Webull's;
-// it is reproduced here because the API transmits only the number.
-var FuturesUnitNames = map[FuturesUnit]string{
+// futuresUnitNames describes each FuturesUnit code. The table is Webull's;
+// it is reproduced here because the API transmits only the number. Exposed
+// through FuturesUnit.String rather than directly, so it cannot be mutated.
+var futuresUnitNames = map[FuturesUnit]string{
 	1:  "Index points",
 	2:  "Hong Kong dollars",
 	3:  "US dollars",

@@ -2,7 +2,6 @@ package trade
 
 import (
 	"context"
-	"net/url"
 
 	"github.com/shopspring/decimal"
 )
@@ -44,7 +43,7 @@ type EventSeriesRequest struct {
 // EventSeriesPage is one page of event series.
 type EventSeriesPage struct {
 	Series        []EventSeries `json:"data"`
-	PaginationKey string        `json:"pagination_key,omitempty"`
+	PaginationKey string        `json:"pagination_key"`
 }
 
 // EventSeries lists event contract series.
@@ -54,7 +53,7 @@ func (c *Client) EventSeries(ctx context.Context, req EventSeriesRequest) (*Even
 	q.setList("symbols", req.Symbols)
 	q.set("pagination_key", req.PaginationKey)
 	var out EventSeriesPage
-	if err := c.get(ctx, "/trading/instruments/event-contracts/series/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/event-contracts/series/list", q, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -68,8 +67,8 @@ type Event struct {
 	ShortName string      `json:"short_name"`
 	Status    EventStatus `json:"status"`
 	// StrikeDate is yyyy-MM-dd; StrikePeriod is free text such as "Q4 2026".
-	StrikeDate        string `json:"strike_date,omitempty"`
-	StrikePeriod      string `json:"strike_period,omitempty"`
+	StrikeDate        string `json:"strike_date"`
+	StrikePeriod      string `json:"strike_period"`
 	MutuallyExclusive bool   `json:"mutually_exclusive"`
 }
 
@@ -88,7 +87,7 @@ func (c *Client) Events(ctx context.Context, req EventsRequest) ([]Event, error)
 	q.setList("symbols", req.Symbols)
 	q.set("status", string(req.Status))
 	var out []Event
-	if err := c.get(ctx, "/trading/instruments/event-contracts/events/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/event-contracts/events/list", q, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -117,7 +116,7 @@ type EventMarket struct {
 	LatestExpDate   string `json:"latest_exp_date"`
 	PayoutDate      string `json:"payout_date"`
 
-	PriceRanges []PriceRange `json:"price_ranges,omitempty"`
+	PriceRanges []PriceRange `json:"price_ranges"`
 }
 
 // PriceRange is a band of permitted prices and the tick within it.
@@ -141,7 +140,7 @@ type EventMarketsRequest struct {
 // EventMarketsPage is one page of event markets.
 type EventMarketsPage struct {
 	Markets       []EventMarket `json:"data"`
-	PaginationKey string        `json:"pagination_key,omitempty"`
+	PaginationKey string        `json:"pagination_key"`
 }
 
 // EventMarkets lists tradable event contract markets.
@@ -153,7 +152,7 @@ func (c *Client) EventMarkets(ctx context.Context, req EventMarketsRequest) (*Ev
 	q.set("expiration_date_after", req.ExpirationDateAfter)
 	q.set("pagination_key", req.PaginationKey)
 	var out EventMarketsPage
-	if err := c.get(ctx, "/trading/instruments/event-contracts/markets/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/event-contracts/markets/list", q, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

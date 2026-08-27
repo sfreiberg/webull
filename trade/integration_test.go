@@ -2,11 +2,10 @@ package trade_test
 
 import (
 	"context"
-	"os"
 	"testing"
 	"time"
 
-	"github.com/sfreiberg/webull"
+	"github.com/sfreiberg/webull/internal/testutil"
 	"github.com/sfreiberg/webull/trade"
 )
 
@@ -15,20 +14,7 @@ import (
 
 func newClient(t *testing.T) (*trade.Client, context.Context) {
 	t.Helper()
-	key, secret := os.Getenv("WEBULL_APP_KEY"), os.Getenv("WEBULL_APP_SECRET")
-	if key == "" || secret == "" {
-		t.Skip("integration: WEBULL_APP_KEY and WEBULL_APP_SECRET are not set")
-	}
-	c, err := webull.NewClient(webull.Config{AppKey: key, AppSecret: secret, Environment: webull.Sandbox})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if c.Environment().IsProduction() {
-		t.Fatal("integration tests must never run against production")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	t.Cleanup(cancel)
-	return c.Trade, ctx
+	return testutil.NewIntegrationClient(t).Trade, testutil.IntegrationContext(t)
 }
 
 func firstAccount(ctx context.Context, t *testing.T, c *trade.Client) trade.Account {
@@ -126,7 +112,7 @@ func TestIntegrationInstrumentLookups(t *testing.T) {
 		if len(page.Contracts) == 0 {
 			t.Fatal("no contracts")
 		}
-		for _, k := range page.Contracts[:5] {
+		for _, k := range page.Contracts[:min(5, len(page.Contracts))] {
 			if k.OptionType != trade.Call || k.StrikePrice.IsZero() {
 				t.Errorf("contract = %+v", k)
 			}

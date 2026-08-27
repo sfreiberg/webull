@@ -175,8 +175,8 @@ const (
 // Settlement is how a contract settles at expiry.
 type Settlement string
 
-// Settlement methods. Webull's documentation shows title case; the live API
-// returns upper case. Compare with strings.EqualFold or use Settlement.Is.
+// Settlement methods. Webull's documentation shows these in title case; the
+// API returns upper case, which is what these constants hold.
 const (
 	SettlementCash     Settlement = "CASH"
 	SettlementPhysical Settlement = "PHYSICAL"
@@ -185,16 +185,18 @@ const (
 // EventCategoryCode identifies a category of event contracts.
 type EventCategoryCode string
 
-// Event contract categories.
+// Event contract categories, as returned by the categories endpoint. Webull's
+// documentation lists POLITICS and TRANSPORTATION instead of ELECTIONS and
+// COMMODITIES; the API returns the latter.
 const (
-	EventEconomics      EventCategoryCode = "ECONOMICS"
-	EventFinancials     EventCategoryCode = "FINANCIALS"
-	EventPolitics       EventCategoryCode = "POLITICS"
-	EventEntertainment  EventCategoryCode = "ENTERTAINMENT"
-	EventScienceTech    EventCategoryCode = "SCIENCE_TECHNOLOGY"
 	EventClimateWeather EventCategoryCode = "CLIMATE_WEATHER"
-	EventTransportation EventCategoryCode = "TRANSPORTATION"
+	EventCommodities    EventCategoryCode = "COMMODITIES"
 	EventCrypto         EventCategoryCode = "CRYPTO"
+	EventEconomics      EventCategoryCode = "ECONOMICS"
+	EventElections      EventCategoryCode = "ELECTIONS"
+	EventEntertainment  EventCategoryCode = "ENTERTAINMENT"
+	EventFinancials     EventCategoryCode = "FINANCIALS"
+	EventScienceTech    EventCategoryCode = "SCIENCE_TECHNOLOGY"
 	EventSports         EventCategoryCode = "SPORTS"
 )
 

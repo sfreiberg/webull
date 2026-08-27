@@ -2,6 +2,7 @@ package trade
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -23,26 +24,34 @@ import (
 type fixture struct {
 	t        *testing.T
 	wantPath string
-	file     string
+	body     []byte
 	status   int
 	gotQuery url.Values
 	gotPath  string
 }
 
+// ServeHTTP runs on the server goroutine, so it must not call FailNow; it
+// records what it saw and uses Errorf. The body was read on the test
+// goroutine by loadFixture.
 func (f *fixture) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.gotPath = r.URL.Path
 	f.gotQuery = r.URL.Query()
 	if f.wantPath != "" && r.URL.Path != f.wantPath {
 		f.t.Errorf("path = %q, want %q", r.URL.Path, f.wantPath)
 	}
-	body, err := os.ReadFile("testdata/" + f.file)
-	if err != nil {
-		f.t.Fatalf("fixture: %v", err)
-	}
 	if f.status != 0 {
 		w.WriteHeader(f.status)
 	}
-	_, _ = w.Write(body)
+	_, _ = w.Write(f.body)
+}
+
+func loadFixture(t *testing.T, file string) []byte {
+	t.Helper()
+	body, err := os.ReadFile("testdata/" + file)
+	if err != nil {
+		t.Fatalf("fixture: %v", err)
+	}
+	return body
 }
 
 type testError struct{ status int }
@@ -51,7 +60,7 @@ func (e *testError) Error() string { return fmt.Sprintf("status %d", e.status) }
 
 func newTestClient(t *testing.T, wantPath, file string) (*Client, *fixture) {
 	t.Helper()
-	f := &fixture{t: t, wantPath: wantPath, file: file}
+	f := &fixture{t: t, wantPath: wantPath, body: loadFixture(t, file)}
 	srv := httptest.NewTLSServer(f)
 	t.Cleanup(srv.Close)
 
@@ -66,11 +75,7 @@ func newTestClient(t *testing.T, wantPath, file string) (*Client, *fixture) {
 
 func mustDecimal(t *testing.T, s string) decimal.Decimal {
 	t.Helper()
-	d, err := decimal.NewFromString(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return d
+	return decimal.RequireFromString(s)
 }
 
 func TestAccounts(t *testing.T) {
@@ -416,7 +421,7 @@ func TestEventMarkets(t *testing.T) {
 // TestErrorsPropagate drives every method through a 403 so that no call path
 // swallows the decoded error.
 func TestErrorsPropagate(t *testing.T) {
-	f := &fixture{t: t, file: "positions.json", status: http.StatusForbidden}
+	f := &fixture{t: t, body: loadFixture(t, "positions.json"), status: http.StatusForbidden}
 	srv := httptest.NewTLSServer(f)
 	t.Cleanup(srv.Close)
 	c := New(&transport.Doer{
@@ -453,11 +458,7 @@ func TestErrorsPropagate(t *testing.T) {
 }
 
 func errorsAs(err error, target **testError) bool {
-	te, ok := err.(*testError) //nolint:errorlint // test double is never wrapped
-	if ok {
-		*target = te
-	}
-	return ok
+	return errors.As(err, target)
 }
 
 func TestParamsHelpers(t *testing.T) {

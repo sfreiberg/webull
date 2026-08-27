@@ -1,13 +1,12 @@
 package webull_test
 
 import (
-	"context"
 	"errors"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/sfreiberg/webull"
+	"github.com/sfreiberg/webull/internal/testutil"
 )
 
 // Integration tests run against Webull's sandbox. They are not behind a build
@@ -19,49 +18,13 @@ import (
 // failure mode being guarded against is placing real orders against a real
 // account from a test run.
 
-const integrationTimeout = 30 * time.Second
-
-// newIntegrationClient returns a sandbox client, or skips the test.
-func newIntegrationClient(t *testing.T) *webull.Client {
-	t.Helper()
-
-	key, secret := os.Getenv("WEBULL_APP_KEY"), os.Getenv("WEBULL_APP_SECRET")
-	if key == "" || secret == "" {
-		t.Skip("integration: WEBULL_APP_KEY and WEBULL_APP_SECRET are not set")
-	}
-
-	// A deliberate, redundant guard. Environment is hardcoded below, so this
-	// can only fire if someone edits it, which is exactly when it is wanted.
-	env := webull.Sandbox
-	if env.IsProduction() {
-		t.Fatal("integration tests must never run against production")
-	}
-
-	c, err := webull.NewClient(webull.Config{
-		AppKey:      key,
-		AppSecret:   secret,
-		Environment: env,
-	})
-	if err != nil {
-		t.Fatalf("NewClient: %v", err)
-	}
-	return c
-}
-
-func integrationContext(t *testing.T) context.Context {
-	t.Helper()
-	ctx, cancel := context.WithTimeout(context.Background(), integrationTimeout)
-	t.Cleanup(cancel)
-	return ctx
-}
-
 // TestIntegrationSignatureIsAccepted is the test that matters most: it proves
 // our reconstruction of Webull's signing algorithm produces signatures the
 // server accepts. Every other request in the SDK depends on it.
 func TestIntegrationSignatureIsAccepted(t *testing.T) {
-	c := newIntegrationClient(t)
+	c := testutil.NewIntegrationClient(t)
 
-	enabled, err := c.TokenCheckEnabled(integrationContext(t))
+	enabled, err := c.TokenCheckEnabled(testutil.IntegrationContext(t))
 	if err != nil {
 		t.Fatalf("a signed request was rejected: %v", err)
 	}
@@ -69,7 +32,7 @@ func TestIntegrationSignatureIsAccepted(t *testing.T) {
 }
 
 func TestIntegrationEnvironmentIsSandbox(t *testing.T) {
-	c := newIntegrationClient(t)
+	c := testutil.NewIntegrationClient(t)
 	if c.Environment().IsProduction() {
 		t.Fatal("client is pointed at production")
 	}
@@ -78,9 +41,9 @@ func TestIntegrationEnvironmentIsSandbox(t *testing.T) {
 // TestIntegrationNotFoundIsClassified checks that a real gateway 404, which
 // uses a different JSON shape from application errors, still classifies.
 func TestIntegrationNotFoundIsClassified(t *testing.T) {
-	c := newIntegrationClient(t)
+	c := testutil.NewIntegrationClient(t)
 
-	err := webull.ExportedGet(integrationContext(t), c, "/trading/definitely-not-a-real-endpoint", nil)
+	err := webull.ExportedGet(testutil.IntegrationContext(t), c, "/trading/definitely-not-a-real-endpoint", nil)
 	if err == nil {
 		t.Fatal("expected a 404")
 	}
@@ -109,7 +72,7 @@ func TestIntegrationUnauthenticatedIsClassified(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := c.TokenCheckEnabled(integrationContext(t)); err == nil {
+	if _, err := c.TokenCheckEnabled(testutil.IntegrationContext(t)); err == nil {
 		t.Fatal("expected bad credentials to be rejected")
 	} else {
 		t.Logf("rejected as expected: %v", err)

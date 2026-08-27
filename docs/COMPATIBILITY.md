@@ -24,8 +24,8 @@ working.
 
 ## Summary
 
-Nothing is implemented yet. Phase 1 produced the inventory below; implementation
-begins in Phase 3.
+The transport layer and the read side of the Trading API are implemented. Orders,
+market data, streaming and Connect are not.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
@@ -37,8 +37,9 @@ begins in Phase 3.
 | **Accounts** | Complete | Yes | – | 4a | Verified against sandbox |
 | Account list | Complete | Yes | – | 4a | |
 | Balances | Complete | Yes | – | 4a | `open_margin_calls` is a list on the wire, not the documented string |
-| Positions | Complete | Yes | – | 4a | Model from docs only: the sandbox account holds no positions |
-| Activities | Complete | Yes | – | 4a | Keyset pagination via `last_activity_id` |
+| Positions | Unverified | Yes | – | 4a | Decodes per the documented schema, but the sandbox account holds no positions so no live response has been seen. The SDK-only position-detail path has no documented equivalent and is not implemented |
+| Activities | Complete | Yes | – | 4a | Keyset pagination via `last_activity_id`; `page_size` 1–200 verified |
+| Trading instruments | Complete | Yes | – | 4a | Stocks, options, futures, crypto, event contracts; cursor pagination |
 | **Trading** | Planned | – | – | 4 | |
 | Order place / preview | Planned | – | – | 4 | |
 | Order replace / cancel | Planned | – | – | 4 | |
@@ -55,7 +56,7 @@ begins in Phase 3.
 | Depth of book | Planned | – | – | 6 | Futures and event contracts |
 | Footprint | Planned | – | – | 6 | Stocks and futures |
 | NOII | Planned | – | – | 6 | |
-| Instruments and contracts | Complete | Yes | – | 4a | Stocks, options, futures, crypto, event contracts; cursor pagination |
+| Instruments and contracts | Planned | – | – | 6 | Market-data reference endpoints, distinct from the trading instrument lookups |
 | Fundamentals and financials | Planned | – | – | 6 | |
 | Funds | Planned | – | – | 6 | |
 | Screeners | Planned | – | – | 6 | |
@@ -129,7 +130,7 @@ Established against the live sandbox and relied on by the implementation.
 
 | Behaviour | Detail |
 |---|---|
-| Documented types that are wrong on the wire | `unit` (futures) and `category_id` (events) are integers, not strings; `open_margin_calls` is an array, not a string |
+| Documented types that are wrong on the wire | `unit` (futures) and `category_id` (events) are integers, not strings; `open_margin_calls` is an array, not a string; event categories are `ELECTIONS` and `COMMODITIES`, not the documented `POLITICS` and `TRANSPORTATION` |
 | Undocumented fields | `single_stock_etf`, `inverse_etf` on stock profiles; `init_expiration_date` on option contracts |
 | Instrument page size | Fixed by the server at 1000; `pagination_key` is absent on the last page |
 | Parameter validation status | **HTTP 417**, not 400, with code `OPENAPI_PARAM_ERR` |
@@ -137,7 +138,7 @@ Established against the live sandbox and relied on by the implementation.
 | Wrong environment or unprovisioned key | `404 Route Not Found`, not 401 |
 | Missing credentials | 401 with `MISSING_APP_KEY` |
 | Account not accessible | 403 with `ACCOUNT_ACCESS_DENIED` |
-| Pagination bounds | `page_size` must be between 10 and 100 |
+| Pagination bounds | Per endpoint: open orders require `page_size` 10–100; cash activities accept 1–200 and reject 201 with a 417 |
 | Decimal encoding | Confirmed on the wire: `"total_cash_balance":"1000000.00"` — a string, with trailing zeros preserved |
 
 ## Sandbox validation backlog
@@ -159,4 +160,6 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 8 | Whether streaming requires its own token | Phase 9 |
 | 9 | Timestamp formats per endpoint | Phase 4 |
 | 10 | Display vs Non-Display entitlement behaviour on 403 | Phase 6 |
-| 11 | Whether optional order fields accept an explicit `null` or must be omitted | Phase 4 |
+| 11 | Whether optional order fields accept an explicit `null` or must be omitted | Phase 4b |
+| 12 | Whether position `last_price`, `cost_price` and `unrealized_profit_loss` are ever absent; modelled as always present per the docs | when a position exists |
+| 13 | The wire form of a finite `day_trades_left`; only `"UNLIMITED"` has been observed | when a cash account is available |

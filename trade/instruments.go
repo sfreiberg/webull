@@ -2,7 +2,6 @@ package trade
 
 import (
 	"context"
-	"net/url"
 
 	"github.com/shopspring/decimal"
 )
@@ -37,7 +36,7 @@ type StockProfile struct {
 	LotSize                decimal.NullDecimal `json:"lot_size"`
 
 	// ETFLeveragedFlag is "YES" or "NO"; ETFLeveragedFactor is the multiple.
-	ETFLeveragedFlag   string              `json:"etf_leveraged_flag,omitempty"`
+	ETFLeveragedFlag   string              `json:"etf_leveraged_flag"`
 	ETFLeveragedFactor decimal.NullDecimal `json:"etf_leveraged_factor"`
 }
 
@@ -56,7 +55,7 @@ type StockProfilesRequest struct {
 type StockProfilesPage struct {
 	Profiles []StockProfile `json:"data"`
 	// PaginationKey fetches the next page, and is empty on the last one.
-	PaginationKey string `json:"pagination_key,omitempty"`
+	PaginationKey string `json:"pagination_key"`
 }
 
 // StockProfiles looks up equity reference data.
@@ -69,7 +68,7 @@ func (c *Client) StockProfiles(ctx context.Context, req StockProfilesRequest) (*
 	q.set("pagination_key", req.PaginationKey)
 
 	var out StockProfilesPage
-	if err := c.get(ctx, "/trading/instruments/stocks/profiles/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/stocks/profiles/list", q, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -104,7 +103,7 @@ type CryptoProfilesRequest struct {
 // CryptoProfilesPage is one page of crypto profiles.
 type CryptoProfilesPage struct {
 	Profiles      []CryptoProfile `json:"data"`
-	PaginationKey string          `json:"pagination_key,omitempty"`
+	PaginationKey string          `json:"pagination_key"`
 }
 
 // CryptoProfiles looks up crypto reference data.
@@ -116,7 +115,7 @@ func (c *Client) CryptoProfiles(ctx context.Context, req CryptoProfilesRequest) 
 	q.set("pagination_key", req.PaginationKey)
 
 	var out CryptoProfilesPage
-	if err := c.get(ctx, "/trading/instruments/crypto/profiles/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/crypto/profiles/list", q, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil
@@ -132,7 +131,7 @@ type OptionContract struct {
 	// adjustment. InitExpirationDate is the original date and is returned by
 	// the API but not documented.
 	ExpirationDate     string `json:"expiration_date"`
-	InitExpirationDate string `json:"init_expiration_date,omitempty"`
+	InitExpirationDate string `json:"init_expiration_date"`
 
 	RootSymbol             string `json:"root_symbol"`
 	UnderlyingSymbol       string `json:"underlying_symbol"`
@@ -149,10 +148,10 @@ type OptionContract struct {
 	PPInd           bool     `json:"ppind"`
 	Currency        string   `json:"currency"`
 	DefType         string   `json:"def_type"`
-	ListedExchanges []string `json:"listed_exchanges,omitempty"`
+	ListedExchanges []string `json:"listed_exchanges"`
 
 	// Deliverables is populated only when requested with ShowDeliverables.
-	Deliverables []OptionDeliverable `json:"deliverables,omitempty"`
+	Deliverables []OptionDeliverable `json:"deliverables"`
 }
 
 // OptionDeliverable is what one contract delivers on exercise. After a
@@ -196,7 +195,7 @@ type OptionContractsRequest struct {
 // OptionContractsPage is one page of option contracts.
 type OptionContractsPage struct {
 	Contracts     []OptionContract `json:"data"`
-	PaginationKey string           `json:"pagination_key,omitempty"`
+	PaginationKey string           `json:"pagination_key"`
 }
 
 // OptionContracts looks up option contracts.
@@ -224,7 +223,7 @@ func (c *Client) OptionContracts(ctx context.Context, req OptionContractsRequest
 	q.set("pagination_key", req.PaginationKey)
 
 	var out OptionContractsPage
-	if err := c.get(ctx, "/trading/instruments/options/contracts/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/options/contracts/list", q, &out); err != nil {
 		return nil, err
 	}
 	return &out, nil

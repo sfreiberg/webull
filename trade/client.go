@@ -24,12 +24,12 @@ func New(doer *transport.Doer, host string) *Client {
 	return &Client{doer: doer, host: host}
 }
 
-func (c *Client) get(ctx context.Context, path string, query url.Values, out any) error {
+func (c *Client) get(ctx context.Context, path string, query params, out any) error {
 	return c.doer.Do(ctx, transport.Request{
 		Method: "GET",
 		Host:   c.host,
 		Path:   path,
-		Query:  query,
+		Query:  url.Values(query),
 	}, out)
 }
 
@@ -59,10 +59,6 @@ func (p params) setInt(key string, value int) {
 
 func (p params) setBool(key string, value *bool) {
 	if value != nil {
-		if *value {
-			url.Values(p).Set(key, "true")
-		} else {
-			url.Values(p).Set(key, "false")
-		}
+		url.Values(p).Set(key, strconv.FormatBool(*value))
 	}
 }

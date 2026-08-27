@@ -2,7 +2,6 @@ package trade
 
 import (
 	"context"
-	"net/url"
 	"strconv"
 
 	"github.com/shopspring/decimal"
@@ -10,12 +9,13 @@ import (
 
 // FuturesUnit is the pricing unit of a futures contract, as a numeric code.
 // Webull's documentation describes this field as a string enumeration such as
-// "1 - Index points"; the API transmits the integer. See FuturesUnitNames.
+// "1 - Index points"; the API transmits the integer. String returns the
+// description.
 type FuturesUnit int
 
 // String returns the unit's description, or its number if unknown.
 func (u FuturesUnit) String() string {
-	if name, ok := FuturesUnitNames[u]; ok {
+	if name, ok := futuresUnitNames[u]; ok {
 		return name
 	}
 	return strconv.Itoa(int(u))
@@ -32,7 +32,7 @@ func (c *Client) FuturesProductClasses(ctx context.Context) ([]FuturesProductCla
 	q := params{}
 	q.set("category", string(CategoryUSFutures))
 	var out []FuturesProductClass
-	if err := c.get(ctx, "/trading/instruments/futures/product-classes/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/futures/product-classes/list", q, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -54,7 +54,7 @@ func (c *Client) FuturesProducts(ctx context.Context, productClassID int) ([]Fut
 	q.set("category", string(CategoryUSFutures))
 	q.setInt("product_class_id", productClassID)
 	var out []FuturesProduct
-	if err := c.get(ctx, "/trading/instruments/futures/product-codes/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/futures/product-codes/list", q, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -78,8 +78,8 @@ type FuturesContract struct {
 	// ContractMonth is yyyyMM. The date fields are yyyy-MM-dd.
 	ContractMonth    string `json:"contract_month"`
 	SettlementDate   string `json:"settlement_date"`
-	FirstNoticeDate  string `json:"first_notice_date,omitempty"`
-	LastNoticeDate   string `json:"last_notice_date,omitempty"`
+	FirstNoticeDate  string `json:"first_notice_date"`
+	LastNoticeDate   string `json:"last_notice_date"`
 	FirstTradingDate string `json:"first_trading_date"`
 	LastTradingDate  string `json:"last_trading_date"`
 
@@ -106,7 +106,7 @@ func (c *Client) FuturesContracts(ctx context.Context, req FuturesContractsReque
 	q.set("code", req.Code)
 	q.set("status", string(req.Status))
 	var out []FuturesContract
-	if err := c.get(ctx, "/trading/instruments/futures/contracts/list", url.Values(q), &out); err != nil {
+	if err := c.get(ctx, "/trading/instruments/futures/contracts/list", q, &out); err != nil {
 		return nil, err
 	}
 	return out, nil
