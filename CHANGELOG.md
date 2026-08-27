@@ -12,6 +12,9 @@ called out explicitly.
 
 ### Added
 
+- Futures, crypto and event-contract orders, with each asset class's
+  permitted sides, order types, times in force and quantity precision
+  enforced before any request is sent.
 - Order groups: `Bracket`, `OTO`, `OCO` and `OTOCO` build a `Combo`, placed
   with `PlaceCombo`, previewed with `PreviewCombo` and cancelled with
   `CancelCombo`. Webull's per-role rules are enforced locally.

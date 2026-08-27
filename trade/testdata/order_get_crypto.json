@@ -1,0 +1,23 @@
+{
+  "client_order_id": "clientorder0000000000001",
+  "combo_type": "NORMAL",
+  "combo_order_id": "ORDER000000000000000000001",
+  "orders": [
+    {
+      "symbol": "BTCUSD",
+      "side": "BUY",
+      "status": "SUBMITTED",
+      "client_order_id": "clientorder0000000000001",
+      "order_type": "LIMIT",
+      "instrument_type": "CRYPTO",
+      "order_id": "ORDER000000000000000000001",
+      "entrust_type": "QTY",
+      "total_quantity": "0.001",
+      "filled_quantity": "0",
+      "place_time": "1787865451166",
+      "place_time_at": "2026-08-27T21:17:31.166Z",
+      "time_in_force": "GTC",
+      "limit_price": "5000.00"
+    }
+  ]
+}

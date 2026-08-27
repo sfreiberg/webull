@@ -219,6 +219,9 @@ func (c *Combo) prepare() error {
 			if o.InstrumentType == InstrumentOption && o.OptionStrategy != StrategySingle {
 				problems = append(problems, fmt.Sprintf("order %d: multi-leg option orders cannot be grouped", i))
 			}
+			if !assetRules[o.InstrumentType].combos {
+				problems = append(problems, fmt.Sprintf("order %d: %s orders cannot be grouped", i, o.InstrumentType))
+			}
 		}
 	}
 	for role, rule := range rules {

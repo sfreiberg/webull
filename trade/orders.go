@@ -177,6 +177,11 @@ func Price(s string) decimal.NullDecimal {
 // LimitPrice are needed for a plain equity order; the SDK supplies Webull's
 // required boilerplate. Optional decimal fields are decimal.NullDecimal and are
 // omitted from the request when unset, so a zero price remains expressible.
+//
+// Set InstrumentType for futures, crypto and event contracts. Each asset
+// class permits different sides, order types, times in force and quantity
+// precision; those rules are checked before any request is sent, and an
+// event contract order additionally needs EventOutcome.
 type Order struct {
 	// ClientOrderID identifies the order to Webull and is the key for cancel,
 	// replace and lookup. Webull requires 10 to 40 characters, unique per
@@ -422,6 +427,7 @@ func (o *Order) prepare() error {
 	if o.EntrustType == ByAmount && !o.TotalCashAmount.Valid {
 		problems = append(problems, "TotalCashAmount is required for AMOUNT orders")
 	}
+	problems = o.validateAsset(problems)
 
 	if o.InstrumentType == InstrumentOption {
 		if len(o.Legs) == 0 {
