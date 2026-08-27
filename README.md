@@ -1,7 +1,7 @@
 # webull
 
 [![CI](https://github.com/sfreiberg/webull/actions/workflows/ci.yml/badge.svg)](https://github.com/sfreiberg/webull/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/sfreiberg/webull/graph/badge.svg)](https://codecov.io/gh/sfreiberg/webull)
+[![codecov](https://codecov.io/gh/sfreiberg/webull/branch/main/graph/badge.svg)](https://codecov.io/gh/sfreiberg/webull/tree/main)
 [![Go Reference](https://pkg.go.dev/badge/github.com/sfreiberg/webull.svg)](https://pkg.go.dev/github.com/sfreiberg/webull)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
