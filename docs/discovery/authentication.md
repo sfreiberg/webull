@@ -64,25 +64,31 @@ The signing key is the **app secret with a single `&` appended**. Compute
 HMAC-SHA256 over the encoded string with that key, then base64-encode the raw
 digest. That value is `x-signature`.
 
-## A trap: two algorithms exist
+## A trap: the official clients disagree on the default
 
-The Python SDK defines HMAC-SHA1 and two HMAC-SHA256 variants, and its signature
-composer contains a line that unconditionally overrides whatever the caller
-selected with the newer SHA-256 implementation. The Go CLI, by contrast, defaults
-to **HMAC-SHA1** when no algorithm is specified, and uses MD5 rather than SHA-256
-for the body digest in that mode.
+The Python SDK ships three algorithm modules, reporting themselves as
+`HMAC-SHA1`, `SHA256withRSA` and `HMAC-SHA256`. Which one is used is not,
+however, a choice: the signature composer overwrites whatever the caller
+selected with the `HMAC-SHA256` implementation unconditionally, before the
+algorithm header is set. The MD5 body-digest branch sitting beside it is
+unreachable as a result.
 
-So the two official implementations have different defaults. Ours should:
+Webull's Go CLI does the opposite. It defaults to **HMAC-SHA1** when no
+algorithm is given, and in that mode digests the body with MD5 rather than
+SHA-256.
 
-- Use HMAC-SHA256 with a SHA-256 body digest, since that is what the current
-  Python SDK forces in practice and what its header advertises.
-- Never expose an algorithm toggle in the public API until we have verified
-  server behaviour for both. An SDK that can silently sign with SHA-1 is a
-  liability, not a feature.
+So two first-party clients ship opposite defaults. Ours will:
 
-This belongs in the sandbox validation backlog: confirm whether the server still
-accepts HMAC-SHA1, and whether it rejects a SHA-256 signature that used an MD5
-body digest.
+- **Sign with HMAC-SHA256 and digest the body with SHA-256.** This follows the
+  maintained Python client, which is what current traffic actually looks like.
+- **Not expose an algorithm toggle at all.** An SDK that can be configured into
+  HMAC-SHA1 with an MD5 digest is a liability rather than a feature, and the Go
+  CLI demonstrates how easily that default ships by accident.
+
+It follows that whether the server still accepts HMAC-SHA1 is not worth
+establishing. We will never send it, so the answer cannot change the
+implementation. What matters is only that our SHA-256 signature is accepted,
+which the first successful authenticated request demonstrates.
 
 ## Token lifecycle
 
