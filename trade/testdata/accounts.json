@@ -1,0 +1,18 @@
+[
+  {
+    "account_id": "ACCT0000000000000000000001",
+    "account_number": "TEST0001",
+    "account_type": "MARGIN",
+    "account_label": "Individual Margin",
+    "account_class": "INDIVIDUAL_MARGIN",
+    "user_id": "1000000001"
+  },
+  {
+    "account_id": "ACCT0000000000000000000001",
+    "account_number": "TEST0001",
+    "account_type": "CASH",
+    "account_label": "Events Cash",
+    "account_class": "EVENTS_CASH",
+    "user_id": "1000000001"
+  }
+]

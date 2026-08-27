@@ -1,0 +1,10 @@
+[
+  {
+    "symbol": "KXRATECUTCOUNT-26DEC31",
+    "name": "Number of rate cuts in 2026?",
+    "status": "ACTIVE",
+    "series_id": "1051",
+    "short_name": "In 2026",
+    "mutually_exclusive": true
+  }
+]

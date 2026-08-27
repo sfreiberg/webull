@@ -1,0 +1,25 @@
+{
+  "total_asset_currency": "USD",
+  "total_net_liquidation_value": "1000000.00",
+  "total_market_value": "0.00",
+  "total_cash_balance": "1000000.00",
+  "total_unrealized_profit_loss": "0.00",
+  "total_day_profit_loss": "0.00",
+  "day_trades_left": "UNLIMITED",
+  "maintenance_margin": "0.00",
+  "open_margin_calls": [],
+  "account_currency_assets": [
+    {
+      "currency": "USD",
+      "net_liquidation_value": "1000000.00",
+      "market_value": "0.00",
+      "cash_balance": "1000000.00",
+      "option_buying_power": "1000000.00",
+      "day_buying_power": "4000000",
+      "overnight_buying_power": "2000000.00",
+      "night_trading_buying_power": "1000000.00",
+      "unrealized_profit_loss": "0.00",
+      "day_profit_loss": "0.00"
+    }
+  ]
+}

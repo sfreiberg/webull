@@ -1,0 +1,34 @@
+{
+  "data": [
+    {
+      "name": "BTCUSD",
+      "category": "US_CRYPTO",
+      "symbol": "BTCUSD",
+      "status": "OC",
+      "currency": "USD",
+      "instrument_id": "950160802",
+      "exchange_code": "CCC",
+      "min_trade_amt": "2.0000000000",
+      "max_trade_amt": "100000.0000000000",
+      "min_trade_qty": "0.0000000100",
+      "max_trade_qty": "10000000000.0000000000",
+      "price_step": "0.0100000000",
+      "lot_size": "0.0000000100"
+    },
+    {
+      "name": "ETHUSD",
+      "category": "US_CRYPTO",
+      "symbol": "ETHUSD",
+      "status": "OC",
+      "currency": "USD",
+      "instrument_id": "950160804",
+      "exchange_code": "CCC",
+      "min_trade_amt": "2.0000000000",
+      "max_trade_amt": "100000.0000000000",
+      "min_trade_qty": "0.0000000100",
+      "max_trade_qty": "10000000000.0000000000",
+      "price_step": "0.0100000000",
+      "lot_size": "0.0000000100"
+    }
+  ]
+}

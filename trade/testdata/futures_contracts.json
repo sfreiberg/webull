@@ -1,0 +1,42 @@
+[
+  {
+    "symbol": "ESU6",
+    "code": "ES",
+    "name": "E-mini S&P 500 SEP 26",
+    "currency": "USD",
+    "size": "50.0000000000",
+    "unit": 1,
+    "settlement": "CASH",
+    "status": "OC",
+    "instrument_id": "470498499",
+    "exchange_code": "XCME",
+    "contract_month": "202609",
+    "settlement_date": "2026-09-18",
+    "min_tick": "0.2500000000",
+    "first_trading_date": "2023-08-21",
+    "last_trading_date": "2026-09-18",
+    "contract_type": "MONTHLY",
+    "product_class_id": 2,
+    "product_class_name": "EQUITY_INDEX"
+  },
+  {
+    "symbol": "ESZ6",
+    "code": "ES",
+    "name": "E-mini S&P 500 DEC 26",
+    "currency": "USD",
+    "size": "50.0000000000",
+    "unit": 1,
+    "settlement": "CASH",
+    "status": "OC",
+    "instrument_id": "470001588",
+    "exchange_code": "XCME",
+    "contract_month": "202612",
+    "settlement_date": "2026-12-18",
+    "min_tick": "0.2500000000",
+    "first_trading_date": "2021-09-17",
+    "last_trading_date": "2026-12-18",
+    "contract_type": "MONTHLY",
+    "product_class_id": 2,
+    "product_class_name": "EQUITY_INDEX"
+  }
+]
