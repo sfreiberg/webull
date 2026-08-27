@@ -3,6 +3,7 @@ package trade_test
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -326,18 +327,129 @@ func TestIntegrationServerRejectionIsClassified(t *testing.T) {
 	c, ctx := newClient(t)
 	acct := marginAccount(ctx, t, c)
 
-	// Bypass local validation to see how the server reports a bad leg.
+	// A leg that passes local validation but names a contract that does not
+	// exist, so the rejection comes from the server.
 	_, err := c.PreviewOrder(ctx, acct.AccountID, &trade.Order{
-		Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, InstrumentType: trade.InstrumentOption,
+		Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit,
 		Quantity: trade.Price("1"), LimitPrice: trade.Price("1"),
-		Legs:          []trade.OrderLeg{{Symbol: "AAPL", OptionType: trade.Call, ExpireDate: "2026-12-18", StrikePrice: trade.Price("240")}},
-		ClientOrderID: "integration-badleg-0001", TradingSession: trade.SessionCore,
-		OptionStrategy: "NOT_A_STRATEGY",
+		Legs: []trade.OrderLeg{{Symbol: "AAPL", OptionType: trade.Call, ExpireDate: "2026-12-18", StrikePrice: trade.Price("999999")}},
 	})
 	if err == nil {
 		t.Skip("integration: the server accepted an order this test expected it to reject")
 	}
 	if !errors.Is(err, webull.ErrInvalidRequest) {
 		t.Errorf("server rejection did not classify as ErrInvalidRequest: %v", err)
+	}
+}
+
+// TestIntegrationBracketLifecycle places a real bracket in the sandbox: a
+// $1.00 limit buy that cannot fill, with a take-profit and a stop-loss
+// attached. Cancelling the master cancels the group.
+func TestIntegrationBracketLifecycle(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := marginAccount(ctx, t, c)
+
+	combo := trade.Bracket(
+		&trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("999")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, Quantity: trade.Price("1"), StopPrice: trade.Price("0.50")},
+	)
+	if _, err := c.PreviewCombo(ctx, acct.AccountID, combo); err != nil {
+		t.Fatalf("PreviewCombo: %v", err)
+	}
+
+	receipt, err := c.PlaceCombo(ctx, acct.AccountID, combo)
+	if err != nil {
+		t.Fatalf("PlaceCombo: %v", err)
+	}
+	t.Cleanup(func() { _ = c.CancelCombo(context.Background(), acct.AccountID, combo) })
+	if receipt.ComboOrderID == "" || receipt.ClientComboOrderID != combo.ClientComboOrderID {
+		t.Fatalf("receipt = %+v", receipt)
+	}
+
+	// Each sub-order is retrievable by its own ID, carrying its role.
+	time.Sleep(time.Second)
+	for _, o := range combo.Orders {
+		g, err := c.Order(ctx, acct.AccountID, o.ClientOrderID)
+		if err != nil {
+			t.Fatalf("Order(%s): %v", o.ComboType, err)
+		}
+		if g.ComboType != o.ComboType || g.ComboOrderID != receipt.ComboOrderID {
+			t.Errorf("%s: group = %+v", o.ComboType, g)
+		}
+	}
+
+	if err := c.CancelCombo(ctx, acct.AccountID, combo); err != nil {
+		t.Fatalf("CancelCombo: %v", err)
+	}
+	time.Sleep(time.Second)
+	g, err := c.Order(ctx, acct.AccountID, combo.Orders[0].ClientOrderID)
+	if err != nil {
+		t.Fatalf("Order after cancel: %v", err)
+	}
+	if len(g.Orders) != 1 || g.Orders[0].Status != trade.StatusCancelled {
+		t.Errorf("master after cancel = %+v", g)
+	}
+}
+
+func TestIntegrationMultiLegPreviews(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := marginAccount(ctx, t, c)
+	call := func(side trade.Side, strike string, kind trade.OptionType) trade.OrderLeg {
+		return trade.OrderLeg{Symbol: "AAPL", Side: side, OptionType: kind, ExpireDate: "2026-12-18", StrikePrice: trade.Price(strike)}
+	}
+	for name, o := range map[string]*trade.Order{
+		"vertical": {Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("0.50"),
+			OptionStrategy: trade.StrategyVertical, Legs: []trade.OrderLeg{call(trade.Buy, "240", trade.Call), call(trade.Sell, "250", trade.Call)}},
+		"iron condor": {Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price("0.50"),
+			OptionStrategy: trade.StrategyIronCondor, Legs: []trade.OrderLeg{
+				call(trade.Buy, "180", trade.Put), call(trade.Sell, "200", trade.Put), call(trade.Sell, "260", trade.Call), call(trade.Buy, "280", trade.Call)}},
+		"covered stock": {Symbol: "AAPL", Side: trade.Buy, Type: trade.Market, Quantity: trade.Price("1"),
+			OptionStrategy: trade.StrategyCoveredStock, Legs: []trade.OrderLeg{
+				{Symbol: "AAPL", Side: trade.Buy, Quantity: trade.Price("100"), InstrumentType: trade.InstrumentEquity}, call(trade.Sell, "260", trade.Call)}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			p, err := c.PreviewOrder(ctx, acct.AccountID, o)
+			if err != nil {
+				t.Fatalf("PreviewOrder: %v", err)
+			}
+			if p.EstimatedCost.IsZero() {
+				t.Errorf("preview = %+v", p)
+			}
+		})
+	}
+}
+
+// TestIntegrationOTOGroupsInSandbox records the sandbox's behaviour for
+// OTO, OCO and OTOCO: at the time of writing it rejects all three with
+// "invalid combo_type", contrary to the documentation. The test skips with
+// that reason so the limitation is visible in every run, and fails if the
+// rejection ever takes a different shape.
+func TestIntegrationOTOGroupsInSandbox(t *testing.T) {
+	c, ctx := newClient(t)
+	acct := marginAccount(ctx, t, c)
+	buy := func(p string) *trade.Order {
+		return &trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price(p)}
+	}
+	sell := func(p string) *trade.Order {
+		return &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("1"), LimitPrice: trade.Price(p)}
+	}
+	for name, combo := range map[string]*trade.Combo{
+		"oto":   trade.OTO(buy("1.00"), sell("999")),
+		"oco":   trade.OCO(buy("1.00"), buy("1.01")),
+		"otoco": trade.OTOCO(buy("1.00"), sell("999"), sell("998")),
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, err := c.PreviewCombo(ctx, acct.AccountID, combo)
+			if err == nil {
+				t.Logf("%s: the sandbox now accepts this group; update the compatibility matrix", name)
+				return
+			}
+			var apiErr *webull.APIError
+			if errors.As(err, &apiErr) && apiErr.Code == "OPENAPI_PARAM_ERR" && strings.Contains(apiErr.Message, "combo_type") {
+				t.Skipf("integration: sandbox rejects %s groups: %s", name, apiErr.Message)
+			}
+			t.Fatalf("%s: unexpected error: %v", name, err)
+		})
 	}
 }

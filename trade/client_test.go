@@ -2,6 +2,7 @@ package trade
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -486,4 +487,9 @@ func TestParamsHelpers(t *testing.T) {
 	if v.Get("full") != "x" || v.Get("list") != "a,b" || v.Get("n") != "7" || v.Get("f") != "false" {
 		t.Errorf("values = %v", v)
 	}
+}
+
+// decodeJSON reads a request body into v.
+func decodeJSON(r *http.Request, v any) error {
+	return json.NewDecoder(r.Body).Decode(v)
 }

@@ -87,10 +87,21 @@ const (
 // OptionStrategy classifies a multi-leg position.
 type OptionStrategy string
 
-// Option strategies reported on positions.
+// Option strategies. Any value other than StrategySingle is a multi-leg order
+// and requires at least two legs and a Normal combo type.
 const (
-	StrategySingle       OptionStrategy = "SINGLE"
-	StrategyCoveredStock OptionStrategy = "COVERED_STOCK"
+	StrategySingle          OptionStrategy = "SINGLE"
+	StrategyCoveredStock    OptionStrategy = "COVERED_STOCK"
+	StrategyStraddle        OptionStrategy = "STRADDLE"
+	StrategyStrangle        OptionStrategy = "STRANGLE"
+	StrategyVertical        OptionStrategy = "VERTICAL"
+	StrategyCalendar        OptionStrategy = "CALENDAR"
+	StrategyButterfly       OptionStrategy = "BUTTERFLY"
+	StrategyCondor          OptionStrategy = "CONDOR"
+	StrategyCollarWithStock OptionStrategy = "COLLAR_WITH_STOCK"
+	StrategyIronButterfly   OptionStrategy = "IRON_BUTTERFLY"
+	StrategyIronCondor      OptionStrategy = "IRON_CONDOR"
+	StrategyDiagonal        OptionStrategy = "DIAGONAL"
 )
 
 // ListingStatus is whether an option contract is currently listed.

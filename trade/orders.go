@@ -63,15 +63,24 @@ const (
 	StatusPartialFilled OrderStatus = "PARTIAL_FILLED"
 )
 
-// ComboType relates orders in a group. Normal is a standalone order.
+// ComboType is an order's role within a group. Normal is a standalone order;
+// every other value only makes sense inside a Combo.
 type ComboType string
 
-// Combo types.
+// Combo roles. See Bracket, OTO, OCO and OTOCO for the groups they form.
 const (
 	Normal ComboType = "NORMAL"
-	OCO    ComboType = "OCO"
-	OTO    ComboType = "OTO"
-	OTOCO  ComboType = "OTOCO"
+	// RoleMaster is the primary order of a bracket, OTO or OTOCO group.
+	RoleMaster ComboType = "MASTER"
+	// RoleStopProfit and RoleStopLoss are the take-profit and stop-loss
+	// orders of a bracket.
+	RoleStopProfit ComboType = "STOP_PROFIT"
+	RoleStopLoss   ComboType = "STOP_LOSS"
+	// RoleOTO, RoleOCO and RoleOTOCO mark the dependent orders of those
+	// groups.
+	RoleOTO   ComboType = "OTO"
+	RoleOCO   ComboType = "OCO"
+	RoleOTOCO ComboType = "OTOCO"
 )
 
 // EntrustType is whether quantity is expressed in units or in cash.
@@ -238,7 +247,8 @@ type Order struct {
 }
 
 // OrderLeg is one leg of an option order. LegFromSymbol builds one from an
-// OCC symbol.
+// OCC symbol. Covered and collar strategies also take a stock leg, with
+// InstrumentType set to InstrumentEquity and no option fields.
 type OrderLeg struct {
 	Side     Side                `json:"side"`
 	Quantity decimal.NullDecimal `json:"quantity,omitzero"`
@@ -419,6 +429,19 @@ func (o *Order) prepare() error {
 		if o.OptionStrategy == "" && len(o.Legs) == 1 {
 			o.OptionStrategy = StrategySingle
 		}
+		if o.OptionStrategy == "" && len(o.Legs) > 1 {
+			problems = append(problems, "multi-leg option orders need an OptionStrategy")
+		}
+		if o.OptionStrategy != "" && o.OptionStrategy != StrategySingle {
+			// Webull does not validate leg counts at preview time, so a
+			// malformed strategy would surface only on placement.
+			if len(o.Legs) < 2 {
+				problems = append(problems, string(o.OptionStrategy)+" needs at least two legs")
+			}
+			if o.ComboType != Normal {
+				problems = append(problems, "multi-leg option orders support only the NORMAL combo type")
+			}
+		}
 		for i := range o.Legs {
 			leg := &o.Legs[i]
 			if leg.Market == "" {
@@ -434,10 +457,18 @@ func (o *Order) prepare() error {
 				leg.Quantity = o.Quantity
 			}
 			clear(&leg.StrikePrice)
-			if leg.InstrumentType == InstrumentOption {
+			switch leg.InstrumentType {
+			case InstrumentOption:
 				if leg.Symbol == "" || !leg.StrikePrice.Valid || leg.ExpireDate == "" || leg.OptionType == "" {
 					problems = append(problems, fmt.Sprintf("leg %d needs Symbol, StrikePrice, ExpireDate and OptionType", i))
 				}
+			case InstrumentEquity:
+				// A stock leg of a covered or collar strategy.
+				if leg.Symbol == "" {
+					problems = append(problems, fmt.Sprintf("leg %d needs Symbol", i))
+				}
+			default:
+				problems = append(problems, fmt.Sprintf("leg %d: legs must be OPTION or EQUITY", i))
 			}
 		}
 	}
