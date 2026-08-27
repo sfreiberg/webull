@@ -12,6 +12,11 @@ called out explicitly.
 
 ### Added
 
+- Order groups: `Bracket`, `OTO`, `OCO` and `OTOCO` build a `Combo`, placed
+  with `PlaceCombo`, previewed with `PreviewCombo` and cancelled with
+  `CancelCombo`. Webull's per-role rules are enforced locally.
+- Multi-leg option strategies: every documented `OptionStrategy`, with stock
+  legs for covered and collar strategies.
 - Orders: `PreviewOrder`, `PlaceOrder`, `ReplaceOrder`, `CancelOrder`,
   `Order`, `OpenOrders`, `OrderHistory` and `PlaceOrders`. Orders are
   validated locally before any request; a `ClientOrderID` is generated and

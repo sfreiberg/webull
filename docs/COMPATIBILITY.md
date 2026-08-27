@@ -46,11 +46,13 @@ and orders — are implemented. Market data, streaming and Connect are not.
 | Order query, history, open | Complete | Yes | – | 4b | History status lags a fresh cancel |
 | Batch place | Unverified | Yes | – | 4b | Constraints enforced locally; not exercised live |
 | Equity orders | Complete | Yes | Yes | 4b | Placed, replaced and cancelled in sandbox |
-| Option orders | Partial | Yes | Yes | 4b | Single-leg previewed live; multi-leg strategies are Phase 5 |
+| Option orders | Complete | Yes | Yes | 5a | Single-leg placed live; vertical, iron condor, straddle and covered stock previewed live |
 | Futures orders | Planned | – | – | 5 | |
 | Crypto orders | Planned | – | – | 5 | |
 | Event-contract orders | Planned | – | – | 5 | |
-| Advanced orders (OCO/OTO/OTOCO, trailing) | Planned | – | – | 5 | Combo types present in SDK enums |
+| Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
+| Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
+| OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
 | **Market data (HTTP)** | Planned | – | – | 6 | |
 | Snapshots, quotes, ticks, bars | Planned | – | – | 6 | Stocks, options, futures, crypto, events |
 | Depth of book | Planned | – | – | 6 | Futures and event contracts |
@@ -138,8 +140,14 @@ Established against the live sandbox and relied on by the implementation.
 | Explicit `null` on an optional order field | Accepted |
 | `client_order_id` lifetime | Consumed once an order is accepted (`OPENAPI_TRADE_PLACE_ORDER_REPEAT` on reuse); a rejected placement does not consume it |
 | Option leg symbol | The OCC root (`SPXW`), not the underlying (`SPX`), which is rejected |
+| Group receipt | A combo placement returns `combo_order_id` and `client_combo_order_id` only; sub-orders are looked up by their own `client_order_id`, each reporting its role as `combo_type` |
+| Group cancellation | Cancelling an unfilled master cancels every order in the group; the children then report `OPENAPI_ORDER_NOT_FOUND`. Once the master has filled, the exits are working orders and must be cancelled themselves; `CancelCombo` attempts every order and treats `OPENAPI_ORDER_NOT_FOUND` and `OPENAPI_ORDER_CAN_NOT_BE_CANCEL` as already done |
+| Multi-leg validation | Preview accepts a `VERTICAL` with one leg, so leg counts are not checked server-side at preview |
+| OTO / OCO / OTOCO in sandbox | Rejected with `OPENAPI_PARAM_ERR: invalid combo_type, value: ["MASTER","OTO"]` for every documented shape, while `MASTER` and `OTO` are accepted as lone roles |
 | Order history freshness | Immediately after a cancel, `get` reports `CANCELLED` while `history` still reports `PENDING` |
 | Preview response | Carries an undocumented `currency` field |
+| Rate limiting | `GET /trading/accounts/list` returned 429 `TOO_MANY_REQUESTS` after roughly eight calls in quick succession across consecutive test runs; the integration suite now fetches it once per run |
+| Market hours | Enforced for placement: a `DAY` order after the regular session ends returns 417 `OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT`. Previews, lookups and `GTC` placements work around the clock |
 | Parameter validation status | **HTTP 417**, not 400, with code `OPENAPI_PARAM_ERR` |
 | Two error shapes | Application errors return `error_code` + `message`; gateway errors, such as an unrouted path, return only `error_msg` |
 | Wrong environment or unprovisioned key | `404 Route Not Found`, not 401 |
@@ -160,7 +168,7 @@ resolved and are kept for a release or two so the answers are discoverable.
 | ~~1~~ | ~~Which endpoint path scheme the server honours~~ — **resolved: both, they are aliases. Using the documented scheme.** | – |
 | 2 | Whether `data-api.sandbox.webull.com` exists, and whether MQTT has any sandbox | Phase 6 / 9 |
 | ~~3~~ | ~~Whether sandbox credentials are separate from production~~ — **resolved: yes. A sandbox key 404s every path in production.** | – |
-| 4 | Whether sandbox simulates market hours | Test harness design |
+| ~~4~~ | ~~Whether sandbox simulates market hours~~ — **resolved: yes, for order placement.** A `DAY` order in the `CORE` session is rejected outside regular hours with `OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT`; `GTC` orders and previews are accepted at any time. Integration tests place GTC orders | – |
 | ~~5~~ | ~~Confirm the server accepts our HMAC-SHA256 signature~~ — **resolved: accepted, with and without query parameters.** | – |
 | 6 | Whether `token_check_enabled` is true in production (it is **false** in sandbox) | when production keys exist |
 | 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
@@ -173,3 +181,5 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 14 | Batch place against the sandbox, and whether a partially failed batch returns 200 | Phase 5 |
 | 15 | Whether `OrderHistory` reconciles to the cancelled status after a delay | Phase 5 |
 | 16 | The wire form of `filled_time_at` on a filled order; decoded as RFC 3339 like `place_time_at` but never observed | when an order fills |
+| 17 | Whether OTO, OCO and OTOCO groups work in production, or need a shape the sandbox does not reveal | when production keys exist, or via Webull support |
+| 18 | Which multi-leg strategies the server validates leg counts for at placement | Phase 5b |

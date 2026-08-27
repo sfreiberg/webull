@@ -124,6 +124,41 @@ receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
 })
 ```
 
+### Attaching a take-profit and stop-loss
+
+A bracket is one placement: the entry plus its exits, cancelled together.
+
+```go
+combo := trade.Bracket(
+    &trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("10"), LimitPrice: trade.Price("180")},
+    &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("10"), LimitPrice: trade.Price("195")},
+    &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, Quantity: trade.Price("10"), StopPrice: trade.Price("170")},
+)
+receipt, err := client.Trade.PlaceCombo(ctx, acct.AccountID, combo)
+// later
+err = client.Trade.CancelCombo(ctx, acct.AccountID, combo)
+```
+
+### A vertical spread
+
+Multi-leg strategies are one `Order` with a strategy and its legs.
+
+```go
+long, _ := trade.LegFromSymbol("AAPL261218C00240000")
+short, _ := trade.LegFromSymbol("AAPL261218C00250000")
+long.Side, short.Side = trade.Buy, trade.Sell
+
+receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
+    Symbol:         "AAPL",
+    Side:           trade.Buy,
+    Type:           trade.Limit,
+    Quantity:       trade.Price("1"),    // spreads
+    LimitPrice:     trade.Price("3.50"), // net debit
+    OptionStrategy: trade.StrategyVertical,
+    Legs:           []trade.OrderLeg{long, short},
+})
+```
+
 ### Changing a working order
 
 Only the fields you set are changed; the rest are left as they are.

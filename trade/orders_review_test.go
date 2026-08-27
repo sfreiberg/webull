@@ -14,7 +14,7 @@ import (
 func TestPlaceOrdersRejectsNonNormalOrAmount(t *testing.T) {
 	c, f := newBodyClient(t, "", "order_place.json")
 	for name, bad := range map[string]*Order{
-		"oco":    {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1"), ComboType: OCO},
+		"oco":    {Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1"), ComboType: RoleOCO},
 		"amount": {Symbol: "AAPL", Side: Buy, Type: Market, TotalCashAmount: Price("100")},
 	} {
 		if _, err := c.PlaceOrders(context.Background(), "A", []*Order{bad}); !errors.Is(err, ErrInvalidOrder) {
