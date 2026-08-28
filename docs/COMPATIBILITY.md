@@ -53,10 +53,15 @@ implemented. Other asset classes' market data, streaming and Connect are not.
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
 | Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
 | OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
-| **Market data (HTTP)** | Partial | Yes | Yes | 6a | Stocks complete; other asset classes and reference data follow |
+| **Market data (HTTP)** | Partial | Yes | Yes | 6b | Every asset class's quotes complete; reference data follows in 6c |
 | Stock snapshots, depth, ticks, bars | Complete | Yes | Yes | 6a | Verified live. The documented single-symbol bars path 404s; `Bars` uses the batch endpoint for one or many |
-| Option, futures, crypto, event market data | Planned | – | – | 6b | |
-| Depth of book (futures, events) | Planned | – | – | 6b | Stock depth is in 6a |
+| Option snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live, including greeks |
+| Futures snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live on `MESmain`, the only symbol the sandbox serves |
+| Futures depth, footprint | Unverified | Yes | – | 6b | Implemented; the sandbox key is not subscribed (`FUTURES LV2`, `FOOTPRINT`) |
+| Crypto snapshots, bars | Complete | Yes | – | 6b | Verified live; crypto bars carry no volume |
+| Event-contract snapshots, depth, ticks, bars | Complete | Yes | – | 6b | Verified live |
+| Event-contract display endpoints (markets/*, live data, game stats) | Blocked | – | – | 6b | All six return `404 Route Not Found` in the sandbox, as do the milestones and sports-filter instrument lookups |
+| Depth of book | Complete | Yes | – | 6b | Stocks (L1 verified), events (verified), futures (subscription required) |
 | Footprint (stocks) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`please subscribe to FOOTPRINT`) |
 | NOII (auction imbalance) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`STOCK QUOTES LV2`) |
 | Stock profiles, logos | Blocked | – | – | 6a | The documented paths return `404 Route Not Found` in the sandbox. Profiles are served by `trade.StockProfiles`, which is the same data under the SDK scheme; logos have no equivalent |
@@ -152,6 +157,10 @@ Established against the live sandbox and relied on by the implementation.
 | Entitlement errors | `403 MARKET_DATA_NOT_SUBSCRIBED` with the product named in the message (`please subscribe to FOOTPRINT`, `STOCK QUOTES LV2`). Depth beyond the key's level is a `417 ILLEGAL_PARAMETER: depth not more than 1`, not an entitlement error. An unsupported category is `417 UNSUPPORTED_CATEGORY` |
 | Market-data error shape | A third shape: `{error_code, message, status}` |
 | Market-data timestamps | Three forms: integer epoch milliseconds (snapshot `last_trade_time`, `quote_time`), string epoch milliseconds (tick `time`), and ISO 8601 with a `+0000` offset (bar `time`, `effective_start_date`) that RFC 3339 parsing rejects |
+| Futures in the sandbox | Only `MESmain` (continuous Micro E-mini S&P 500) is served: `ILLEGAL_PARAMETER: Only these symbols are supported:[MESmain]`. A snapshot for it reports the resolved contract (`MESU6`) as its symbol, while ticks and bars echo `MESmain` |
+| Bars envelope | Option, futures, crypto and event bars return a bare array; the documentation shows a `{result: [...]}` envelope for options and futures |
+| Field naming | Option and futures tick responses use `instrumentId`; every other endpoint uses `instrument_id` |
+| Undocumented values | Option tick `side` includes `NS`; option snapshots carry `deal_amount`; event snapshot `last_trade_time` and depth `quote_time` are strings where the docs say integers |
 | Undocumented snapshot fields | `quote_time`, `pe_ratio`, `pb_ratio`, `ps_ratio`, `yield`, `market_value`, `neg_market_value`, `total_shares`, `out_standing_shares`, `fifty_two_wk_high/low`, `list_status`; ticks carry `trading_session` |
 | Rate limiting | `GET /trading/accounts/list` returned 429 `TOO_MANY_REQUESTS` after roughly eight calls in quick succession across consecutive test runs; the integration suite now fetches it once per run |
 | Asset-class rules | Not in the OpenAPI definition; taken from the trading FAQ and guides, checked against the sandbox, and enforced locally: options no trailing stops; futures and crypto BUY/SELL only; crypto MARKET/LIMIT/STOP_LOSS_LIMIT with ≤8 decimal places; event contracts LIMIT-only, quantity ≤2 decimal places, `event_outcome` required |
@@ -209,3 +218,5 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 23 | Whether GTD option orders are accepted with a valid expiry; the one attempt was rejected on `expire_date`, not on the time in force | later |
 | 24 | Footprint and NOII decoding against real data; the sandbox key is not subscribed, so the models rest on the documented schema | a subscribed key |
 | 25 | Whether corporate actions, stock profiles and logos exist in production; every path 404s in the sandbox | production keys |
+| 26 | Whether the event-contract display endpoints (`markets/*`, live data, game stats), milestones and sports filters exist in production; all 404 in the sandbox | production keys |
+| 27 | Futures depth and footprint decoding against real data; the key lacks `FUTURES LV2` and `FOOTPRINT` | a subscribed key |

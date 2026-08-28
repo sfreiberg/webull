@@ -54,7 +54,8 @@ const (
 
 // TickSide is the aggressor side of a trade, as Webull reports it. The API
 // documents the letters B, S, G, L and N without defining them; B and S are
-// buyer- and seller-initiated and N is neutral.
+// buyer- and seller-initiated and N is neutral. Option ticks also carry an
+// undocumented "NS".
 type TickSide string
 
 // Tick sides.

@@ -316,6 +316,14 @@ type FootprintsRequest struct {
 
 // Footprints returns footprint charts for each requested stock.
 func (c *Client) Footprints(ctx context.Context, req FootprintsRequest) ([]Footprints, error) {
+	var out []Footprints
+	if err := c.get(ctx, "/market-data/stocks/footprints/list", footprintParams(req), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func footprintParams(req FootprintsRequest) query.Params {
 	q := query.New()
 	q.SetList("symbols", req.Symbols)
 	q.Set("category", string(category(req.Category)))
@@ -323,11 +331,7 @@ func (c *Client) Footprints(ctx context.Context, req FootprintsRequest) ([]Footp
 	q.SetInt("count", req.Count)
 	q.Set("real_time_required", strconv.FormatBool(!req.Completed))
 	q.Set("trading_sessions", string(req.Session))
-	var out []Footprints
-	if err := c.get(ctx, "/market-data/stocks/footprints/list", q, &out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return q
 }
 
 // Imbalance is one auction imbalance reading.

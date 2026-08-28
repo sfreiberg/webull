@@ -12,6 +12,8 @@ called out explicitly.
 
 ### Added
 
+- Market data for options (with greeks), futures, crypto and event contracts:
+  snapshots, ticks, bars, and depth where the asset class has it.
 - `marketdata` package: stock snapshots, depth, ticks, bars, footprints and
   auction imbalances, plus company profiles and analyst consensus, reachable
   as `client.MarketData`. Entitlement failures are `marketdata.ErrNotSubscribed`.

@@ -95,3 +95,107 @@ func TestIntegrationEntitlements(t *testing.T) {
 		})
 	}
 }
+
+func TestIntegrationOptionMarketData(t *testing.T) {
+	c, ctx := newClient(t)
+	const sym = "AAPL261218C00240000"
+	snaps, err := c.OptionSnapshots(ctx, []string{sym})
+	if err != nil {
+		t.Fatalf("OptionSnapshots: %v", err)
+	}
+	if len(snaps) != 1 || !snaps[0].StrikePrice.Valid || !snaps[0].Delta.Valid {
+		t.Errorf("snapshots = %+v", snaps)
+	}
+	ticks, err := c.OptionTicks(ctx, sym, 5)
+	if err != nil {
+		t.Fatalf("OptionTicks: %v", err)
+	}
+	if ticks.InstrumentID == "" {
+		t.Errorf("instrumentId did not decode: %+v", ticks)
+	}
+	bars, err := c.OptionBars(ctx, marketdata.AssetBarsRequest{Symbols: []string{sym}, Timespan: marketdata.Daily, Count: 3})
+	if err != nil {
+		t.Fatalf("OptionBars: %v", err)
+	}
+	if len(bars) != 1 || len(bars[0].Bars) == 0 {
+		t.Errorf("bars = %+v", bars)
+	}
+}
+
+func TestIntegrationFuturesMarketData(t *testing.T) {
+	c, ctx := newClient(t)
+	// The sandbox serves exactly one futures symbol.
+	snaps, err := c.FuturesSnapshots(ctx, []string{"MESmain"})
+	if err != nil {
+		t.Fatalf("FuturesSnapshots: %v", err)
+	}
+	if len(snaps) != 1 || !snaps[0].Price.Valid {
+		t.Errorf("snapshots = %+v", snaps)
+	}
+	if _, err := c.FuturesTicks(ctx, "MESmain", 5); err != nil {
+		t.Fatalf("FuturesTicks: %v", err)
+	}
+	if bars, err := c.FuturesBars(ctx, marketdata.AssetBarsRequest{Symbols: []string{"MESmain"}, Timespan: marketdata.Daily, Count: 3}); err != nil || len(bars) != 1 {
+		t.Fatalf("FuturesBars: %v %+v", err, bars)
+	}
+	for name, call := range map[string]func() error{
+		"depth": func() error { _, e := c.FuturesDepth(ctx, "MESmain", 1); return e },
+		"footprints": func() error {
+			_, e := c.FuturesFootprints(ctx, marketdata.FootprintsRequest{Symbols: []string{"MESmain"}, Timespan: marketdata.Minute5, Count: 3, Session: marketdata.Regular})
+			return e
+		},
+	} {
+		t.Run(name, func(t *testing.T) {
+			err := call()
+			if errors.Is(err, marketdata.ErrNotSubscribed) {
+				t.Skipf("integration: %v", err)
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestIntegrationCryptoMarketData(t *testing.T) {
+	c, ctx := newClient(t)
+	snaps, err := c.CryptoSnapshots(ctx, []string{"BTCUSD", "ETHUSD"})
+	if err != nil {
+		t.Fatalf("CryptoSnapshots: %v", err)
+	}
+	if len(snaps) != 2 || !snaps[0].Price.Valid {
+		t.Errorf("snapshots = %+v", snaps)
+	}
+	bars, err := c.CryptoBars(ctx, marketdata.AssetBarsRequest{Symbols: []string{"BTCUSD"}, Timespan: marketdata.Daily, Count: 3})
+	if err != nil {
+		t.Fatalf("CryptoBars: %v", err)
+	}
+	if len(bars) != 1 || len(bars[0].Bars) == 0 {
+		t.Errorf("bars = %+v", bars)
+	}
+}
+
+func TestIntegrationEventMarketData(t *testing.T) {
+	c, ctx := newClient(t)
+	const sym = "KXRATECUTCOUNT-26DEC31-T6"
+	snaps, err := c.EventSnapshots(ctx, []string{sym})
+	if err != nil {
+		t.Fatalf("EventSnapshots: %v", err)
+	}
+	if len(snaps) != 1 || snaps[0].Name == "" {
+		t.Errorf("snapshots = %+v", snaps)
+	}
+	if _, err := c.EventDepth(ctx, sym, 5); err != nil {
+		t.Fatalf("EventDepth: %v", err)
+	}
+	ticks, err := c.EventTicks(ctx, sym, 5)
+	if err != nil {
+		t.Fatalf("EventTicks: %v", err)
+	}
+	if len(ticks.Ticks) > 0 && ticks.Ticks[0].TradeID == "" {
+		t.Errorf("tick = %+v", ticks.Ticks[0])
+	}
+	if bars, err := c.EventBars(ctx, marketdata.AssetBarsRequest{Symbols: []string{sym}, Timespan: marketdata.Daily, Count: 3}); err != nil || len(bars) != 1 {
+		t.Fatalf("EventBars: %v %+v", err, bars)
+	}
+}
