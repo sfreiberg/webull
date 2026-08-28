@@ -4,9 +4,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sfreiberg/webull/internal/transport"
 )
 
 // Category identifies an asset class in market-data requests.
@@ -72,10 +75,11 @@ const (
 
 // Millis is a point in time transmitted as epoch milliseconds, which Webull
 // sends sometimes as a JSON number and sometimes as a string. The zero value
-// means the field was absent.
+// means the field was absent; a wire value of 0 is treated the same way,
+// since no market data event happened at the epoch.
 type Millis struct{ time.Time }
 
-// UnmarshalJSON accepts a number, a numeric string, or null.
+// UnmarshalJSON accepts a number, a numeric string, 0, or null.
 func (m *Millis) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), `"`)
 	if s == "" || s == "null" {
@@ -85,6 +89,10 @@ func (m *Millis) UnmarshalJSON(b []byte) error {
 	n, err := strconv.ParseInt(s, 10, 64)
 	if err != nil {
 		return fmt.Errorf("marketdata: %q is not an epoch-millisecond time", s)
+	}
+	if n == 0 {
+		m.Time = time.Time{}
+		return nil
 	}
 	m.Time = time.UnixMilli(n).UTC()
 	return nil
@@ -106,20 +114,26 @@ const isoLayout = "2006-01-02T15:04:05.000-0700"
 // "2026-08-27T04:00:00.000+0000". The zero value means the field was absent.
 type Time struct{ time.Time }
 
-// UnmarshalJSON accepts Webull's ISO form, RFC 3339, or null.
+// offsetWithoutColon matches a trailing "+0000"-style offset.
+var offsetWithoutColon = regexp.MustCompile(`([+-]\d{2})(\d{2})$`)
+
+// UnmarshalJSON accepts Webull's ISO form with any number of fractional
+// digits, RFC 3339, or null.
 func (t *Time) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), `"`)
 	if s == "" || s == "null" {
 		t.Time = time.Time{}
 		return nil
 	}
-	for _, layout := range []string{isoLayout, time.RFC3339Nano} {
-		if parsed, err := time.Parse(layout, s); err == nil {
-			t.Time = parsed.UTC()
-			return nil
-		}
+	// Normalise "+0000" to "+00:00" so the RFC 3339 parser, which accepts
+	// any fractional precision, handles every variant.
+	normalised := offsetWithoutColon.ReplaceAllString(s, "$1:$2")
+	parsed, err := time.Parse(time.RFC3339Nano, normalised)
+	if err != nil {
+		return fmt.Errorf("marketdata: %q is not a recognised time", s)
 	}
-	return fmt.Errorf("marketdata: %q is not a recognised time", s)
+	t.Time = parsed.UTC()
+	return nil
 }
 
 // MarshalJSON writes Webull's ISO form, or null when zero.
@@ -131,16 +145,20 @@ func (t Time) MarshalJSON() ([]byte, error) {
 }
 
 // ErrNotSubscribed is returned when the key is not entitled to the data
-// requested. The wrapped *webull.APIError's Message names the product.
+// requested. The wrapped *webull.APIError's Message names the product. Because
+// the response is an HTTP 403, the same error also matches webull.ErrPermission.
 var ErrNotSubscribed = errors.New("marketdata: not subscribed to this data")
 
 // notSubscribedCode is Webull's code for a missing market-data entitlement.
 const notSubscribedCode = "MARKET_DATA_NOT_SUBSCRIBED"
 
 // classify wraps errors this package gives a name to.
+//
+// An entitlement failure is an HTTP 403, so it also matches
+// webull.ErrPermission. Check ErrNotSubscribed first when the distinction
+// matters.
 func classify(err error) error {
-	var coded interface{ ErrorCode() string }
-	if errors.As(err, &coded) && coded.ErrorCode() == notSubscribedCode {
+	if transport.HasCode(err, notSubscribedCode) {
 		return fmt.Errorf("%w: %w", ErrNotSubscribed, err)
 	}
 	return err

@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/sfreiberg/webull/marketdata"
 )
 
 // newTestClient starts a TLS test server and returns a Client pointed at it.
@@ -339,5 +341,33 @@ func TestNewClientComposesMarketData(t *testing.T) {
 	}
 	if c.MarketData == nil {
 		t.Fatal("MarketData client was not constructed")
+	}
+}
+
+func TestMarketDataOverrideIsIndependentOfTrading(t *testing.T) {
+	var gotHost string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHost = r.Host
+		_, _ = w.Write([]byte(`[]`))
+	}))
+	defer srv.Close()
+	host := strings.TrimPrefix(srv.URL, "https://")
+
+	c, err := NewClient(Config{
+		AppKey: "k", AppSecret: "s", Environment: Sandbox, HTTPClient: srv.Client(),
+		EndpointOverrides: map[string]string{"marketdata": host},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.MarketData.Snapshots(context.Background(), marketdata.SnapshotsRequest{Symbols: []string{"AAPL"}}); err != nil {
+		t.Fatalf("Snapshots via override: %v", err)
+	}
+	if gotHost != host {
+		t.Errorf("market data went to %q, want the override %q", gotHost, host)
+	}
+	// The trading override was not set, so Trade must still resolve the default.
+	if h, _ := c.cfg.host(serviceTrading); h != "api.sandbox.webull.com" {
+		t.Errorf("trading host = %q; overriding marketdata must not touch it", h)
 	}
 }

@@ -3,6 +3,8 @@ package marketdata
 import (
 	"context"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/shopspring/decimal"
 
@@ -234,8 +236,8 @@ type BarsRequest struct {
 	Completed bool
 	Sessions  []TradingSession
 	// Start and End bound the range; zero values are omitted.
-	Start Millis
-	End   Millis
+	Start time.Time
+	End   time.Time
 }
 
 type barsBody struct {
@@ -261,9 +263,7 @@ func (c *Client) Bars(ctx context.Context, req BarsRequest) ([]Bars, error) {
 		f := false
 		body.RealTimeRequired = &f
 	}
-	if s := sessions(req.Sessions); len(s) > 0 {
-		body.TradingSessions = joinSessions(s)
-	}
+	body.TradingSessions = strings.Join(sessions(req.Sessions), ",")
 	if !req.Start.IsZero() {
 		body.StartTime = req.Start.UnixMilli()
 	}
@@ -390,10 +390,4 @@ func sessions(s []TradingSession) []string {
 		out = append(out, string(v))
 	}
 	return out
-}
-
-func joinSessions(s []string) string {
-	q := query.New()
-	q.SetList("s", s)
-	return q.Values().Get("s")
 }

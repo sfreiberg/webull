@@ -13,8 +13,8 @@ const (
 	Production Environment = "production"
 )
 
-// service identifies one of Webull's API hosts. Each serves a different part
-// of the API and is rate-limited independently.
+// service identifies a part of Webull's API whose host is resolved on its
+// own. Trading and market data currently share a host; the others differ.
 type service string
 
 const (

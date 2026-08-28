@@ -22,21 +22,11 @@ func New(doer *transport.Doer, host string) *Client {
 }
 
 func (c *Client) get(ctx context.Context, path string, q query.Params, out any) error {
-	return classify(c.doer.Do(ctx, transport.Request{
-		Method: "GET",
-		Host:   c.host,
-		Path:   path,
-		Query:  q.Values(),
-	}, out))
+	return classify(c.doer.Get(ctx, c.host, path, q.Values(), out))
 }
 
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
-	return classify(c.doer.Do(ctx, transport.Request{
-		Method: "POST",
-		Host:   c.host,
-		Path:   path,
-		Body:   body,
-	}, out))
+	return classify(c.doer.Post(ctx, c.host, path, body, out))
 }
 
 // category returns c, or USStock when unset.

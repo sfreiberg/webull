@@ -7,7 +7,7 @@ The SDK resolves hosts by region and API type. For the US:
 | API type | Host | Serves |
 |---|---|---|
 | `api` | `api.webull.com` | Trading, accounts, positions, orders |
-| `quotes-api` | `data-api.webull.com` | Market data over HTTP |
+| `quotes-api` | `data-api.webull.com` | Listed by the SDK for market data; in fact the MQTT broker |
 | `events-api` | `events-api.webull.com` | gRPC trade event streams |
 
 The MQTT broker host is **not** in this table. The streaming client accepts it as

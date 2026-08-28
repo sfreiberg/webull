@@ -7,11 +7,10 @@
 
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
-> **Status: pre-release.** Accounts, instrument data and orders are implemented
-> and verified against Webull's sandbox; positions decode per the documented
-> schema but no live response has been seen yet. Market data, streaming and
-> the Connect API are not yet. The public API may change without notice until
-> v1.0.0.
+> **Status: pre-release.** Trading (accounts, instrument data, orders across
+> every asset class) and stock market data are implemented and verified against
+> Webull's sandbox. Other asset classes' market data, streaming and the Connect
+> API are not yet. The public API may change without notice until v1.0.0.
 
 ## Disclaimer
 

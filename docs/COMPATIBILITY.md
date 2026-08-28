@@ -192,7 +192,7 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 6 | Whether `token_check_enabled` is true in production (it is **false** in sandbox) | when production keys exist |
 | 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
 | 8 | Whether streaming requires its own token | Phase 9 |
-| 9 | Timestamp formats per endpoint | Phase 4 |
+| ~~9~~ | ~~Timestamp formats per endpoint~~ — **resolved: three forms, see the known-behaviour table; `marketdata.Millis` and `marketdata.Time` decode them.** | – |
 | ~~10~~ | ~~Entitlement behaviour on 403~~ — **resolved: `MARKET_DATA_NOT_SUBSCRIBED` naming the product; typed as `marketdata.ErrNotSubscribed`.** | – |
 | ~~11~~ | ~~Whether optional order fields accept an explicit `null`~~ — **resolved: accepted.** | – |
 | 12 | Whether position `last_price`, `cost_price` and `unrealized_profit_loss` are ever absent; modelled as always present per the docs | when a position exists |

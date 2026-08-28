@@ -23,24 +23,12 @@ func New(doer *transport.Doer, host string) *Client {
 }
 
 func (c *Client) get(ctx context.Context, path string, q query.Params, out any) error {
-	return c.doer.Do(ctx, transport.Request{
-		Method: "GET",
-		Host:   c.host,
-		Path:   path,
-		Query:  q.Values(),
-	}, out)
+	return c.doer.Get(ctx, c.host, path, q.Values(), out)
 }
 
-// post sends a JSON body. Nothing in this package retries a POST: the
-// transport refuses to replay them because the outcome of a lost response is
-// unknown, and a replayed order is a duplicated order.
+// post sends a JSON body. See transport.Doer.Post for why it never retries.
 func (c *Client) post(ctx context.Context, path string, body, out any) error {
-	return c.doer.Do(ctx, transport.Request{
-		Method: "POST",
-		Host:   c.host,
-		Path:   path,
-		Body:   body,
-	}, out)
+	return c.doer.Post(ctx, c.host, path, body, out)
 }
 
 // transportResponse is transport.Response, named here so tests need not

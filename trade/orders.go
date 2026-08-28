@@ -13,6 +13,8 @@ import (
 	"github.com/sfreiberg/webull/internal/query"
 
 	"github.com/shopspring/decimal"
+
+	"github.com/sfreiberg/webull/internal/transport"
 )
 
 // Side is the direction of an order.
@@ -333,8 +335,7 @@ const duplicateOrderCode = "OPENAPI_TRADE_PLACE_ORDER_REPEAT"
 
 // classify wraps errors carrying codes this package gives a name to.
 func classify(err error) error {
-	var coded interface{ ErrorCode() string }
-	if errors.As(err, &coded) && coded.ErrorCode() == duplicateOrderCode {
+	if transport.HasCode(err, duplicateOrderCode) {
 		return fmt.Errorf("%w: %w", ErrDuplicateOrder, err)
 	}
 	return err

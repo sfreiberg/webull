@@ -152,7 +152,7 @@ func TestSnapshots(t *testing.T) {
 	}
 }
 
-func TestSnapshotsDefaultsCategoryAndOmitsFlags(t *testing.T) {
+func TestSnapshotsOmitsSessionFlagsWhenNotRequested(t *testing.T) {
 	c, f := newClient(t, "", "snapshot_etf.json", 0)
 	if _, err := c.Snapshots(context.Background(), SnapshotsRequest{Symbols: []string{"SPY"}, Category: USETF}); err != nil {
 		t.Fatal(err)
@@ -202,7 +202,7 @@ func TestTicks(t *testing.T) {
 
 func TestBarsRequestBodyAndDecoding(t *testing.T) {
 	c, f := newClient(t, "/market-data/stocks/bars/list", "bars.json", 0)
-	start := Millis{time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)}
+	start := time.Date(2026, 8, 1, 0, 0, 0, 0, time.UTC)
 	got, err := c.Bars(context.Background(), BarsRequest{Symbols: []string{"AAPL", "MSFT"}, Timespan: Daily, Count: 3, Completed: true,
 		Sessions: []TradingSession{Regular}, Start: start})
 	if err != nil {
@@ -327,5 +327,53 @@ func TestErrorsPropagateFromEveryMethod(t *testing.T) {
 		if err := call(); !errors.As(err, &coded) || coded.code != "UNSUPPORTED_CATEGORY" {
 			t.Errorf("%s: got %v", name, err)
 		}
+	}
+}
+
+func TestTimeAcceptsAnyFractionalPrecisionWithFlatOffset(t *testing.T) {
+	for _, in := range []string{`"2026-08-27T04:00:00+0000"`, `"2026-08-27T04:00:00.1+0000"`, `"2026-08-27T04:00:00.123456+0000"`, `"2026-08-27T00:00:00.000-0400"`} {
+		var v Time
+		if err := json.Unmarshal([]byte(in), &v); err != nil {
+			t.Errorf("%s: %v", in, err)
+		}
+	}
+	var v Time
+	if err := json.Unmarshal([]byte(`"2026-08-27T00:00:00.000-0400"`), &v); err != nil || v.Hour() != 4 {
+		t.Errorf("offset not applied: %v %v", v, err)
+	}
+}
+
+func TestMillisZeroOnTheWireIsAbsent(t *testing.T) {
+	var v struct {
+		N Millis `json:"n"`
+		S Millis `json:"s"`
+	}
+	if err := json.Unmarshal([]byte(`{"n":0,"s":"0"}`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !v.N.IsZero() || !v.S.IsZero() {
+		t.Error("a zero-filled timestamp must read as absent, not as 1970")
+	}
+}
+
+func TestFootprintsDecode(t *testing.T) {
+	c, _ := newClient(t, "", "footprints.json", 0)
+	got, err := c.Footprints(context.Background(), FootprintsRequest{Symbols: []string{"AAPL"}, Timespan: Minute5})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fp := got[0].Footprints[0]
+	if fp.Time.IsZero() || !fp.Delta.Equal(d("200")) || !fp.BuyDetail["24.21"].Equal(d("500")) || fp.Session != Regular {
+		t.Errorf("footprint = %+v", fp)
+	}
+}
+
+func TestSnapshotsDefaultsCategory(t *testing.T) {
+	c, f := newClient(t, "", "snapshots.json", 0)
+	if _, err := c.Snapshots(context.Background(), SnapshotsRequest{Symbols: []string{"AAPL"}}); err != nil {
+		t.Fatal(err)
+	}
+	if f.gotQuery["category"][0] != "US_STOCK" {
+		t.Errorf("default category = %v", f.gotQuery["category"])
 	}
 }
