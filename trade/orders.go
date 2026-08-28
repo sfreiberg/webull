@@ -10,7 +10,11 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sfreiberg/webull/internal/query"
+
 	"github.com/shopspring/decimal"
+
+	"github.com/sfreiberg/webull/internal/transport"
 )
 
 // Side is the direction of an order.
@@ -331,8 +335,7 @@ const duplicateOrderCode = "OPENAPI_TRADE_PLACE_ORDER_REPEAT"
 
 // classify wraps errors carrying codes this package gives a name to.
 func classify(err error) error {
-	var coded interface{ ErrorCode() string }
-	if errors.As(err, &coded) && coded.ErrorCode() == duplicateOrderCode {
+	if transport.HasCode(err, duplicateOrderCode) {
 		return fmt.Errorf("%w: %w", ErrDuplicateOrder, err)
 	}
 	return err
@@ -731,9 +734,9 @@ func (c *Client) Order(ctx context.Context, accountID, clientOrderID string) (*O
 	if clientOrderID == "" {
 		return nil, fmt.Errorf("%w: clientOrderID is required", ErrInvalidOrder)
 	}
-	q := params{}
-	q.set("account_id", accountID)
-	q.set("client_order_id", clientOrderID)
+	q := query.New()
+	q.Set("account_id", accountID)
+	q.Set("client_order_id", clientOrderID)
 	var out OrderGroup
 	if err := c.get(ctx, "/trading/orders/get", q, &out); err != nil {
 		return nil, err
@@ -754,15 +757,15 @@ type OrdersRequest struct {
 	LastClientOrderID string
 }
 
-func (r OrdersRequest) params(history bool) params {
-	q := params{}
-	q.set("account_id", r.AccountID)
+func (r OrdersRequest) params(history bool) query.Params {
+	q := query.New()
+	q.Set("account_id", r.AccountID)
 	if history {
-		q.set("start_date", r.StartDate)
-		q.set("end_date", r.EndDate)
+		q.Set("start_date", r.StartDate)
+		q.Set("end_date", r.EndDate)
 	}
-	q.setInt("page_size", r.PageSize)
-	q.set("last_client_order_id", r.LastClientOrderID)
+	q.SetInt("page_size", r.PageSize)
+	q.Set("last_client_order_id", r.LastClientOrderID)
 	return q
 }
 

@@ -5,6 +5,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/sfreiberg/webull/internal/transport"
 )
 
 // Combo is a group of orders placed together: a bracket (an order with
@@ -342,13 +344,5 @@ func (c *Client) CancelCombo(ctx context.Context, accountID string, combo *Combo
 // alreadyDone reports whether a cancel failed because there was nothing left
 // to cancel.
 func alreadyDone(err error) bool {
-	var coded interface{ ErrorCode() string }
-	if !errors.As(err, &coded) {
-		return false
-	}
-	switch coded.ErrorCode() {
-	case "OPENAPI_ORDER_NOT_FOUND", "OPENAPI_ORDER_CAN_NOT_BE_CANCEL":
-		return true
-	}
-	return false
+	return transport.HasCode(err, "OPENAPI_ORDER_NOT_FOUND", "OPENAPI_ORDER_CAN_NOT_BE_CANCEL")
 }

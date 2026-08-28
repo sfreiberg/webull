@@ -1,0 +1,5 @@
+{
+  "error_code": "UNSUPPORTED_CATEGORY",
+  "message": "The category is not supported by this interface:US_OPTION",
+  "status": 417
+}

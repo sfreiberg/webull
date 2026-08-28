@@ -30,6 +30,8 @@ webull/                     module github.com/sfreiberg/webull
 │   ├── transport/          HTTP plumbing, retry, response decoding
 │   ├── signing/            canonical string construction and HMAC
 │   ├── wbproto/            vendored .proto files and generated Go bindings
+│   ├── query/            query-string builder shared by service packages
+
 │   └── testutil/           httptest and bufconn helpers, fixtures, fake clock
 │
 └── examples/               runnable example programs
@@ -47,10 +49,11 @@ import (
 
 ## Why this shape
 
-**`trade` and `marketdata` are the load-bearing split.** They are separate hosts
-(`api.webull.com` and `data-api.webull.com`), separate rate-limit pools, and
-separate entitlements. Users of one frequently do not use the other. Splitting
-them mirrors how Webull actually deploys the API rather than how it documents it.
+**`trade` and `marketdata` are the load-bearing split.** They are separate
+Webull products with separate entitlements and separately documented rate
+limits, and users of one frequently do not use the other. (Phase 6a found they
+share a host over HTTP, contrary to the SDKs; the split is about product
+boundaries, not hosts.)
 
 **`events` and `streaming` are separate packages, not one `stream` package.**
 They share nothing operationally: different protocols (gRPC vs MQTT), different

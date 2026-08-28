@@ -189,6 +189,12 @@ and the string formats have not been verified across endpoints. The sound rule i
 `time.Time` where timestamp semantics are clear and stable, and the raw value
 preserved otherwise.
 
+**Resolved in Phase 6a.** Three forms occur: epoch milliseconds as a JSON
+number, epoch milliseconds as a string, and ISO 8601 with a `+0000` offset that
+Go's RFC 3339 layout rejects. `marketdata.Millis` and `marketdata.Time` decode
+them; the trading API's `place_time_at` is plain RFC 3339 and uses `time.Time`.
+The original guidance follows.
+
 **Recommendation:** defer. Catalogue the actual format per endpoint during
 Phase 3 as real responses become available, then decide. Where a field is an
 unambiguous epoch integer, `time.Time` with a documented precision is safe. Where

@@ -1,0 +1,10 @@
+{
+  "symbol": "AAPL",
+  "category": "US_STOCK",
+  "mean": "324.45282",
+  "low": "215",
+  "high": "400",
+  "median": "335",
+  "currency": "USD",
+  "effective_start_date": "2026-08-25T14:52:40.000+0000"
+}

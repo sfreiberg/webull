@@ -1,0 +1,41 @@
+{
+  "symbol": "AAPL",
+  "instrument_id": "913256135",
+  "result": [
+    {
+      "time": "1787860837871",
+      "price": "314.5800",
+      "volume": "4400",
+      "side": "N",
+      "trading_session": "RTH"
+    },
+    {
+      "time": "1787860805514",
+      "price": "314.5800",
+      "volume": "35200",
+      "side": "S",
+      "trading_session": "RTH"
+    },
+    {
+      "time": "1787860801043",
+      "price": "314.5800",
+      "volume": "11954",
+      "side": "S",
+      "trading_session": "RTH"
+    },
+    {
+      "time": "1787860801043",
+      "price": "314.5800",
+      "volume": "488",
+      "side": "S",
+      "trading_session": "RTH"
+    },
+    {
+      "time": "1787860801043",
+      "price": "314.5800",
+      "volume": "5861",
+      "side": "S",
+      "trading_session": "RTH"
+    }
+  ]
+}

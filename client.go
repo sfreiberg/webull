@@ -11,6 +11,7 @@ import (
 
 	"github.com/sfreiberg/webull/internal/signing"
 	"github.com/sfreiberg/webull/internal/transport"
+	"github.com/sfreiberg/webull/marketdata"
 	"github.com/sfreiberg/webull/trade"
 )
 
@@ -24,9 +25,11 @@ import (
 // are created explicitly so that their lifetime, and the goroutines they run,
 // belong to the caller.
 type Client struct {
-	// Trade covers accounts, balances, positions, activities and instrument
-	// reference data.
+	// Trade covers accounts, balances, positions, activities, instrument
+	// reference data and orders.
 	Trade *trade.Client
+	// MarketData covers snapshots, quotes, ticks, bars and reference data.
+	MarketData *marketdata.Client
 
 	cfg  Config
 	doer *transport.Doer
@@ -67,11 +70,16 @@ func NewClient(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	marketDataHost, err := cfg.host(serviceMarketData)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
-		Trade: trade.New(doer, tradingHost),
-		cfg:   cfg,
-		doer:  doer,
+		Trade:      trade.New(doer, tradingHost),
+		MarketData: marketdata.New(doer, marketDataHost),
+		cfg:        cfg,
+		doer:       doer,
 	}, nil
 }
 

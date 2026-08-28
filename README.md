@@ -7,11 +7,10 @@
 
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
-> **Status: pre-release.** Accounts, instrument data and orders are implemented
-> and verified against Webull's sandbox; positions decode per the documented
-> schema but no live response has been seen yet. Market data, streaming and
-> the Connect API are not yet. The public API may change without notice until
-> v1.0.0.
+> **Status: pre-release.** Trading (accounts, instrument data, orders across
+> every asset class) and stock market data are implemented and verified against
+> Webull's sandbox. Other asset classes' market data, streaming and the Connect
+> API are not yet. The public API may change without notice until v1.0.0.
 
 ## Disclaimer
 
@@ -205,6 +204,22 @@ _, err = client.Trade.CancelOrder(ctx, acct.AccountID, order.ClientOrderID)
 Cancel, replace and lookup are keyed by the client order ID, not Webull's own
 `OrderID`. An `Order` value describes one placement: once accepted, its ID is
 consumed, and placing it again returns `trade.ErrDuplicateOrder`.
+
+## Market data
+
+```go
+snaps, err := client.MarketData.Snapshots(ctx, marketdata.SnapshotsRequest{
+    Symbols: []string{"AAPL", "SPY"}, ExtendedHours: true,
+})
+fmt.Println(snaps[0].Price.Decimal, snaps[0].LastTradeTime)
+
+bars, err := client.MarketData.Bars(ctx, marketdata.BarsRequest{
+    Symbols: []string{"AAPL"}, Timespan: marketdata.Daily, Count: 30,
+})
+```
+
+Data the key is not subscribed to fails with `marketdata.ErrNotSubscribed`, and
+the wrapped `*webull.APIError` names the product required.
 
 ## Numbers
 

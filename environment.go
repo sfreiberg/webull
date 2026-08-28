@@ -13,13 +13,14 @@ const (
 	Production Environment = "production"
 )
 
-// service identifies one of Webull's API hosts. Each serves a different part
-// of the API and is rate-limited independently.
+// service identifies a part of Webull's API whose host is resolved on its
+// own. Trading and market data currently share a host; the others differ.
 type service string
 
 const (
 	serviceTrading    service = "trading"
 	serviceMarketData service = "marketdata"
+	serviceStreaming  service = "streaming"
 	serviceEvents     service = "events"
 	serviceConnect    service = "connect"
 )
@@ -30,16 +31,22 @@ const (
 // sandbox hosts insert ".sandbox" before ".webull.com", but the Connect API
 // does not: its production host carries a "us-" prefix that its sandbox host
 // lacks. Deriving one host from another would silently produce a wrong name.
+//
+// Market data over HTTP is served by the trading host. The data-api hosts
+// that Webull's SDKs list for market data do not answer HTTP requests; they
+// are the MQTT streaming brokers, and are recorded here as serviceStreaming.
 var hosts = map[Environment]map[service]string{
 	Production: {
 		serviceTrading:    "api.webull.com",
-		serviceMarketData: "data-api.webull.com",
+		serviceMarketData: "api.webull.com",
+		serviceStreaming:  "data-api.webull.com",
 		serviceEvents:     "events-api.webull.com",
 		serviceConnect:    "us-oauth-open-api.webull.com",
 	},
 	Sandbox: {
 		serviceTrading:    "api.sandbox.webull.com",
-		serviceMarketData: "data-api.sandbox.webull.com",
+		serviceMarketData: "api.sandbox.webull.com",
+		serviceStreaming:  "data-api.sandbox.webull.com",
 		serviceEvents:     "events-api.sandbox.webull.com",
 		serviceConnect:    "oauth-open-api.sandbox.webull.com",
 	},

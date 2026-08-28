@@ -16,7 +16,8 @@ var (
 
 	// ErrPermission indicates valid credentials that lack access to the
 	// requested resource, such as an account the key cannot see or a market
-	// data tier the key is not entitled to.
+	// data tier the key is not entitled to. A market data entitlement failure
+	// also matches marketdata.ErrNotSubscribed, which is more specific.
 	ErrPermission = errors.New("webull: permission denied")
 
 	// ErrInvalidRequest indicates the request was rejected as malformed or

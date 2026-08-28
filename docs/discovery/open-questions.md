@@ -86,10 +86,8 @@ What remains unknown is whether market data has a sandbox at all. No
 production MQTT host. See
 [environments.md](environments.md#sandbox) for the detail.
 
-This matters for the test harness: if market data is production-only, then
-market-data integration tests either hit production read-only endpoints or do not
-run at all, and that is a design decision rather than an oversight to discover
-later.
+*Resolved in Phase 6a:* market data has a sandbox. It is served by the trading
+host over HTTP; the `data-api` hosts are the MQTT brokers.
 
 Remaining items are in the sandbox validation backlog in the compatibility
 matrix.
