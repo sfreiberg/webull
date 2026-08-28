@@ -57,9 +57,7 @@ type EventDepth struct {
 // EventDepth returns an event contract market's order book. levels is per
 // side; zero lets Webull apply its default of ten.
 func (c *Client) EventDepth(ctx context.Context, symbol string, levels int) (*EventDepth, error) {
-	q := query.New()
-	q.Set("symbol", symbol)
-	q.Set("category", string(USEvent))
+	q := symbolParams(symbol, USEvent)
 	q.SetInt("depth", levels)
 	var out EventDepth
 	if err := c.get(ctx, "/market-data/event-contracts/depths/list", q, &out); err != nil {
@@ -68,13 +66,15 @@ func (c *Client) EventDepth(ctx context.Context, symbol string, levels int) (*Ev
 	return &out, nil
 }
 
-// EventOutcome is the side of an event contract trade.
+// EventOutcome is the side of an event contract trade. It carries the same
+// wire values as trade.EventOutcome; the two packages do not import each
+// other, so each declares its own.
 type EventOutcome string
 
 // Event outcomes.
 const (
-	Yes EventOutcome = "yes"
-	No  EventOutcome = "no"
+	OutcomeYes EventOutcome = "yes"
+	OutcomeNo  EventOutcome = "no"
 )
 
 // EventTick is one event contract trade, reported with both outcomes' prices.
@@ -97,9 +97,7 @@ type EventTicks struct {
 // EventTicks returns an event contract market's most recent trades. count is
 // at most 1200; zero lets Webull apply its default of 30.
 func (c *Client) EventTicks(ctx context.Context, symbol string, count int) (*EventTicks, error) {
-	q := query.New()
-	q.Set("symbol", symbol)
-	q.Set("category", string(USEvent))
+	q := symbolParams(symbol, USEvent)
 	q.SetInt("count", count)
 	var out EventTicks
 	if err := c.get(ctx, "/market-data/event-contracts/ticks/list", q, &out); err != nil {
@@ -110,9 +108,5 @@ func (c *Client) EventTicks(ctx context.Context, symbol string, count int) (*Eve
 
 // EventBars returns candles for event contract markets.
 func (c *Client) EventBars(ctx context.Context, req AssetBarsRequest) ([]Bars, error) {
-	var out []Bars
-	if err := c.get(ctx, "/market-data/event-contracts/bars/list", req.params(USEvent, true), &out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return c.bars(ctx, "/market-data/event-contracts/bars/list", req, USEvent)
 }

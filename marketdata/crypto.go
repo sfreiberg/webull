@@ -46,9 +46,5 @@ func (c *Client) CryptoSnapshots(ctx context.Context, symbols []string) ([]Crypt
 // CryptoBars returns candles for crypto pairs. Crypto bars carry no volume;
 // Bar.Volume is zero.
 func (c *Client) CryptoBars(ctx context.Context, req AssetBarsRequest) ([]Bars, error) {
-	var out []Bars
-	if err := c.get(ctx, "/market-data/crypto/bars/list", req.params(USCrypto, true), &out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return c.bars(ctx, "/market-data/crypto/bars/list", req, USCrypto)
 }

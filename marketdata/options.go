@@ -2,18 +2,11 @@ package marketdata
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/shopspring/decimal"
 
 	"github.com/sfreiberg/webull/internal/query"
-)
-
-// Categories for the other asset classes.
-const (
-	USOption  Category = "US_OPTION"
-	USFutures Category = "US_FUTURES"
-	USCrypto  Category = "US_CRYPTO"
-	USEvent   Category = "US_EVENT"
 )
 
 // OptionSnapshot is the current state of an option contract, including its
@@ -66,31 +59,23 @@ func (c *Client) OptionSnapshots(ctx context.Context, symbols []string) ([]Optio
 	return out, nil
 }
 
-// OptionTick is one option trade. Side carries an undocumented "NS" value
-// alongside the documented letters.
-type OptionTick struct {
-	Time   Millis          `json:"time"`
-	Price  decimal.Decimal `json:"price"`
-	Volume decimal.Decimal `json:"volume"`
-	Side   TickSide        `json:"side"`
-}
-
-// OptionTicks is an option contract's recent trades, newest first.
-type OptionTicks struct {
+// AssetTicks is an option or futures contract's recent trades, newest first.
+// Option ticks carry an undocumented "NS" Side alongside the documented
+// letters, and no Session.
+type AssetTicks struct {
 	Symbol string `json:"symbol"`
-	// InstrumentID is camel-cased on the wire for this endpoint alone.
-	InstrumentID string       `json:"instrumentId"`
-	Ticks        []OptionTick `json:"result"`
+	// InstrumentID is camel-cased on the wire for the option and futures tick
+	// endpoints, unlike every other endpoint in the API.
+	InstrumentID string `json:"instrumentId"`
+	Ticks        []Tick `json:"result"`
 }
 
 // OptionTicks returns an option contract's most recent trades. count is at
 // most 1200; zero lets Webull apply its default.
-func (c *Client) OptionTicks(ctx context.Context, symbol string, count int) (*OptionTicks, error) {
-	q := query.New()
-	q.Set("symbol", symbol)
-	q.Set("category", string(USOption))
+func (c *Client) OptionTicks(ctx context.Context, symbol string, count int) (*AssetTicks, error) {
+	q := symbolParams(symbol, USOption)
 	q.SetInt("count", count)
-	var out OptionTicks
+	var out AssetTicks
 	if err := c.get(ctx, "/market-data/options/ticks/list", q, &out); err != nil {
 		return nil, err
 	}
@@ -105,31 +90,42 @@ type AssetBarsRequest struct {
 	Timespan Timespan
 	// Count is at most 1200; zero lets Webull apply its default of 200.
 	Count int
-	// Completed omits the bar still forming. Crypto and event contracts
-	// require the flag either way and default to including it.
+	// Completed omits the bar still forming.
+	//
+	// How this reaches the wire depends on the asset class. Crypto and event
+	// contracts require the real_time_required parameter and receive it
+	// either way; options accept it and receive it only when Completed is
+	// set; futures do not document it and never receive it.
 	Completed bool
 }
 
-func (r AssetBarsRequest) params(cat Category, flagRequired bool) query.Params {
+func (r AssetBarsRequest) params(cat Category) query.Params {
 	q := query.New()
 	q.SetList("symbols", r.Symbols)
 	q.Set("category", string(cat))
 	q.Set("timespan", string(r.Timespan))
 	q.SetInt("count", r.Count)
-	if r.Completed {
-		q.Set("real_time_required", "false")
-	} else if flagRequired {
-		q.Set("real_time_required", "true")
+	switch cat {
+	case USCrypto, USEvent:
+		q.Set("real_time_required", strconv.FormatBool(!r.Completed))
+	case USOption:
+		if r.Completed {
+			q.Set("real_time_required", "false")
+		}
 	}
 	return q
 }
 
-// OptionBars returns candles for option contracts. Webull documents a
-// {result: [...]} envelope for this endpoint; the API returns a bare array.
-func (c *Client) OptionBars(ctx context.Context, req AssetBarsRequest) ([]Bars, error) {
-	var out []Bars
-	if err := c.get(ctx, "/market-data/options/bars/list", req.params(USOption, false), &out); err != nil {
+// bars fetches candles from path, accepting either response shape.
+func (c *Client) bars(ctx context.Context, path string, req AssetBarsRequest, cat Category) ([]Bars, error) {
+	var out barsList
+	if err := c.get(ctx, path, req.params(cat), &out); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return []Bars(out), nil
+}
+
+// OptionBars returns candles for option contracts.
+func (c *Client) OptionBars(ctx context.Context, req AssetBarsRequest) ([]Bars, error) {
+	return c.bars(ctx, "/market-data/options/bars/list", req, USOption)
 }

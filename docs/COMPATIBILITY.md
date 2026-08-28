@@ -24,8 +24,9 @@ working.
 
 ## Summary
 
-The transport layer, the Trading API, and stock market data over HTTP are
-implemented. Other asset classes' market data, streaming and Connect are not.
+The transport layer, the Trading API, and market data over HTTP for every
+asset class are implemented. Market-data reference data (fundamentals,
+screeners, watchlists, news), streaming and Connect are not.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
@@ -61,7 +62,6 @@ implemented. Other asset classes' market data, streaming and Connect are not.
 | Crypto snapshots, bars | Complete | Yes | – | 6b | Verified live; crypto bars carry no volume |
 | Event-contract snapshots, depth, ticks, bars | Complete | Yes | – | 6b | Verified live |
 | Event-contract display endpoints (markets/*, live data, game stats) | Blocked | – | – | 6b | All six return `404 Route Not Found` in the sandbox, as do the milestones and sports-filter instrument lookups |
-| Depth of book | Complete | Yes | – | 6b | Stocks (L1 verified), events (verified), futures (subscription required) |
 | Footprint (stocks) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`please subscribe to FOOTPRINT`) |
 | NOII (auction imbalance) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`STOCK QUOTES LV2`) |
 | Stock profiles, logos | Blocked | – | – | 6a | The documented paths return `404 Route Not Found` in the sandbox. Profiles are served by `trade.StockProfiles`, which is the same data under the SDK scheme; logos have no equivalent |
@@ -158,7 +158,8 @@ Established against the live sandbox and relied on by the implementation.
 | Market-data error shape | A third shape: `{error_code, message, status}` |
 | Market-data timestamps | Three forms: integer epoch milliseconds (snapshot `last_trade_time`, `quote_time`), string epoch milliseconds (tick `time`), and ISO 8601 with a `+0000` offset (bar `time`, `effective_start_date`) that RFC 3339 parsing rejects |
 | Futures in the sandbox | Only `MESmain` (continuous Micro E-mini S&P 500) is served: `ILLEGAL_PARAMETER: Only these symbols are supported:[MESmain]`. A snapshot for it reports the resolved contract (`MESU6`) as its symbol, while ticks and bars echo `MESmain` |
-| Bars envelope | Option, futures, crypto and event bars return a bare array; the documentation shows a `{result: [...]}` envelope for options and futures |
+| Bars envelope | Option, futures, crypto and event bars return a bare array in the sandbox; the documentation shows a `{result: [...]}` envelope for options and futures. The SDK decodes either, since production has not been observed |
+| `real_time_required` | Required by the crypto and event bars endpoints, optional for options, absent from the futures documentation; the SDK sends it per asset class |
 | Field naming | Option and futures tick responses use `instrumentId`; every other endpoint uses `instrument_id` |
 | Undocumented values | Option tick `side` includes `NS`; option snapshots carry `deal_amount`; event snapshot `last_trade_time` and depth `quote_time` are strings where the docs say integers |
 | Undocumented snapshot fields | `quote_time`, `pe_ratio`, `pb_ratio`, `ps_ratio`, `yield`, `market_value`, `neg_market_value`, `total_shares`, `out_standing_shares`, `fifty_two_wk_high/low`, `list_status`; ticks carry `trading_session` |

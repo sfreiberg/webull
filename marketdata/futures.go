@@ -51,22 +51,12 @@ func (c *Client) FuturesSnapshots(ctx context.Context, symbols []string) ([]Futu
 	return out, nil
 }
 
-// FuturesTicks is a futures contract's recent trades, newest first.
-type FuturesTicks struct {
-	Symbol string `json:"symbol"`
-	// InstrumentID is camel-cased on the wire for this endpoint.
-	InstrumentID string `json:"instrumentId"`
-	Ticks        []Tick `json:"result"`
-}
-
 // FuturesTicks returns a futures contract's most recent trades. count is at
 // most 1200; zero lets Webull apply its default.
-func (c *Client) FuturesTicks(ctx context.Context, symbol string, count int) (*FuturesTicks, error) {
-	q := query.New()
-	q.Set("symbol", symbol)
-	q.Set("category", string(USFutures))
+func (c *Client) FuturesTicks(ctx context.Context, symbol string, count int) (*AssetTicks, error) {
+	q := symbolParams(symbol, USFutures)
 	q.SetInt("count", count)
-	var out FuturesTicks
+	var out AssetTicks
 	if err := c.get(ctx, "/market-data/futures/ticks/list", q, &out); err != nil {
 		return nil, err
 	}
@@ -76,9 +66,7 @@ func (c *Client) FuturesTicks(ctx context.Context, symbol string, count int) (*F
 // FuturesDepth returns a futures contract's order book. Requires the
 // FUTURES LV2 subscription; levels is how many price levels per side.
 func (c *Client) FuturesDepth(ctx context.Context, symbol string, levels int) (*Depth, error) {
-	q := query.New()
-	q.Set("symbol", symbol)
-	q.Set("category", string(USFutures))
+	q := symbolParams(symbol, USFutures)
 	q.SetInt("depth", levels)
 	var out Depth
 	if err := c.get(ctx, "/market-data/futures/depths/list", q, &out); err != nil {
@@ -87,22 +75,17 @@ func (c *Client) FuturesDepth(ctx context.Context, symbol string, levels int) (*
 	return &out, nil
 }
 
-// FuturesBars returns candles for futures contracts. As with options, the
-// API returns a bare array rather than the documented envelope.
+// FuturesBars returns candles for futures contracts.
 func (c *Client) FuturesBars(ctx context.Context, req AssetBarsRequest) ([]Bars, error) {
-	var out []Bars
-	if err := c.get(ctx, "/market-data/futures/bars/list", req.params(USFutures, false), &out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return c.bars(ctx, "/market-data/futures/bars/list", req, USFutures)
 }
 
 // FuturesFootprints returns footprint charts for futures contracts. Requires
-// the FOOTPRINT subscription.
+// the FOOTPRINT subscription. req.Category is ignored: the futures endpoint
+// takes only USFutures.
 func (c *Client) FuturesFootprints(ctx context.Context, req FootprintsRequest) ([]Footprints, error) {
-	req.Category = USFutures
 	var out []Footprints
-	if err := c.get(ctx, "/market-data/futures/footprints/list", footprintParams(req), &out); err != nil {
+	if err := c.get(ctx, "/market-data/futures/footprints/list", footprintParams(req, USFutures), &out); err != nil {
 		return nil, err
 	}
 	return out, nil

@@ -7,6 +7,7 @@ import (
 
 	"github.com/sfreiberg/webull/internal/testutil"
 	"github.com/sfreiberg/webull/marketdata"
+	"github.com/sfreiberg/webull/trade"
 )
 
 func newClient(t *testing.T) (*marketdata.Client, context.Context) {
@@ -96,9 +97,38 @@ func TestIntegrationEntitlements(t *testing.T) {
 	}
 }
 
+// liveOptionSymbol returns a currently listed AAPL call, so the test does
+// not expire with a hard-coded contract.
+func liveOptionSymbol(t *testing.T) string {
+	t.Helper()
+	tc := testutil.NewIntegrationClient(t).Trade
+	chain, err := tc.OptionContracts(testutil.IntegrationContext(t), trade.OptionContractsRequest{UnderlyingSymbols: []string{"AAPL"}, OptionType: trade.Call})
+	if err != nil || len(chain.Contracts) == 0 {
+		t.Skipf("integration: no AAPL calls listed (%v)", err)
+	}
+	return chain.Contracts[0].Symbol
+}
+
+// liveEventSymbol returns a currently tradable event market.
+func liveEventSymbol(t *testing.T) string {
+	t.Helper()
+	tc := testutil.NewIntegrationClient(t).Trade
+	markets, err := tc.EventMarkets(testutil.IntegrationContext(t), trade.EventMarketsRequest{SeriesSymbol: "KXRATECUTCOUNT"})
+	if err != nil {
+		t.Skipf("integration: EventMarkets: %v", err)
+	}
+	for _, m := range markets.Markets {
+		if m.TradableStatus == trade.Tradable {
+			return m.Symbol
+		}
+	}
+	t.Skip("integration: no tradable event market in the series")
+	return ""
+}
+
 func TestIntegrationOptionMarketData(t *testing.T) {
 	c, ctx := newClient(t)
-	const sym = "AAPL261218C00240000"
+	sym := liveOptionSymbol(t)
 	snaps, err := c.OptionSnapshots(ctx, []string{sym})
 	if err != nil {
 		t.Fatalf("OptionSnapshots: %v", err)
@@ -177,7 +207,7 @@ func TestIntegrationCryptoMarketData(t *testing.T) {
 
 func TestIntegrationEventMarketData(t *testing.T) {
 	c, ctx := newClient(t)
-	const sym = "KXRATECUTCOUNT-26DEC31-T6"
+	sym := liveEventSymbol(t)
 	snaps, err := c.EventSnapshots(ctx, []string{sym})
 	if err != nil {
 		t.Fatalf("EventSnapshots: %v", err)
