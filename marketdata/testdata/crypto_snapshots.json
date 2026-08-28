@@ -1,0 +1,38 @@
+[
+  {
+    "symbol": "BTCUSD",
+    "price": "77853.25",
+    "open": "79832.69",
+    "high": "80004.90",
+    "low": "77019.76",
+    "change": "-1981.31",
+    "bid": "77082.54",
+    "ask": "78623.95",
+    "instrument_id": "950160802",
+    "pre_close": "79834.56",
+    "change_ratio": "-0.024818",
+    "last_trade_time": 1787936205656,
+    "quote_time": 1787936205656,
+    "ask_size": "0.18923621",
+    "bid_size": "0.000022",
+    "close": "77853.25"
+  },
+  {
+    "symbol": "ETHUSD",
+    "price": "2444.14",
+    "open": "2490.33",
+    "high": "2522.05",
+    "low": "2418.34",
+    "change": "-46.63",
+    "bid": "2419.72",
+    "ask": "2468.56",
+    "instrument_id": "950160804",
+    "pre_close": "2490.77",
+    "change_ratio": "-0.018721",
+    "last_trade_time": 1787936206008,
+    "quote_time": 1787936206008,
+    "ask_size": "0.00000078",
+    "bid_size": "3.2",
+    "close": "2444.14"
+  }
+]

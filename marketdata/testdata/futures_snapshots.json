@@ -1,0 +1,23 @@
+[
+  {
+    "symbol": "MESU6",
+    "price": "7732",
+    "open": "7734.75",
+    "high": "7782.5",
+    "low": "7720.25",
+    "volume": "799017",
+    "change": "-10.5",
+    "bid": "7732",
+    "ask": "7732.25",
+    "instrument_id": "470005101",
+    "pre_close": "7742.5",
+    "change_ratio": "-0.0014",
+    "last_trade_time": 1787935637677,
+    "open_interest": "301830",
+    "quote_time": 1787935637686,
+    "ask_size": "79",
+    "bid_size": "51",
+    "settle_date": "2026-08-14T12:00:00.000+0000",
+    "settle_price": "7742.5"
+  }
+]

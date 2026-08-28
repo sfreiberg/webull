@@ -8,13 +8,25 @@
 //
 // All methods take a context.Context and are safe for concurrent use.
 //
+// # Asset classes
+//
+// Stocks are the primary surface. Options (OptionSnapshots, with greeks),
+// futures (FuturesSnapshots and friends), crypto (CryptoSnapshots) and event
+// contracts (EventSnapshots, with a book per outcome) have their own methods,
+// since their fields differ. Bars share one type across all of them.
+//
+// The sandbox serves futures data for a single symbol, "MESmain"; the
+// display-solution event endpoints (per-market snapshots, live data, game
+// stats) do not exist in the sandbox at all and are not implemented.
+//
 // # Entitlements
 //
 // Market data is sold by product. A request for data the key is not
 // subscribed to fails with ErrNotSubscribed, wrapping a *webull.APIError whose
 // message names the product needed, such as "please subscribe to FOOTPRINT".
 // Depth of book is limited to the levels the key is entitled to; asking for
-// more is rejected as an invalid parameter.
+// more is rejected as an invalid parameter. Futures depth and all footprint
+// data need their own subscriptions.
 //
 // # Hosts
 //

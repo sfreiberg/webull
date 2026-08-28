@@ -1,0 +1,16 @@
+{
+  "symbol": "KXRATECUTCOUNT-26DEC31-T6",
+  "instrument_id": "501073821",
+  "yes_bids": [],
+  "no_bids": [
+    {
+      "price": "0.995",
+      "size": "1500"
+    },
+    {
+      "price": "0.994",
+      "size": "1082"
+    }
+  ],
+  "quote_time": "1787935917348"
+}

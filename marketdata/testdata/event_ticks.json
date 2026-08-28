@@ -1,0 +1,22 @@
+{
+  "symbol": "KXRATECUTCOUNT-26DEC31-T6",
+  "result": [
+    {
+      "time": "1785465775000",
+      "volume": "1399.8",
+      "side": "no",
+      "yes_price": "0.001",
+      "no_price": "0.999",
+      "trade_id": "ea8a5b75-e4d9-4efc-269b-0a2aa7bef3e4"
+    },
+    {
+      "time": "1785462733000",
+      "volume": "82",
+      "side": "yes",
+      "yes_price": "0.002",
+      "no_price": "0.998",
+      "trade_id": "e2d5d6d0-42f9-74a3-7c45-be494dac30e7"
+    }
+  ],
+  "instrument_id": "501073821"
+}

@@ -270,13 +270,11 @@ func (c *Client) Bars(ctx context.Context, req BarsRequest) ([]Bars, error) {
 	if !req.End.IsZero() {
 		body.EndTime = req.End.UnixMilli()
 	}
-	var out struct {
-		Result []Bars `json:"result"`
-	}
+	var out barsList
 	if err := c.post(ctx, "/market-data/stocks/bars/list", body, &out); err != nil {
 		return nil, err
 	}
-	return out.Result, nil
+	return []Bars(out), nil
 }
 
 // Footprint is one interval's traded volume broken down by price and side.
@@ -302,7 +300,8 @@ type Footprints struct {
 // FootprintsRequest selects footprint data. Requires the FOOTPRINT
 // subscription.
 type FootprintsRequest struct {
-	Symbols  []string
+	Symbols []string
+	// Category applies to Footprints only; FuturesFootprints ignores it.
 	Category Category
 	// Timespan is one of Second5, Second15, Minute, Minute5 or Minute30.
 	Timespan Timespan
@@ -316,18 +315,22 @@ type FootprintsRequest struct {
 
 // Footprints returns footprint charts for each requested stock.
 func (c *Client) Footprints(ctx context.Context, req FootprintsRequest) ([]Footprints, error) {
+	var out []Footprints
+	if err := c.get(ctx, "/market-data/stocks/footprints/list", footprintParams(req, category(req.Category)), &out); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func footprintParams(req FootprintsRequest, cat Category) query.Params {
 	q := query.New()
 	q.SetList("symbols", req.Symbols)
-	q.Set("category", string(category(req.Category)))
+	q.Set("category", string(cat))
 	q.Set("timespan", string(req.Timespan))
 	q.SetInt("count", req.Count)
 	q.Set("real_time_required", strconv.FormatBool(!req.Completed))
 	q.Set("trading_sessions", string(req.Session))
-	var out []Footprints
-	if err := c.get(ctx, "/market-data/stocks/footprints/list", q, &out); err != nil {
-		return nil, err
-	}
-	return out, nil
+	return q
 }
 
 // Imbalance is one auction imbalance reading.

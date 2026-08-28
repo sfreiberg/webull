@@ -118,8 +118,8 @@ func TestTimeDecodesWebullISOAndRFC3339(t *testing.T) {
 	if !v.W.Equal(want) || !v.R.Equal(want) || !v.Z.IsZero() {
 		t.Errorf("w=%v r=%v z=%v", v.W, v.R, v.Z)
 	}
-	if err := json.Unmarshal([]byte(`{"w":"2026-08-27"}`), &v); err == nil {
-		t.Error("a bare date must be rejected")
+	if err := json.Unmarshal([]byte(`{"w":"yesterday"}`), &v); err == nil {
+		t.Error("an unrecognised time must be rejected")
 	}
 	b, _ := json.Marshal(Time{want})
 	if string(b) != `"2026-08-27T04:00:00.000+0000"` {
@@ -375,5 +375,18 @@ func TestSnapshotsDefaultsCategory(t *testing.T) {
 	}
 	if f.gotQuery["category"][0] != "US_STOCK" {
 		t.Errorf("default category = %v", f.gotQuery["category"])
+	}
+}
+
+func TestTimeAcceptsBareDate(t *testing.T) {
+	var v Time
+	if err := json.Unmarshal([]byte(`"2026-09-19"`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("got %v", v)
+	}
+	if err := json.Unmarshal([]byte(`"2026-13-45"`), &v); err == nil {
+		t.Error("an invalid date must be rejected")
 	}
 }

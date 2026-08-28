@@ -1,0 +1,15 @@
+[
+  {
+    "instrument_id": "501073821",
+    "symbol": "KXRATECUTCOUNT-26DEC31-T6",
+    "name": "Will the Fed cut rates 6 times?",
+    "price": "0.001",
+    "volume": "18.69",
+    "last_trade_time": "1787897908000",
+    "open_interest": "552213.24",
+    "yes_ask": "0.005",
+    "yes_ask_size": "1500",
+    "no_bid": "0.995",
+    "no_bid_size": "1500"
+  }
+]

@@ -15,10 +15,15 @@ import (
 // Category identifies an asset class in market-data requests.
 type Category string
 
-// Categories accepted by the stock endpoints.
+// Categories. USStock and USETF are accepted by the stock endpoints; the rest
+// each have their own.
 const (
-	USStock Category = "US_STOCK"
-	USETF   Category = "US_ETF"
+	USStock   Category = "US_STOCK"
+	USETF     Category = "US_ETF"
+	USOption  Category = "US_OPTION"
+	USFutures Category = "US_FUTURES"
+	USCrypto  Category = "US_CRYPTO"
+	USEvent   Category = "US_EVENT"
 )
 
 // Timespan is a bar interval.
@@ -54,7 +59,8 @@ const (
 
 // TickSide is the aggressor side of a trade, as Webull reports it. The API
 // documents the letters B, S, G, L and N without defining them; B and S are
-// buyer- and seller-initiated and N is neutral.
+// buyer- and seller-initiated and N is neutral. Option ticks also carry an
+// undocumented "NS".
 type TickSide string
 
 // Tick sides.
@@ -118,11 +124,19 @@ type Time struct{ time.Time }
 var offsetWithoutColon = regexp.MustCompile(`([+-]\d{2})(\d{2})$`)
 
 // UnmarshalJSON accepts Webull's ISO form with any number of fractional
-// digits, RFC 3339, or null.
+// digits, RFC 3339, a bare yyyy-MM-dd date (as midnight UTC), or null.
 func (t *Time) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), `"`)
 	if s == "" || s == "null" {
 		t.Time = time.Time{}
+		return nil
+	}
+	if len(s) == len("2006-01-02") {
+		parsed, err := time.Parse("2006-01-02", s)
+		if err != nil {
+			return fmt.Errorf("marketdata: %q is not a recognised time", s)
+		}
+		t.Time = parsed
 		return nil
 	}
 	// Normalise "+0000" to "+00:00" so the RFC 3339 parser, which accepts
@@ -162,4 +176,30 @@ func classify(err error) error {
 		return fmt.Errorf("%w: %w", ErrNotSubscribed, err)
 	}
 	return err
+}
+
+// barsList decodes a bars response in either of the shapes Webull uses: the
+// bare array the sandbox returns for options, futures, crypto and events, or
+// the {"result": [...]} envelope its documentation shows and the stock
+// endpoint returns.
+type barsList []Bars
+
+func (l *barsList) UnmarshalJSON(b []byte) error {
+	trimmed := strings.TrimSpace(string(b))
+	if strings.HasPrefix(trimmed, "[") {
+		var bare []Bars
+		if err := json.Unmarshal(b, &bare); err != nil {
+			return err
+		}
+		*l = bare
+		return nil
+	}
+	var wrapped struct {
+		Result []Bars `json:"result"`
+	}
+	if err := json.Unmarshal(b, &wrapped); err != nil {
+		return err
+	}
+	*l = wrapped.Result
+	return nil
 }
