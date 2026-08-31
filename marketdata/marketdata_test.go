@@ -304,30 +304,37 @@ func TestFundamentals(t *testing.T) {
 	}
 }
 
-func TestErrorsPropagateFromEveryMethod(t *testing.T) {
+// assertCategoryErrors runs each call against a server answering with
+// error_category.json and asserts the coded error propagates unchanged.
+func assertCategoryErrors(t *testing.T, calls func(c *Client, ctx context.Context) map[string]func() error) {
+	t.Helper()
 	c, _ := newClient(t, "", "error_category.json", http.StatusExpectationFailed)
-	ctx := context.Background()
-	calls := map[string]func() error{
-		"Snapshots": func() error { _, e := c.Snapshots(ctx, SnapshotsRequest{Symbols: []string{"A"}}); return e },
-		"Depth":     func() error { _, e := c.Depth(ctx, DepthRequest{Symbol: "A"}); return e },
-		"Ticks":     func() error { _, e := c.Ticks(ctx, TicksRequest{Symbol: "A"}); return e },
-		"Bars":      func() error { _, e := c.Bars(ctx, BarsRequest{Symbols: []string{"A"}, Timespan: Daily}); return e },
-		"Footprints": func() error {
-			_, e := c.Footprints(ctx, FootprintsRequest{Symbols: []string{"A"}, Timespan: Minute})
-			return e
-		},
-		"ImbalanceBars":     func() error { _, e := c.ImbalanceBars(ctx, ImbalanceRequest{Symbol: "A", Type: PreOpen}); return e },
-		"ImbalanceSnapshot": func() error { _, e := c.ImbalanceSnapshot(ctx, ImbalanceRequest{Symbol: "A", Type: PreOpen}); return e },
-		"CompanyProfile":    func() error { _, e := c.CompanyProfile(ctx, "A", ""); return e },
-		"AnalystRating":     func() error { _, e := c.AnalystRating(ctx, "A", ""); return e },
-		"TargetPrice":       func() error { _, e := c.TargetPrice(ctx, "A", ""); return e },
-	}
-	for name, call := range calls {
+	for name, call := range calls(c, context.Background()) {
 		var coded *codedError
 		if err := call(); !errors.As(err, &coded) || coded.code != "UNSUPPORTED_CATEGORY" {
 			t.Errorf("%s: got %v", name, err)
 		}
 	}
+}
+
+func TestErrorsPropagateFromEveryMethod(t *testing.T) {
+	assertCategoryErrors(t, func(c *Client, ctx context.Context) map[string]func() error {
+		return map[string]func() error{
+			"Snapshots": func() error { _, e := c.Snapshots(ctx, SnapshotsRequest{Symbols: []string{"A"}}); return e },
+			"Depth":     func() error { _, e := c.Depth(ctx, DepthRequest{Symbol: "A"}); return e },
+			"Ticks":     func() error { _, e := c.Ticks(ctx, TicksRequest{Symbol: "A"}); return e },
+			"Bars":      func() error { _, e := c.Bars(ctx, BarsRequest{Symbols: []string{"A"}, Timespan: Daily}); return e },
+			"Footprints": func() error {
+				_, e := c.Footprints(ctx, FootprintsRequest{Symbols: []string{"A"}, Timespan: Minute})
+				return e
+			},
+			"ImbalanceBars":     func() error { _, e := c.ImbalanceBars(ctx, ImbalanceRequest{Symbol: "A", Type: PreOpen}); return e },
+			"ImbalanceSnapshot": func() error { _, e := c.ImbalanceSnapshot(ctx, ImbalanceRequest{Symbol: "A", Type: PreOpen}); return e },
+			"CompanyProfile":    func() error { _, e := c.CompanyProfile(ctx, "A", ""); return e },
+			"AnalystRating":     func() error { _, e := c.AnalystRating(ctx, "A", ""); return e },
+			"TargetPrice":       func() error { _, e := c.TargetPrice(ctx, "A", ""); return e },
+		}
+	})
 }
 
 func TestTimeAcceptsAnyFractionalPrecisionWithFlatOffset(t *testing.T) {
@@ -386,7 +393,15 @@ func TestTimeAcceptsBareDate(t *testing.T) {
 	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
 		t.Errorf("got %v", v)
 	}
-	if err := json.Unmarshal([]byte(`"2026-13-45"`), &v); err == nil {
-		t.Error("an invalid date must be rejected")
+	if err := json.Unmarshal([]byte(`"20260919"`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("compact date: got %v", v)
+	}
+	for _, in := range []string{`"2026-13-45"`, `"20261345"`} {
+		if err := json.Unmarshal([]byte(in), &v); err == nil {
+			t.Errorf("%s: an invalid date must be rejected", in)
+		}
 	}
 }

@@ -1,0 +1,26 @@
+{
+  "fiscal_year": 2026,
+  "fiscal_period": 1,
+  "industry_name": "Phones & Handheld Devices",
+  "type": "EPS_TTM",
+  "data": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple",
+      "rank": 1,
+      "value": "8.266"
+    },
+    {
+      "symbol": "SONY",
+      "name": "Sony Group",
+      "rank": 2,
+      "value": "1.153"
+    },
+    {
+      "symbol": "NEWCO",
+      "name": "Recent Listing",
+      "rank": 3,
+      "value": null
+    }
+  ]
+}

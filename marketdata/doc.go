@@ -19,6 +19,15 @@
 // display-solution event endpoints (per-market snapshots, live data, game
 // stats) do not exist in the sandbox at all and are not implemented.
 //
+// # Fundamentals
+//
+// Company reference data covers profiles, analyst consensus, financial
+// statements (BalanceSheets, IncomeStatements, CashFlows), indicators,
+// earnings and dividend calendars, capital flow, regulatory filings, EPS
+// forecasts and industry comparison. The sandbox answers the
+// financial-statement and industry-comparison endpoints with empty results
+// for every symbol; the rest serve real data.
+//
 // # Entitlements
 //
 // Market data is sold by product. A request for data the key is not

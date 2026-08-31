@@ -1,0 +1,15 @@
+{
+  "currency": "USD",
+  "values": {
+    "roa": [
+      {"fiscal_year": 2025, "fiscal_period": 4, "value": "0.2133"},
+      {"fiscal_year": 2025, "fiscal_period": 3, "value": "0.1987"}
+    ],
+    "roe": [
+      {"fiscal_year": 2025, "fiscal_period": 4, "value": null}
+    ],
+    "diluted_eps_incl_extra": [
+      {"fiscal_year": 2025, "fiscal_period": 4, "value": "7.464996"}
+    ]
+  }
+}

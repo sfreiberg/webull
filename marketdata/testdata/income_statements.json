@@ -1,0 +1,32 @@
+[
+  {
+    "fiscal_year": 2025,
+    "fiscal_period": 0,
+    "end_date": "2025-09-27",
+    "currency": "USD",
+    "publish_date": "2025-10-30",
+    "total_revenue": "416161000000",
+    "revenue": "416161000000",
+    "cost_of_revenue": "220960000000",
+    "gross_profit": "195201000000",
+    "opex": "62151000000",
+    "sga_exp": "27601000000",
+    "rnd_exp": "34550000000",
+    "op_income": "133050000000",
+    "other_net_income": "-321000000",
+    "ebt": "132729000000",
+    "income_tax": "21205000000",
+    "eat": "111524000000",
+    "ni_pre_extra": "111524000000",
+    "extra_items": "486000000",
+    "net_income": "112010000000",
+    "ni_common_excl_extra": "111524000000",
+    "ni_common_incl_extra": "112010000000",
+    "diluted_ni": "112010000000",
+    "diluted_avg_shares": "15004697000",
+    "diluted_eps_excl_extra": "7.43261",
+    "diluted_eps_incl_extra": "7.464996",
+    "dps": "1.02",
+    "diluted_norm_eps": "7.43261"
+  }
+]

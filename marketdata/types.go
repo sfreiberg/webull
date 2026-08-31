@@ -124,15 +124,20 @@ type Time struct{ time.Time }
 var offsetWithoutColon = regexp.MustCompile(`([+-]\d{2})(\d{2})$`)
 
 // UnmarshalJSON accepts Webull's ISO form with any number of fractional
-// digits, RFC 3339, a bare yyyy-MM-dd date (as midnight UTC), or null.
+// digits, RFC 3339, a bare yyyy-MM-dd or yyyyMMdd date (as midnight UTC), or
+// null.
 func (t *Time) UnmarshalJSON(b []byte) error {
 	s := strings.Trim(string(b), `"`)
 	if s == "" || s == "null" {
 		t.Time = time.Time{}
 		return nil
 	}
-	if len(s) == len("2006-01-02") {
-		parsed, err := time.Parse("2006-01-02", s)
+	if len(s) == len("2006-01-02") || len(s) == len("20060102") {
+		layout := "2006-01-02"
+		if len(s) == len("20060102") {
+			layout = "20060102"
+		}
+		parsed, err := time.Parse(layout, s)
 		if err != nil {
 			return fmt.Errorf("marketdata: %q is not a recognised time", s)
 		}
