@@ -184,11 +184,12 @@ func (c *Client) CashFlows(ctx context.Context, req FinancialsRequest) ([]CashFl
 }
 
 // IndicatorValue is one reporting period's value of a financial indicator.
+// Value is null when Webull has no figure for the period.
 type IndicatorValue struct {
 	FiscalYear int `json:"fiscal_year"`
 	// FiscalPeriod is 0 for the full year and 1 through 4 for quarters.
-	FiscalPeriod int             `json:"fiscal_period"`
-	Value        decimal.Decimal `json:"value"`
+	FiscalPeriod int                 `json:"fiscal_period"`
+	Value        decimal.NullDecimal `json:"value"`
 }
 
 // FinancialIndicators holds per-period financial ratios keyed by indicator

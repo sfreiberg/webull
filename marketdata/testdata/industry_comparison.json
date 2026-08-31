@@ -15,6 +15,12 @@
       "name": "Sony Group",
       "rank": 2,
       "value": "1.153"
+    },
+    {
+      "symbol": "NEWCO",
+      "name": "Recent Listing",
+      "rank": 3,
+      "value": null
     }
   ]
 }

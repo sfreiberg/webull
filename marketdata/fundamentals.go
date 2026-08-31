@@ -178,20 +178,30 @@ func (c *Client) ForecastEPS(ctx context.Context, symbol string, cat Category) (
 }
 
 // IndustryRank is one company's rank within its industry on the compared
-// metric.
+// metric. Value is null when the company has no figure for the metric.
 type IndustryRank struct {
-	Symbol string          `json:"symbol"`
-	Name   string          `json:"name"`
-	Rank   int             `json:"rank"`
-	Value  decimal.Decimal `json:"value"`
+	Symbol string              `json:"symbol"`
+	Name   string              `json:"name"`
+	Rank   int                 `json:"rank"`
+	Value  decimal.NullDecimal `json:"value"`
 }
 
 // ComparisonMetric is the financial metric an industry comparison ranks by.
-// EPSTTM is the only value Webull documents.
+// The values are Webull's IndustryComparisonSortBy dictionary.
 type ComparisonMetric string
 
-// EPSTTM ranks by trailing-twelve-month earnings per share.
-const EPSTTM ComparisonMetric = "EPS_TTM"
+// Comparison metrics.
+const (
+	EPSTTM           ComparisonMetric = "EPS_TTM"
+	NAPS             ComparisonMetric = "NAPS"
+	DPSTTM           ComparisonMetric = "DPS_TTM"
+	ROE              ComparisonMetric = "ROE"
+	DebtToAssets     ComparisonMetric = "DEBT_TO_ASSETS"
+	NetMargin        ComparisonMetric = "NET_MARGIN"
+	DividendYieldTTM ComparisonMetric = "DIV_YIELD_TTM"
+	PETTM            ComparisonMetric = "PE_TTM"
+	PBRatio          ComparisonMetric = "PB_RATIO"
+)
 
 // IndustryComparison ranks a company's industry peers on one metric.
 type IndustryComparison struct {

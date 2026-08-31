@@ -77,8 +77,11 @@ func TestFinancialIndicators(t *testing.T) {
 		t.Errorf("indicators = %+v", got)
 	}
 	roa := got.Values["roa"][0]
-	if roa.FiscalYear != 2025 || roa.FiscalPeriod != 4 || !roa.Value.Equal(d("0.2133")) {
+	if roa.FiscalYear != 2025 || roa.FiscalPeriod != 4 || !roa.Value.Decimal.Equal(d("0.2133")) {
 		t.Errorf("roa = %+v", roa)
+	}
+	if got.Values["roe"][0].Value.Valid {
+		t.Error("a null indicator value must be null, not zero")
 	}
 }
 
@@ -166,18 +169,21 @@ func TestForecastEPS(t *testing.T) {
 
 func TestIndustryComparison(t *testing.T) {
 	c, f := newClient(t, "/market-data/fundamentals/industry-comparisons/get", "industry_comparison.json", 0)
-	got, err := c.IndustryComparison(context.Background(), "AAPL", "", "EPS_TTM")
+	got, err := c.IndustryComparison(context.Background(), "AAPL", "", EPSTTM)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if f.gotQuery["sort_by"][0] != "EPS_TTM" {
 		t.Errorf("query = %v", f.gotQuery)
 	}
-	if got.IndustryName != "Phones & Handheld Devices" || got.Metric != "EPS_TTM" || len(got.Companies) != 2 {
+	if got.IndustryName != "Phones & Handheld Devices" || got.Metric != EPSTTM || len(got.Companies) != 3 {
 		t.Errorf("comparison = %+v", got)
 	}
-	if got.Companies[0].Rank != 1 || !got.Companies[0].Value.Equal(d("8.266")) {
+	if got.Companies[0].Rank != 1 || !got.Companies[0].Value.Decimal.Equal(d("8.266")) {
 		t.Errorf("entry = %+v", got.Companies[0])
+	}
+	if got.Companies[2].Value.Valid {
+		t.Error("a null metric value must be null, not zero")
 	}
 }
 

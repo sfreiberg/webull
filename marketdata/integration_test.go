@@ -77,9 +77,10 @@ func TestIntegrationFundamentals(t *testing.T) {
 // subtests skip on an empty result rather than fail; if the sandbox starts
 // serving them, they pass and the compatibility matrix should be updated.
 func TestIntegrationFundamentalsReference(t *testing.T) {
-	c, ctx := newClient(t)
+	c := testutil.NewIntegrationClient(t).MarketData
 
 	t.Run("balance-sheets", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		bs, err := c.BalanceSheets(ctx, marketdata.FinancialsRequest{Symbol: "AAPL", Type: marketdata.Annual, Count: 2})
 		if err != nil {
 			t.Fatalf("BalanceSheets: %v", err)
@@ -93,6 +94,7 @@ func TestIntegrationFundamentalsReference(t *testing.T) {
 		t.Log("balance sheets served; update the compatibility matrix")
 	})
 	t.Run("income-statements", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		is, err := c.IncomeStatements(ctx, marketdata.FinancialsRequest{Symbol: "AAPL"})
 		if err != nil {
 			t.Fatalf("IncomeStatements: %v", err)
@@ -106,6 +108,7 @@ func TestIntegrationFundamentalsReference(t *testing.T) {
 		t.Log("income statements served; update the compatibility matrix")
 	})
 	t.Run("cash-flows", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		cf, err := c.CashFlows(ctx, marketdata.FinancialsRequest{Symbol: "AAPL"})
 		if err != nil {
 			t.Fatalf("CashFlows: %v", err)
@@ -119,6 +122,7 @@ func TestIntegrationFundamentalsReference(t *testing.T) {
 		t.Log("cash flows served; update the compatibility matrix")
 	})
 	t.Run("industry-comparison", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		ic, err := c.IndustryComparison(ctx, "AAPL", "", "")
 		if err != nil {
 			t.Fatalf("IndustryComparison: %v", err)
@@ -133,37 +137,44 @@ func TestIntegrationFundamentalsReference(t *testing.T) {
 	})
 
 	t.Run("indicators", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		fi, err := c.FinancialIndicators(ctx, marketdata.FinancialsRequest{Symbol: "AAPL"})
 		if err != nil || len(fi.Values) == 0 {
 			t.Errorf("FinancialIndicators: %v %+v", err, fi)
 		}
 	})
 	t.Run("alert", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		if fa, err := c.FinancialAlert(ctx, "AAPL", ""); err != nil || fa.FiscalYear == 0 {
 			t.Errorf("FinancialAlert: %v %+v", err, fa)
 		}
 	})
 	t.Run("capital-flows", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		if flows, err := c.CapitalFlows(ctx, "AAPL", "", 3); err != nil || len(flows) == 0 || flows[0].Date.IsZero() {
 			t.Errorf("CapitalFlows: %v %+v", err, flows)
 		}
 	})
 	t.Run("dividend-calendar", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		if divs, err := c.DividendCalendar(ctx, "AAPL", ""); err != nil || len(divs) == 0 || divs[0].Amount.IsZero() {
 			t.Errorf("DividendCalendar: %v %+v", err, divs)
 		}
 	})
 	t.Run("earnings-calendar", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		if earns, err := c.EarningsCalendar(ctx, "AAPL", ""); err != nil || len(earns) == 0 || earns[0].FiscalYear == 0 {
 			t.Errorf("EarningsCalendar: %v %+v", err, earns)
 		}
 	})
 	t.Run("filings", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		if filings, err := c.Filings(ctx, "AAPL", ""); err != nil || len(filings) == 0 || filings[0].URL == "" {
 			t.Errorf("Filings: %v %+v", err, filings)
 		}
 	})
 	t.Run("forecast-eps", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t) // each subtest gets its own budget
 		if eps, err := c.ForecastEPS(ctx, "AAPL", ""); err != nil || len(eps) == 0 {
 			t.Errorf("ForecastEPS: %v %+v", err, eps)
 		}
