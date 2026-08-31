@@ -190,7 +190,7 @@ type IndustryRank struct {
 // EPSTTM is the only value Webull documents.
 type ComparisonMetric string
 
-// Comparison metrics.
+// EPSTTM ranks by trailing-twelve-month earnings per share.
 const EPSTTM ComparisonMetric = "EPS_TTM"
 
 // IndustryComparison ranks a company's industry peers on one metric.
