@@ -24,9 +24,9 @@ working.
 
 ## Summary
 
-The transport layer, the Trading API, and market data over HTTP for every
-asset class are implemented. Market-data reference data (fundamentals,
-screeners, watchlists, news), streaming and Connect are not.
+The transport layer, the Trading API, market data over HTTP for every asset
+class, and fundamentals reference data are implemented. Funds, screeners,
+watchlists, news, streaming and Connect are not.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
@@ -54,7 +54,7 @@ screeners, watchlists, news), streaming and Connect are not.
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
 | Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
 | OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
-| **Market data (HTTP)** | Partial | Yes | Yes | 6b | Every asset class's quotes complete; reference data follows in 6c |
+| **Market data (HTTP)** | Partial | Yes | Yes | 6c | Every asset class's quotes and the fundamentals complete; funds, screeners, watchlists and news remain |
 | Stock snapshots, depth, ticks, bars | Complete | Yes | Yes | 6a | Verified live. The documented single-symbol bars path 404s; `Bars` uses the batch endpoint for one or many |
 | Option snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live, including greeks |
 | Futures snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live on `MESmain`, the only symbol the sandbox serves |
@@ -66,7 +66,10 @@ screeners, watchlists, news), streaming and Connect are not.
 | NOII (auction imbalance) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`STOCK QUOTES LV2`) |
 | Stock profiles, logos | Blocked | – | – | 6a | The documented paths return `404 Route Not Found` in the sandbox. Profiles are served by `trade.StockProfiles`, which is the same data under the SDK scheme; logos have no equivalent |
 | Company profile, analyst rating, target price | Complete | Yes | – | 6a | Verified live |
-| Financials, capital flow, calendars, filings | Planned | – | – | 6c | |
+| Financial statements (balance sheet, income, cash flow) | Unverified | Yes | – | 6c | Implemented to the documented schema. **The sandbox serves an empty list** for every symbol tried |
+| Financial indicators, financial alert | Complete | Yes | – | 6c | Verified live |
+| Capital flow, dividend and earnings calendars, filings, forecast EPS | Complete | Yes | – | 6c | Verified live |
+| Industry comparison | Unverified | Yes | – | 6c | Implemented to the documented schema. **The sandbox serves an empty object** for every symbol tried |
 | Funds | Planned | – | – | 6 | |
 | Screeners | Planned | – | – | 6 | |
 | Watchlists | Planned | – | – | 6 | |
@@ -183,6 +186,7 @@ Established against the live sandbox and relied on by the implementation.
 | Account not accessible | 403 with `ACCOUNT_ACCESS_DENIED` |
 | Pagination bounds | Per endpoint: open orders require `page_size` 10–100; cash activities accept 1–200 and reject 201 with a 417 |
 | Decimal encoding | Confirmed on the wire: `"total_cash_balance":"1000000.00"` — a string, with trailing zeros preserved |
+| Fundamentals in the sandbox | The financial-statement endpoints (balance sheet, income, cash flow) return an empty array and industry comparison an empty object, HTTP 200, for every symbol tried; the other Phase 6c endpoints serve real data. Capital-flow amounts are documented in scientific notation (`"1.78E8"`) but served as plain decimal strings; the SDK decodes both. Capital-flow dates are `yyyyMMdd`, a fourth date form |
 
 ## Sandbox validation backlog
 
@@ -221,3 +225,4 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 25 | Whether corporate actions, stock profiles and logos exist in production; every path 404s in the sandbox | production keys |
 | 26 | Whether the event-contract display endpoints (`markets/*`, live data, game stats), milestones and sports filters exist in production; all 404 in the sandbox | production keys |
 | 27 | Futures depth and footprint decoding against real data; the key lacks `FUTURES LV2` and `FOOTPRINT` | a subscribed key |
+| 28 | Financial statements and industry comparison against real data; the sandbox returns them empty for every symbol. The integration subtests skip today and pass when data appears | production keys |

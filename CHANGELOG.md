@@ -12,6 +12,10 @@ called out explicitly.
 
 ### Added
 
+- Fundamentals reference data: financial statements (`BalanceSheets`,
+  `IncomeStatements`, `CashFlows`), `FinancialIndicators`, `FinancialAlert`,
+  `CapitalFlows`, `DividendCalendar`, `EarningsCalendar`, `Filings`,
+  `ForecastEPS` and `IndustryComparison`.
 - Market data for options (with greeks), futures, crypto and event contracts:
   snapshots, ticks, bars, and depth where the asset class has it.
 - `marketdata` package: stock snapshots, depth, ticks, bars, footprints and
@@ -60,9 +64,8 @@ called out explicitly.
 - Endpoint paths follow Webull's documented scheme (`/trading/...`). The
   `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
   handlers and are not implemented.
-- Market data for options, futures, crypto and event contracts, streaming
-  and the Connect API are not implemented yet. The
-  Broker API and FIX are out of scope; see
-  [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+- Market-data funds, screeners, watchlists and news, streaming and the
+  Connect API are not implemented yet. The Broker API and FIX are out of
+  scope; see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 [Unreleased]: https://github.com/sfreiberg/webull/commits/main

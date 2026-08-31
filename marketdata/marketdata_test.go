@@ -386,7 +386,15 @@ func TestTimeAcceptsBareDate(t *testing.T) {
 	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
 		t.Errorf("got %v", v)
 	}
-	if err := json.Unmarshal([]byte(`"2026-13-45"`), &v); err == nil {
-		t.Error("an invalid date must be rejected")
+	if err := json.Unmarshal([]byte(`"20260919"`), &v); err != nil {
+		t.Fatal(err)
+	}
+	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("compact date: got %v", v)
+	}
+	for _, in := range []string{`"2026-13-45"`, `"20261345"`} {
+		if err := json.Unmarshal([]byte(in), &v); err == nil {
+			t.Errorf("%s: an invalid date must be rejected", in)
+		}
 	}
 }

@@ -1,0 +1,20 @@
+[
+  {
+    "date": "20260521",
+    "large_in": "1.5E8",
+    "large_out": "2.1E8",
+    "medium_in": "5.0E8",
+    "medium_out": "6.2E8",
+    "small_in": "5.1E8",
+    "small_out": "5.3E8"
+  },
+  {
+    "date": "20260522",
+    "large_in": "1.78524330946E8",
+    "large_out": "2.322224369753E8",
+    "medium_in": "5.383868507956E8",
+    "medium_out": "6.09515342527E8",
+    "small_in": "5.255109391047E8",
+    "small_out": "5.447926690503E8"
+  }
+]

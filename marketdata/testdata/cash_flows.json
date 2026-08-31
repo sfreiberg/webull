@@ -1,0 +1,26 @@
+[
+  {
+    "fiscal_year": 2025,
+    "fiscal_period": 0,
+    "end_date": "2025-12-31",
+    "currency": "USD",
+    "publish_date": "2026-01-29",
+    "cfo": "14747000000",
+    "net_income": "3855000000",
+    "dna": "6148000000",
+    "deferred_tax": "123000000",
+    "non_cash_items": "3979000000",
+    "wc_change": "642000000",
+    "cfi": "-15478000000",
+    "capex": "-8527000000",
+    "other_cfi_items": "-6951000000",
+    "cff": "1139000000",
+    "cff_items": "17000000",
+    "net_stock_iss_ret": "1186000000",
+    "net_debt_iss_ret": "-64000000",
+    "fx_effects": "171000000",
+    "net_change_cash": "579000000",
+    "interest_paid": "292000000",
+    "taxes_paid": "1232000000"
+  }
+]

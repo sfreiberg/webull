@@ -1,0 +1,19 @@
+[
+  {
+    "fiscal_year": 2026,
+    "fiscal_period": 1,
+    "currency": "USD",
+    "expected_publish_date": "2026-02-05",
+    "eps_actual": "2.18",
+    "eps_est": "2.1",
+    "rev_actual": "119580000000",
+    "rev_est": "117900000000"
+  },
+  {
+    "fiscal_year": 2026,
+    "fiscal_period": 2,
+    "currency": "USD",
+    "expected_publish_date": "2026-05-01",
+    "eps_est": "1.62"
+  }
+]

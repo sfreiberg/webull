@@ -1,0 +1,13 @@
+[
+  {
+    "symbol": "AAPL",
+    "market": "US",
+    "currency": "USD",
+    "amount": "0.25",
+    "div_type": "CASH_DIVIDEND",
+    "declare_date": "2026-05-01",
+    "ex_div_date": "2026-05-08",
+    "record_date": "2026-05-11",
+    "pay_date": "2026-05-15"
+  }
+]

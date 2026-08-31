@@ -69,6 +69,107 @@ func TestIntegrationFundamentals(t *testing.T) {
 	}
 }
 
+// TestIntegrationFundamentalsReference exercises the reference-data
+// endpoints added in Phase 6c against the sandbox.
+//
+// The financial statements and the industry comparison exist there but serve
+// no data for any symbol tried ("[]" and "{}" respectively), so those
+// subtests skip on an empty result rather than fail; if the sandbox starts
+// serving them, they pass and the compatibility matrix should be updated.
+func TestIntegrationFundamentalsReference(t *testing.T) {
+	c, ctx := newClient(t)
+
+	t.Run("balance-sheets", func(t *testing.T) {
+		bs, err := c.BalanceSheets(ctx, marketdata.FinancialsRequest{Symbol: "AAPL", Type: marketdata.Annual, Count: 2})
+		if err != nil {
+			t.Fatalf("BalanceSheets: %v", err)
+		}
+		if len(bs) == 0 {
+			t.Skip("integration: sandbox serves no balance-sheet data")
+		}
+		if !bs[0].TotalAssets.Valid || bs[0].FiscalYear == 0 {
+			t.Errorf("balance sheet = %+v", bs[0])
+		}
+		t.Log("balance sheets served; update the compatibility matrix")
+	})
+	t.Run("income-statements", func(t *testing.T) {
+		is, err := c.IncomeStatements(ctx, marketdata.FinancialsRequest{Symbol: "AAPL"})
+		if err != nil {
+			t.Fatalf("IncomeStatements: %v", err)
+		}
+		if len(is) == 0 {
+			t.Skip("integration: sandbox serves no income-statement data")
+		}
+		if !is[0].TotalRevenue.Valid {
+			t.Errorf("income statement = %+v", is[0])
+		}
+		t.Log("income statements served; update the compatibility matrix")
+	})
+	t.Run("cash-flows", func(t *testing.T) {
+		cf, err := c.CashFlows(ctx, marketdata.FinancialsRequest{Symbol: "AAPL"})
+		if err != nil {
+			t.Fatalf("CashFlows: %v", err)
+		}
+		if len(cf) == 0 {
+			t.Skip("integration: sandbox serves no cash-flow data")
+		}
+		if !cf[0].OperatingCashFlow.Valid {
+			t.Errorf("cash flow = %+v", cf[0])
+		}
+		t.Log("cash flows served; update the compatibility matrix")
+	})
+	t.Run("industry-comparison", func(t *testing.T) {
+		ic, err := c.IndustryComparison(ctx, "AAPL", "", "")
+		if err != nil {
+			t.Fatalf("IndustryComparison: %v", err)
+		}
+		if ic.IndustryName == "" && len(ic.Companies) == 0 {
+			t.Skip("integration: sandbox serves no industry-comparison data")
+		}
+		if len(ic.Companies) == 0 || ic.Companies[0].Symbol == "" {
+			t.Errorf("comparison = %+v", ic)
+		}
+		t.Log("industry comparison served; update the compatibility matrix")
+	})
+
+	t.Run("indicators", func(t *testing.T) {
+		fi, err := c.FinancialIndicators(ctx, marketdata.FinancialsRequest{Symbol: "AAPL"})
+		if err != nil || len(fi.Values) == 0 {
+			t.Errorf("FinancialIndicators: %v %+v", err, fi)
+		}
+	})
+	t.Run("alert", func(t *testing.T) {
+		if fa, err := c.FinancialAlert(ctx, "AAPL", ""); err != nil || fa.FiscalYear == 0 {
+			t.Errorf("FinancialAlert: %v %+v", err, fa)
+		}
+	})
+	t.Run("capital-flows", func(t *testing.T) {
+		if flows, err := c.CapitalFlows(ctx, "AAPL", "", 3); err != nil || len(flows) == 0 || flows[0].Date.IsZero() {
+			t.Errorf("CapitalFlows: %v %+v", err, flows)
+		}
+	})
+	t.Run("dividend-calendar", func(t *testing.T) {
+		if divs, err := c.DividendCalendar(ctx, "AAPL", ""); err != nil || len(divs) == 0 || divs[0].Amount.IsZero() {
+			t.Errorf("DividendCalendar: %v %+v", err, divs)
+		}
+	})
+	t.Run("earnings-calendar", func(t *testing.T) {
+		if earns, err := c.EarningsCalendar(ctx, "AAPL", ""); err != nil || len(earns) == 0 || earns[0].FiscalYear == 0 {
+			t.Errorf("EarningsCalendar: %v %+v", err, earns)
+		}
+	})
+	t.Run("filings", func(t *testing.T) {
+		if filings, err := c.Filings(ctx, "AAPL", ""); err != nil || len(filings) == 0 || filings[0].URL == "" {
+			t.Errorf("Filings: %v %+v", err, filings)
+		}
+	})
+	t.Run("forecast-eps", func(t *testing.T) {
+		if eps, err := c.ForecastEPS(ctx, "AAPL", ""); err != nil || len(eps) == 0 {
+			t.Errorf("ForecastEPS: %v %+v", err, eps)
+		}
+	})
+}
+
 // TestIntegrationEntitlements records what the key is not subscribed to.
 // Each unsubscribed product skips with Webull's own message; if a product
 // becomes available, the test passes and the matrix should be updated.

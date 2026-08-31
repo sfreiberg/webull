@@ -1,0 +1,11 @@
+{
+  "symbol": "AAPL",
+  "category": "US_STOCK",
+  "filings": [
+    {
+      "title": "8-K | Apple Inc. (0000320193)",
+      "url": "https://www.sec.gov/Archives/edgar/data/0000320193/000032019325000071/aapl-20250731.htm",
+      "publish_date": "2025-07-31"
+    }
+  ]
+}
