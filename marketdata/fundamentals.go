@@ -186,20 +186,27 @@ type IndustryRank struct {
 	Value  decimal.Decimal `json:"value"`
 }
 
+// ComparisonMetric is the financial metric an industry comparison ranks by.
+// EPSTTM is the only value Webull documents.
+type ComparisonMetric string
+
+// Comparison metrics.
+const EPSTTM ComparisonMetric = "EPS_TTM"
+
 // IndustryComparison ranks a company's industry peers on one metric.
 type IndustryComparison struct {
-	FiscalYear   int            `json:"fiscal_year"`
-	FiscalPeriod int            `json:"fiscal_period"`
-	IndustryName string         `json:"industry_name"`
-	Metric       string         `json:"type"`
-	Companies    []IndustryRank `json:"data"`
+	FiscalYear   int              `json:"fiscal_year"`
+	FiscalPeriod int              `json:"fiscal_period"`
+	IndustryName string           `json:"industry_name"`
+	Metric       ComparisonMetric `json:"type"`
+	Companies    []IndustryRank   `json:"data"`
 }
 
 // IndustryComparison compares a company with its industry peers on one
-// financial metric; an empty metric lets Webull default to "EPS_TTM".
-func (c *Client) IndustryComparison(ctx context.Context, symbol string, cat Category, metric string) (*IndustryComparison, error) {
+// financial metric; an empty metric lets Webull default to EPSTTM.
+func (c *Client) IndustryComparison(ctx context.Context, symbol string, cat Category, metric ComparisonMetric) (*IndustryComparison, error) {
 	q := symbolParams(symbol, cat)
-	q.Set("sort_by", metric)
+	q.Set("sort_by", string(metric))
 	var out IndustryComparison
 	if err := c.get(ctx, "/market-data/fundamentals/industry-comparisons/get", q, &out); err != nil {
 		return nil, err

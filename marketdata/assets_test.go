@@ -234,32 +234,26 @@ func TestEventSnapshotDepthTicks(t *testing.T) {
 }
 
 func TestAssetErrorsPropagate(t *testing.T) {
-	c, _ := newClient(t, "", "error_category.json", http.StatusExpectationFailed)
-	ctx := context.Background()
-	req := AssetBarsRequest{Symbols: []string{"X"}, Timespan: Daily}
-	calls := map[string]func() error{
-		"OptionSnapshots":  func() error { _, e := c.OptionSnapshots(ctx, []string{"X"}); return e },
-		"OptionTicks":      func() error { _, e := c.OptionTicks(ctx, "X", 1); return e },
-		"OptionBars":       func() error { _, e := c.OptionBars(ctx, req); return e },
-		"FuturesSnapshots": func() error { _, e := c.FuturesSnapshots(ctx, []string{"X"}); return e },
-		"FuturesTicks":     func() error { _, e := c.FuturesTicks(ctx, "X", 1); return e },
-		"FuturesDepth":     func() error { _, e := c.FuturesDepth(ctx, "X", 1); return e },
-		"FuturesBars":      func() error { _, e := c.FuturesBars(ctx, req); return e },
-		"FuturesFootprints": func() error {
-			_, e := c.FuturesFootprints(ctx, FootprintsRequest{Symbols: []string{"X"}, Timespan: Minute})
-			return e
-		},
-		"CryptoSnapshots": func() error { _, e := c.CryptoSnapshots(ctx, []string{"X"}); return e },
-		"CryptoBars":      func() error { _, e := c.CryptoBars(ctx, req); return e },
-		"EventSnapshots":  func() error { _, e := c.EventSnapshots(ctx, []string{"X"}); return e },
-		"EventDepth":      func() error { _, e := c.EventDepth(ctx, "X", 1); return e },
-		"EventTicks":      func() error { _, e := c.EventTicks(ctx, "X", 1); return e },
-		"EventBars":       func() error { _, e := c.EventBars(ctx, req); return e },
-	}
-	for name, call := range calls {
-		var coded *codedError
-		if err := call(); !errors.As(err, &coded) || coded.code != "UNSUPPORTED_CATEGORY" {
-			t.Errorf("%s: got %v", name, err)
+	assertCategoryErrors(t, func(c *Client, ctx context.Context) map[string]func() error {
+		req := AssetBarsRequest{Symbols: []string{"X"}, Timespan: Daily}
+		return map[string]func() error{
+			"OptionSnapshots":  func() error { _, e := c.OptionSnapshots(ctx, []string{"X"}); return e },
+			"OptionTicks":      func() error { _, e := c.OptionTicks(ctx, "X", 1); return e },
+			"OptionBars":       func() error { _, e := c.OptionBars(ctx, req); return e },
+			"FuturesSnapshots": func() error { _, e := c.FuturesSnapshots(ctx, []string{"X"}); return e },
+			"FuturesTicks":     func() error { _, e := c.FuturesTicks(ctx, "X", 1); return e },
+			"FuturesDepth":     func() error { _, e := c.FuturesDepth(ctx, "X", 1); return e },
+			"FuturesBars":      func() error { _, e := c.FuturesBars(ctx, req); return e },
+			"FuturesFootprints": func() error {
+				_, e := c.FuturesFootprints(ctx, FootprintsRequest{Symbols: []string{"X"}, Timespan: Minute})
+				return e
+			},
+			"CryptoSnapshots": func() error { _, e := c.CryptoSnapshots(ctx, []string{"X"}); return e },
+			"CryptoBars":      func() error { _, e := c.CryptoBars(ctx, req); return e },
+			"EventSnapshots":  func() error { _, e := c.EventSnapshots(ctx, []string{"X"}); return e },
+			"EventDepth":      func() error { _, e := c.EventDepth(ctx, "X", 1); return e },
+			"EventTicks":      func() error { _, e := c.EventTicks(ctx, "X", 1); return e },
+			"EventBars":       func() error { _, e := c.EventBars(ctx, req); return e },
 		}
-	}
+	})
 }

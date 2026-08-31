@@ -2,8 +2,6 @@ package marketdata
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"testing"
 	"time"
 )
@@ -194,25 +192,19 @@ func TestIndustryComparisonOmitsMetricWhenUnset(t *testing.T) {
 }
 
 func TestErrorsPropagateFromEveryFundamentalsMethod(t *testing.T) {
-	c, _ := newClient(t, "", "error_category.json", http.StatusExpectationFailed)
-	ctx := context.Background()
-	calls := map[string]func() error{
-		"BalanceSheets":       func() error { _, e := c.BalanceSheets(ctx, FinancialsRequest{Symbol: "A"}); return e },
-		"IncomeStatements":    func() error { _, e := c.IncomeStatements(ctx, FinancialsRequest{Symbol: "A"}); return e },
-		"CashFlows":           func() error { _, e := c.CashFlows(ctx, FinancialsRequest{Symbol: "A"}); return e },
-		"FinancialIndicators": func() error { _, e := c.FinancialIndicators(ctx, FinancialsRequest{Symbol: "A"}); return e },
-		"FinancialAlert":      func() error { _, e := c.FinancialAlert(ctx, "A", ""); return e },
-		"CapitalFlows":        func() error { _, e := c.CapitalFlows(ctx, "A", "", 0); return e },
-		"DividendCalendar":    func() error { _, e := c.DividendCalendar(ctx, "A", ""); return e },
-		"EarningsCalendar":    func() error { _, e := c.EarningsCalendar(ctx, "A", ""); return e },
-		"Filings":             func() error { _, e := c.Filings(ctx, "A", ""); return e },
-		"ForecastEPS":         func() error { _, e := c.ForecastEPS(ctx, "A", ""); return e },
-		"IndustryComparison":  func() error { _, e := c.IndustryComparison(ctx, "A", "", ""); return e },
-	}
-	for name, call := range calls {
-		var coded *codedError
-		if err := call(); !errors.As(err, &coded) || coded.code != "UNSUPPORTED_CATEGORY" {
-			t.Errorf("%s: got %v", name, err)
+	assertCategoryErrors(t, func(c *Client, ctx context.Context) map[string]func() error {
+		return map[string]func() error{
+			"BalanceSheets":       func() error { _, e := c.BalanceSheets(ctx, FinancialsRequest{Symbol: "A"}); return e },
+			"IncomeStatements":    func() error { _, e := c.IncomeStatements(ctx, FinancialsRequest{Symbol: "A"}); return e },
+			"CashFlows":           func() error { _, e := c.CashFlows(ctx, FinancialsRequest{Symbol: "A"}); return e },
+			"FinancialIndicators": func() error { _, e := c.FinancialIndicators(ctx, FinancialsRequest{Symbol: "A"}); return e },
+			"FinancialAlert":      func() error { _, e := c.FinancialAlert(ctx, "A", ""); return e },
+			"CapitalFlows":        func() error { _, e := c.CapitalFlows(ctx, "A", "", 0); return e },
+			"DividendCalendar":    func() error { _, e := c.DividendCalendar(ctx, "A", ""); return e },
+			"EarningsCalendar":    func() error { _, e := c.EarningsCalendar(ctx, "A", ""); return e },
+			"Filings":             func() error { _, e := c.Filings(ctx, "A", ""); return e },
+			"ForecastEPS":         func() error { _, e := c.ForecastEPS(ctx, "A", ""); return e },
+			"IndustryComparison":  func() error { _, e := c.IndustryComparison(ctx, "A", "", ""); return e },
 		}
-	}
+	})
 }
