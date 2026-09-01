@@ -47,7 +47,7 @@ func TestTopActive(t *testing.T) {
 
 func TestHighDividend(t *testing.T) {
 	c, f := newClient(t, "/market-data/screeners/high-dividend-ranks/list", "dividend_stocks.json", 0)
-	got, err := c.HighDividend(context.Background(), "", SortYield, Descending)
+	got, err := c.HighDividend(context.Background(), HighDividendRequest{SortBy: SortYield, Direction: Descending})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestHighDividend(t *testing.T) {
 
 func TestWeek52HighLow(t *testing.T) {
 	c, f := newClient(t, "/market-data/screeners/week52-high-low/list", "week52_stocks.json", 0)
-	got, err := c.Week52HighLow(context.Background(), "", NewHigh, "", "")
+	got, err := c.Week52HighLow(context.Background(), Week52Request{Rank: NewHigh})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -109,13 +109,38 @@ func TestMarketSectorsAndDetail(t *testing.T) {
 	}
 }
 
+func TestScreenerListDecodesEitherShape(t *testing.T) {
+	// The sandbox returns a bare array (covered above); Webull's formatter
+	// documentation describes a {has_more, data} envelope, which must
+	// decode too.
+	c, _ := newClient(t, "", "screener_stocks_enveloped.json", 0)
+	got, err := c.GainersLosers(context.Background(), GainersLosersRequest{Period: Rank1Day})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 1 || got[0].Symbol != "SSM" || !got[0].ChangeRatio.Decimal.Equal(d("0.774254")) {
+		t.Errorf("enveloped stocks = %+v", got)
+	}
+}
+
+func TestSectorsPageDecodesBareList(t *testing.T) {
+	c, _ := newClient(t, "", "sectors_bare.json", 0)
+	got, err := c.MarketSectors(context.Background(), MarketSectorsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Sectors) != 1 || got.Sectors[0].ID != "7324" || got.PaginationKey != "" {
+		t.Errorf("bare sectors = %+v", got)
+	}
+}
+
 func TestErrorsPropagateFromEveryScreenerMethod(t *testing.T) {
 	assertCategoryErrors(t, func(c *Client, ctx context.Context) map[string]func() error {
 		return map[string]func() error{
 			"GainersLosers": func() error { _, e := c.GainersLosers(ctx, GainersLosersRequest{Period: Rank1Day}); return e },
 			"TopActive":     func() error { _, e := c.TopActive(ctx, TopActiveRequest{}); return e },
-			"HighDividend":  func() error { _, e := c.HighDividend(ctx, "", "", ""); return e },
-			"Week52HighLow": func() error { _, e := c.Week52HighLow(ctx, "", "", "", ""); return e },
+			"HighDividend":  func() error { _, e := c.HighDividend(ctx, HighDividendRequest{}); return e },
+			"Week52HighLow": func() error { _, e := c.Week52HighLow(ctx, Week52Request{}); return e },
 			"MarketSectors": func() error { _, e := c.MarketSectors(ctx, MarketSectorsRequest{}); return e },
 			"SectorDetail":  func() error { _, e := c.SectorDetail(ctx, SectorDetailRequest{SectorID: "1"}); return e },
 		}

@@ -73,6 +73,16 @@ func TestWatchlistMutationFailureIsAnError(t *testing.T) {
 	}
 }
 
+func TestWatchlistUnknownReceiptFailsLoudly(t *testing.T) {
+	// A 200 receipt in neither known shape must be a decode error, not a
+	// silent failure verdict.
+	c, _ := newClient(t, "", "watchlist_unknown.json", 0)
+	err := c.DeleteWatchlist(context.Background(), "12345678")
+	if err == nil || errors.Is(err, ErrWatchlistFailed) {
+		t.Errorf("an unrecognised receipt must be a decode error, got %v", err)
+	}
+}
+
 func TestWatchlistInstrumentsUnwrapTheEnvelope(t *testing.T) {
 	c, f := newClient(t, "/market-data/watchlists/instruments/list", "watchlist_instruments.json", 0)
 	got, err := c.WatchlistInstruments(context.Background(), "12345678")

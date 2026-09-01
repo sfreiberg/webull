@@ -51,7 +51,9 @@ func (c *Client) CreateWatchlist(ctx context.Context, name string, sort int) (st
 
 // successBody decodes a watchlist mutation receipt in either of the shapes
 // Webull uses: the {"success": bool} envelope its documentation shows, or
-// the bare JSON bool the sandbox returns.
+// the bare JSON bool the sandbox returns. Any other shape is a decode
+// error, so an unrecognised receipt fails loudly rather than being
+// misread as a failed mutation.
 type successBody struct {
 	Success bool
 }
@@ -63,12 +65,15 @@ func (s *successBody) UnmarshalJSON(b []byte) error {
 		return nil
 	}
 	var wrapped struct {
-		Success bool `json:"success"`
+		Success *bool `json:"success"`
 	}
 	if err := json.Unmarshal(b, &wrapped); err != nil {
 		return err
 	}
-	s.Success = wrapped.Success
+	if wrapped.Success == nil {
+		return fmt.Errorf("marketdata: unrecognised watchlist receipt %s", b)
+	}
+	s.Success = *wrapped.Success
 	return nil
 }
 

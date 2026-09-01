@@ -24,10 +24,12 @@ working.
 
 ## Summary
 
-The transport layer, the Trading API, and the entire documented Market Data
-HTTP API — quotes for every asset class, fundamentals, funds, screeners and
-watchlists — are implemented. News is blocked (the endpoint does not exist
-in the sandbox); streaming and Connect are not implemented yet.
+The transport layer, the Trading API, and the Market Data HTTP API — quotes
+for every asset class, fundamentals, funds, screeners and watchlists — are
+implemented. The documented market-data endpoints that 404 in the sandbox
+are Blocked, not implemented: corporate actions, stock profiles and logos
+(under the documented paths), the event-contract display endpoints, and
+news. Streaming and Connect are not implemented yet.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
@@ -55,7 +57,7 @@ in the sandbox); streaming and Connect are not implemented yet.
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
 | Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
 | OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
-| **Market data (HTTP)** | Complete | Yes | Yes | 6d | Every documented endpoint implemented; news is blocked in the sandbox |
+| **Market data (HTTP)** | Complete | Yes | Yes | 6d | Every endpoint the sandbox serves is implemented; the sub-rows marked Blocked (corporate actions, profiles/logos, event display, news) 404 there and are not |
 | Stock snapshots, depth, ticks, bars | Complete | Yes | Yes | 6a | Verified live. The documented single-symbol bars path 404s; `Bars` uses the batch endpoint for one or many |
 | Option snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live, including greeks |
 | Futures snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live on `MESmain`, the only symbol the sandbox serves |
@@ -192,6 +194,7 @@ Established against the live sandbox and relied on by the implementation.
 | Watchlist mutation receipts | Documented as `{"success": bool}`; the sandbox returns a bare JSON `true`/`false`. The SDK decodes both, and `success=false` with HTTP 200 is `marketdata.ErrWatchlistFailed` |
 | Fund data in the sandbox | Brief, dividends, net values, performance, ratings and splits serve real data; allocations, holdings and files return an empty list for every fund tried. AUM is documented in scientific notation but served plain |
 | A fourth error shape | The news endpoint's 404 is a bare Spring error (`{timestamp, status, error, message, path}`), with the path rewritten to the SDK scheme (`/openapi/news/summary`) — unlike the two application shapes and the gateway shape |
+| Sector period spelling | The server accepts `MO1`/`MO3` (letter O, per the reference docs) and rejects `M01`/`M03` (digit zero, per Webull's MCP and skills repos) with `417 UNSUPPORTED_PERIOD` — the docs are right and those repos are wrong. Each period returns genuinely different statistics, and an invalid value fails loudly rather than defaulting |
 
 ## Sandbox validation backlog
 

@@ -2,11 +2,38 @@ package marketdata
 
 import (
 	"context"
+	"encoding/json"
+	"strings"
 
 	"github.com/shopspring/decimal"
 
 	"github.com/sfreiberg/webull/internal/query"
 )
+
+// screenerList decodes a screener response in either of the shapes Webull
+// uses: the bare array the sandbox returns, or the {"data": [...]} envelope
+// its formatter documentation describes. The same tolerance the bars
+// endpoints needed, in the other direction.
+type screenerList[T any] []T
+
+func (l *screenerList[T]) UnmarshalJSON(b []byte) error {
+	if strings.HasPrefix(strings.TrimSpace(string(b)), "[") {
+		var bare []T
+		if err := json.Unmarshal(b, &bare); err != nil {
+			return err
+		}
+		*l = bare
+		return nil
+	}
+	var wrapped struct {
+		Data []T `json:"data"`
+	}
+	if err := json.Unmarshal(b, &wrapped); err != nil {
+		return err
+	}
+	*l = wrapped.Data
+	return nil
+}
 
 // RankPeriod is the time window a gainers-losers ranking is computed over.
 type RankPeriod string
@@ -43,6 +70,9 @@ const (
 	SortVolume         ScreenerSort = "VOLUME"
 	SortYield          ScreenerSort = "YIELD"
 	SortDividend       ScreenerSort = "DIVIDEND"
+	// SortChangeRatio52W is the 52-week screener's server default: the
+	// change since the 52-week extreme rather than the daily change.
+	SortChangeRatio52W ScreenerSort = "CHANGE_RATIO_52W"
 )
 
 // SortDirection orders a ranking.
@@ -145,11 +175,11 @@ func (c *Client) GainersLosers(ctx context.Context, req GainersLosersRequest) ([
 	q.Set("category", string(category(req.Category)))
 	q.Set("sort_by", string(req.SortBy))
 	q.Set("direction", string(req.Direction))
-	var out []ScreenerStock
+	var out screenerList[ScreenerStock]
 	if err := c.get(ctx, "/market-data/screeners/gainers-losers/list", q, &out); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return []ScreenerStock(out), nil
 }
 
 // TopActiveRequest selects an activity ranking.
@@ -170,11 +200,11 @@ func (c *Client) TopActive(ctx context.Context, req TopActiveRequest) ([]Screene
 	q.Set("rank_type", string(req.Metric))
 	q.Set("sort_by", string(req.SortBy))
 	q.Set("direction", string(req.Direction))
-	var out []ScreenerStock
+	var out screenerList[ScreenerStock]
 	if err := c.get(ctx, "/market-data/screeners/top-actives/list", q, &out); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return []ScreenerStock(out), nil
 }
 
 // DividendStock is one row of the high-dividend screener.
@@ -202,18 +232,27 @@ type DividendStock struct {
 	PETTM        decimal.NullDecimal `json:"pe_ttm"`
 }
 
-// HighDividend returns stocks ranked by dividend yield. Zero values for
-// sortBy and direction let the server default to SortYield, Descending.
-func (c *Client) HighDividend(ctx context.Context, cat Category, sortBy ScreenerSort, direction SortDirection) ([]DividendStock, error) {
+// HighDividendRequest selects a dividend-yield ranking.
+type HighDividendRequest struct {
+	// Category defaults to USStock.
+	Category Category
+	// SortBy defaults to SortYield on the server.
+	SortBy ScreenerSort
+	// Direction defaults to Descending on the server.
+	Direction SortDirection
+}
+
+// HighDividend returns stocks ranked by dividend yield.
+func (c *Client) HighDividend(ctx context.Context, req HighDividendRequest) ([]DividendStock, error) {
 	q := query.New()
-	q.Set("category", string(category(cat)))
-	q.Set("sort_by", string(sortBy))
-	q.Set("direction", string(direction))
-	var out []DividendStock
+	q.Set("category", string(category(req.Category)))
+	q.Set("sort_by", string(req.SortBy))
+	q.Set("direction", string(req.Direction))
+	var out screenerList[DividendStock]
 	if err := c.get(ctx, "/market-data/screeners/high-dividend-ranks/list", q, &out); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return []DividendStock(out), nil
 }
 
 // Week52Stock is one row of the 52-week high-low screener.
@@ -243,19 +282,30 @@ type Week52Stock struct {
 	PETTM         decimal.NullDecimal `json:"pe_ttm"`
 }
 
-// Week52HighLow returns stocks at or near their 52-week high or low. Zero
-// values for rank, sortBy and direction let the server apply its defaults.
-func (c *Client) Week52HighLow(ctx context.Context, cat Category, rank Week52Rank, sortBy ScreenerSort, direction SortDirection) ([]Week52Stock, error) {
+// Week52Request selects a 52-week high-low ranking.
+type Week52Request struct {
+	// Category defaults to USStock.
+	Category Category
+	// Rank selects the extreme reported; the server default is NewHigh.
+	Rank Week52Rank
+	// SortBy defaults to SortChangeRatio52W on the server.
+	SortBy ScreenerSort
+	// Direction defaults to Ascending on the server.
+	Direction SortDirection
+}
+
+// Week52HighLow returns stocks at or near their 52-week high or low.
+func (c *Client) Week52HighLow(ctx context.Context, req Week52Request) ([]Week52Stock, error) {
 	q := query.New()
-	q.Set("category", string(category(cat)))
-	q.Set("rank_type", string(rank))
-	q.Set("sort_by", string(sortBy))
-	q.Set("direction", string(direction))
-	var out []Week52Stock
+	q.Set("category", string(category(req.Category)))
+	q.Set("rank_type", string(req.Rank))
+	q.Set("sort_by", string(req.SortBy))
+	q.Set("direction", string(req.Direction))
+	var out screenerList[Week52Stock]
 	if err := c.get(ctx, "/market-data/screeners/week52-high-low/list", q, &out); err != nil {
 		return nil, err
 	}
-	return out, nil
+	return []Week52Stock(out), nil
 }
 
 // SectorLeader is a leading stock within a sector.
@@ -283,6 +333,27 @@ type SectorsPage struct {
 	Sectors []Sector `json:"data"`
 	// PaginationKey continues the listing; empty on the last page.
 	PaginationKey string `json:"pagination_key"`
+}
+
+// UnmarshalJSON accepts the {"data": [...], "pagination_key": ...} envelope
+// the sandbox returns, or the bare array Webull's formatter documentation
+// describes, which cannot paginate.
+func (p *SectorsPage) UnmarshalJSON(b []byte) error {
+	if strings.HasPrefix(strings.TrimSpace(string(b)), "[") {
+		var bare []Sector
+		if err := json.Unmarshal(b, &bare); err != nil {
+			return err
+		}
+		*p = SectorsPage{Sectors: bare}
+		return nil
+	}
+	type plain SectorsPage
+	var decoded plain
+	if err := json.Unmarshal(b, &decoded); err != nil {
+		return err
+	}
+	*p = SectorsPage(decoded)
+	return nil
 }
 
 // MarketSectorsRequest selects a sector ranking.

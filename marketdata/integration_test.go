@@ -315,7 +315,7 @@ func TestIntegrationScreeners(t *testing.T) {
 	})
 	t.Run("high-dividend", func(t *testing.T) {
 		ctx := testutil.IntegrationContext(t)
-		rows, err := c.HighDividend(ctx, "", "", "")
+		rows, err := c.HighDividend(ctx, marketdata.HighDividendRequest{})
 		if err != nil {
 			t.Fatalf("HighDividend: %v", err)
 		}
@@ -328,7 +328,7 @@ func TestIntegrationScreeners(t *testing.T) {
 	})
 	t.Run("week52", func(t *testing.T) {
 		ctx := testutil.IntegrationContext(t)
-		rows, err := c.Week52HighLow(ctx, "", marketdata.NewHigh, "", "")
+		rows, err := c.Week52HighLow(ctx, marketdata.Week52Request{Rank: marketdata.NewHigh})
 		if err != nil {
 			t.Fatalf("Week52HighLow: %v", err)
 		}
@@ -385,14 +385,18 @@ func TestIntegrationWatchlistLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Watchlists: %v", err)
 	}
-	found := false
-	for _, w := range lists {
-		if w.ID == id {
-			found = w.Name == "sdk-integration-test"
+	var created *marketdata.Watchlist
+	for i := range lists {
+		if lists[i].ID == id {
+			created = &lists[i]
+			break
 		}
 	}
-	if !found {
+	if created == nil {
 		t.Fatalf("created watchlist %s not in listing %+v", id, lists)
+	}
+	if created.Name != "sdk-integration-test" {
+		t.Errorf("created watchlist name = %q", created.Name)
 	}
 
 	entries := []marketdata.WatchlistEntry{{Symbol: "AAPL"}, {Symbol: "MSFT", Sort: 2}}
