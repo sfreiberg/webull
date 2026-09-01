@@ -1,0 +1,26 @@
+{
+  "name": "State Street® SPDR® S&P 500® ETF Trust",
+  "launch_date": "1993-01-22",
+  "benchmark": "S&P 500 (TR) (1970)",
+  "investment_objective": "The investment seeks to provide investment results that correspond to the S&P 500® Index.",
+  "aum": "811937033817.00",
+  "issuer": "State Street",
+  "custodian": "State Street Bank and Trust Company",
+  "managers": [
+    {
+      "name": "Michael Neches",
+      "start_date": "2013-10-01",
+      "end_date": "2023-05-01",
+      "tenure_return": "61.332016",
+      "title": "Manager",
+      "tenure_years": "12.5",
+      "tenure_days": 4587
+    },
+    {
+      "name": "Jane Doe",
+      "start_date": "2023-05-01",
+      "is_incumbent": 1,
+      "title": "Manager"
+    }
+  ]
+}

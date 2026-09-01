@@ -28,6 +28,14 @@
 // financial-statement and industry-comparison endpoints with empty results
 // for every symbol; the rest serve real data.
 //
+// Fund data (FundBrief, FundHoldings and friends) uses the same request
+// shape with a fund's symbol. Screeners rank stocks by change, activity,
+// yield, 52-week extremes and sector. Watchlists are the one mutable
+// market-data surface: create, rename, fill, reorder and delete.
+//
+// News is not implemented: the one documented endpoint is a Server-Sent
+// Events stream that does not exist in the sandbox.
+//
 // # Entitlements
 //
 // Market data is sold by product. A request for data the key is not

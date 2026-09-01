@@ -1,0 +1,18 @@
+{
+  "data": [
+    {
+      "id": "7324",
+      "name": "Software & IT Services",
+      "volume": "1424112512",
+      "declined": "147",
+      "advanced": "16",
+      "flat": "443",
+      "data": [
+        {"name": "HUB CYBER SECURITY LTD", "symbol": "HUBCZ", "instrument_id": "950985189"}
+      ],
+      "change_ratio": "-0.0167",
+      "market_value": "21724758278144"
+    }
+  ],
+  "pagination_key": "eyJ2IjoxfQ=="
+}

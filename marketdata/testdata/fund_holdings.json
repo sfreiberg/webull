@@ -1,0 +1,16 @@
+[
+  {
+    "target_symbol": "NVDA",
+    "stock_name": "NVIDIA Corp",
+    "share_held_pct": "8.91904",
+    "share_held_chg_pct": "-0.77",
+    "update_time": "2025-11-11T05:44:35.385Z"
+  },
+  {
+    "target_symbol": "T 4.25 02/15/54",
+    "stock_name": "US Treasury",
+    "share_held_pct": "1.5",
+    "maturity_date": "2054-02-15",
+    "update_time": "2025-11-11T05:44:35.385Z"
+  }
+]

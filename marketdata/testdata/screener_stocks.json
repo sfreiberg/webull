@@ -1,0 +1,24 @@
+[
+  {
+    "symbol": "SSM",
+    "name": "Sono Group N.V.",
+    "currency": "USD",
+    "open": "3.75",
+    "high": "4.99",
+    "low": "3.67",
+    "close": "4.755",
+    "price": "4.755",
+    "change": "2.075",
+    "volume": "34319359",
+    "amplitude": "0.492537",
+    "instrument_id": "950189930",
+    "exchange_code": "NAS",
+    "currency_code": "USD",
+    "pre_close": "2.68",
+    "change_ratio": "0.774254",
+    "turnover_rate": "24.086567",
+    "market_value": "6775085.67",
+    "relative_volume_10d": "5.724",
+    "pe_ttm": "-0.665351"
+  }
+]
