@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/sfreiberg/webull/internal/testutil"
 	"github.com/sfreiberg/webull/marketdata"
@@ -179,6 +180,249 @@ func TestIntegrationFundamentalsReference(t *testing.T) {
 			t.Errorf("ForecastEPS: %v %+v", err, eps)
 		}
 	})
+}
+
+// TestIntegrationFunds exercises the fund reference-data endpoints against
+// the sandbox with SPY, which the sandbox serves real data for.
+func TestIntegrationFunds(t *testing.T) {
+	c := testutil.NewIntegrationClient(t).MarketData
+
+	t.Run("brief", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		if b, err := c.FundBrief(ctx, "SPY", ""); err != nil || b.Name == "" || !b.AUM.Valid {
+			t.Errorf("FundBrief: %v %+v", err, b)
+		}
+	})
+	t.Run("allocations", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		a, err := c.FundAllocations(ctx, "SPY", "")
+		if err != nil {
+			t.Fatalf("FundAllocations: %v", err)
+		}
+		if len(a) == 0 {
+			t.Skip("integration: sandbox serves no allocation data for SPY")
+		}
+		if a[0].Date.IsZero() {
+			t.Errorf("allocation = %+v", a[0])
+		}
+	})
+	t.Run("dividends", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		page, err := c.FundDividends(ctx, "SPY", "", "")
+		if err != nil {
+			t.Fatalf("FundDividends: %v", err)
+		}
+		if len(page.Dividends) == 0 {
+			t.Skip("integration: sandbox serves no dividend data for SPY")
+		}
+		if page.Dividends[0].PerShare.IsZero() || page.Dividends[0].ExDividendDate.IsZero() {
+			t.Errorf("dividend = %+v", page.Dividends[0])
+		}
+	})
+	t.Run("files", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		files, err := c.FundFiles(ctx, "SPY", "")
+		if err != nil {
+			t.Fatalf("FundFiles: %v", err)
+		}
+		if len(files) == 0 {
+			t.Skip("integration: sandbox serves no fund files for SPY")
+		}
+		if files[0].URL == "" {
+			t.Errorf("file = %+v", files[0])
+		}
+	})
+	t.Run("holdings", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		h, err := c.FundHoldings(ctx, "SPY", "")
+		if err != nil {
+			t.Fatalf("FundHoldings: %v", err)
+		}
+		if len(h) == 0 {
+			t.Skip("integration: sandbox serves no holdings for SPY")
+		}
+		if h[0].Symbol == "" || !h[0].HeldPercent.Valid {
+			t.Errorf("holding = %+v", h[0])
+		}
+	})
+	t.Run("net-values", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		navs, err := c.FundNetValues(ctx, "SPY", "", time.Time{}, 3)
+		if err != nil || len(navs) == 0 || navs[0].NetValue.IsZero() || navs[0].Date.IsZero() {
+			t.Errorf("FundNetValues: %v %+v", err, navs)
+		}
+	})
+	t.Run("performance", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		if p, err := c.FundPerformance(ctx, "SPY", ""); err != nil || p.EndDate.IsZero() || !p.Return1Y.Valid {
+			t.Errorf("FundPerformance: %v %+v", err, p)
+		}
+	})
+	t.Run("ratings", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		r, err := c.FundRatings(ctx, "SPY", "")
+		if err != nil {
+			t.Fatalf("FundRatings: %v", err)
+		}
+		if len(r) == 0 {
+			t.Skip("integration: sandbox serves no ratings for SPY")
+		}
+		if r[0].Agency == "" || r[0].Rating == 0 {
+			t.Errorf("rating = %+v", r[0])
+		}
+	})
+	t.Run("splits", func(t *testing.T) {
+		// TQQQ has a real split history; SPY has none.
+		ctx := testutil.IntegrationContext(t)
+		s, err := c.FundSplits(ctx, "TQQQ", "")
+		if err != nil || len(s) == 0 || s[0].Date.IsZero() || s[0].Type == "" || s[0].From.IsZero() {
+			t.Errorf("FundSplits: %v %+v", err, s)
+		}
+	})
+}
+
+// TestIntegrationScreeners exercises the screener endpoints. Rankings are
+// market-state dependent, so subtests assert shape rather than content and
+// skip when a screener returns no rows.
+func TestIntegrationScreeners(t *testing.T) {
+	c := testutil.NewIntegrationClient(t).MarketData
+
+	t.Run("gainers-losers", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		rows, err := c.GainersLosers(ctx, marketdata.GainersLosersRequest{Period: marketdata.Rank1Day})
+		if err != nil {
+			t.Fatalf("GainersLosers: %v", err)
+		}
+		if len(rows) == 0 {
+			t.Skip("integration: no gainers returned")
+		}
+		if rows[0].Symbol == "" || !rows[0].ChangeRatio.Valid {
+			t.Errorf("row = %+v", rows[0])
+		}
+	})
+	t.Run("top-active", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		rows, err := c.TopActive(ctx, marketdata.TopActiveRequest{})
+		if err != nil {
+			t.Fatalf("TopActive: %v", err)
+		}
+		if len(rows) == 0 {
+			t.Skip("integration: no active stocks returned")
+		}
+		if rows[0].Symbol == "" || !rows[0].Volume.Valid {
+			t.Errorf("row = %+v", rows[0])
+		}
+	})
+	t.Run("high-dividend", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		rows, err := c.HighDividend(ctx, "", "", "")
+		if err != nil {
+			t.Fatalf("HighDividend: %v", err)
+		}
+		if len(rows) == 0 {
+			t.Skip("integration: no dividend stocks returned")
+		}
+		if rows[0].Symbol == "" || !rows[0].Yield.Valid {
+			t.Errorf("row = %+v", rows[0])
+		}
+	})
+	t.Run("week52", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		rows, err := c.Week52HighLow(ctx, "", marketdata.NewHigh, "", "")
+		if err != nil {
+			t.Fatalf("Week52HighLow: %v", err)
+		}
+		if len(rows) == 0 {
+			t.Skip("integration: no 52-week highs returned")
+		}
+		if rows[0].Symbol == "" {
+			t.Errorf("row = %+v", rows[0])
+		}
+	})
+	t.Run("sectors", func(t *testing.T) {
+		ctx := testutil.IntegrationContext(t)
+		page, err := c.MarketSectors(ctx, marketdata.MarketSectorsRequest{})
+		if err != nil {
+			t.Fatalf("MarketSectors: %v", err)
+		}
+		if len(page.Sectors) == 0 {
+			t.Skip("integration: no sectors returned")
+		}
+		sec := page.Sectors[0]
+		if sec.ID == "" || sec.Name == "" {
+			t.Fatalf("sector = %+v", sec)
+		}
+		detail, err := c.SectorDetail(ctx, marketdata.SectorDetailRequest{SectorID: sec.ID})
+		if err != nil {
+			t.Fatalf("SectorDetail: %v", err)
+		}
+		if detail.Name == "" || len(detail.Stocks) == 0 || detail.Stocks[0].Symbol == "" {
+			t.Errorf("detail = %+v", detail)
+		}
+	})
+}
+
+// TestIntegrationWatchlistLifecycle creates a watchlist, fills, reorders
+// and prunes it, and deletes it, leaving the account as it was found.
+func TestIntegrationWatchlistLifecycle(t *testing.T) {
+	c := testutil.NewIntegrationClient(t).MarketData
+	ctx := testutil.IntegrationContext(t)
+
+	id, err := c.CreateWatchlist(ctx, "sdk-integration-test", 0)
+	if err != nil {
+		t.Fatalf("CreateWatchlist: %v", err)
+	}
+	if id == "" {
+		t.Fatal("CreateWatchlist returned an empty id")
+	}
+	t.Cleanup(func() {
+		if err := c.DeleteWatchlist(testutil.IntegrationContext(t), id); err != nil {
+			t.Errorf("DeleteWatchlist (cleanup): %v", err)
+		}
+	})
+
+	lists, err := c.Watchlists(ctx)
+	if err != nil {
+		t.Fatalf("Watchlists: %v", err)
+	}
+	found := false
+	for _, w := range lists {
+		if w.ID == id {
+			found = w.Name == "sdk-integration-test"
+		}
+	}
+	if !found {
+		t.Fatalf("created watchlist %s not in listing %+v", id, lists)
+	}
+
+	entries := []marketdata.WatchlistEntry{{Symbol: "AAPL"}, {Symbol: "MSFT", Sort: 2}}
+	if err := c.AddWatchlistInstruments(ctx, id, entries); err != nil {
+		t.Fatalf("AddWatchlistInstruments: %v", err)
+	}
+	instruments, err := c.WatchlistInstruments(ctx, id)
+	if err != nil {
+		t.Fatalf("WatchlistInstruments: %v", err)
+	}
+	if len(instruments) != 2 {
+		t.Fatalf("instruments = %+v", instruments)
+	}
+
+	if err := c.UpdateWatchlist(ctx, id, "sdk-integration-renamed", 0); err != nil {
+		t.Fatalf("UpdateWatchlist: %v", err)
+	}
+	if err := c.UpdateWatchlistInstruments(ctx, id, []marketdata.WatchlistEntry{{Symbol: "AAPL", Sort: 9}}); err != nil {
+		t.Fatalf("UpdateWatchlistInstruments: %v", err)
+	}
+	if err := c.RemoveWatchlistInstruments(ctx, id, []marketdata.WatchlistEntry{{Symbol: "MSFT"}}); err != nil {
+		t.Fatalf("RemoveWatchlistInstruments: %v", err)
+	}
+	instruments, err = c.WatchlistInstruments(ctx, id)
+	if err != nil {
+		t.Fatalf("WatchlistInstruments after remove: %v", err)
+	}
+	if len(instruments) != 1 || instruments[0].Symbol != "AAPL" {
+		t.Errorf("instruments after remove = %+v", instruments)
+	}
 }
 
 // TestIntegrationEntitlements records what the key is not subscribed to.

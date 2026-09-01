@@ -12,6 +12,16 @@ called out explicitly.
 
 ### Added
 
+- Fund reference data: `FundBrief`, `FundAllocations`, `FundDividends`,
+  `FundFiles`, `FundHoldings`, `FundNetValues`, `FundPerformance`,
+  `FundRatings` and `FundSplits`.
+- Screeners: `GainersLosers`, `TopActive`, `HighDividend`, `Week52HighLow`,
+  `MarketSectors` and `SectorDetail`, with typed rank, sort and period
+  values.
+- Watchlists: the full lifecycle — `Watchlists`, `CreateWatchlist`,
+  `UpdateWatchlist`, `DeleteWatchlist`, `WatchlistInstruments` and
+  add/remove/update of instruments. A mutation Webull reports unsuccessful
+  is `marketdata.ErrWatchlistFailed`.
 - Fundamentals reference data: financial statements (`BalanceSheets`,
   `IncomeStatements`, `CashFlows`), `FinancialIndicators`, `FinancialAlert`,
   `CapitalFlows`, `DividendCalendar`, `EarningsCalendar`, `Filings`,
@@ -64,7 +74,8 @@ called out explicitly.
 - Endpoint paths follow Webull's documented scheme (`/trading/...`). The
   `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
   handlers and are not implemented.
-- Market-data funds, screeners, watchlists and news, streaming and the
+- News is not implemented: the one documented endpoint is a Server-Sent
+  Events stream that does not exist in the sandbox. Streaming and the
   Connect API are not implemented yet. The Broker API and FIX are out of
   scope; see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 

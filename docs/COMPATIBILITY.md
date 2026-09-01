@@ -24,9 +24,10 @@ working.
 
 ## Summary
 
-The transport layer, the Trading API, market data over HTTP for every asset
-class, and fundamentals reference data are implemented. Funds, screeners,
-watchlists, news, streaming and Connect are not.
+The transport layer, the Trading API, and the entire documented Market Data
+HTTP API — quotes for every asset class, fundamentals, funds, screeners and
+watchlists — are implemented. News is blocked (the endpoint does not exist
+in the sandbox); streaming and Connect are not implemented yet.
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
@@ -54,7 +55,7 @@ watchlists, news, streaming and Connect are not.
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
 | Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
 | OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
-| **Market data (HTTP)** | Partial | Yes | Yes | 6c | Every asset class's quotes and the fundamentals complete; funds, screeners, watchlists and news remain |
+| **Market data (HTTP)** | Complete | Yes | Yes | 6d | Every documented endpoint implemented; news is blocked in the sandbox |
 | Stock snapshots, depth, ticks, bars | Complete | Yes | Yes | 6a | Verified live. The documented single-symbol bars path 404s; `Bars` uses the batch endpoint for one or many |
 | Option snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live, including greeks |
 | Futures snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live on `MESmain`, the only symbol the sandbox serves |
@@ -70,11 +71,12 @@ watchlists, news, streaming and Connect are not.
 | Financial indicators, financial alert | Complete | Yes | – | 6c | Verified live |
 | Capital flow, dividend and earnings calendars, filings, forecast EPS | Complete | Yes | – | 6c | Verified live |
 | Industry comparison | Unverified | Yes | – | 6c | Implemented to the documented schema. **The sandbox serves an empty object** for every symbol tried |
-| Funds | Planned | – | – | 6 | |
-| Screeners | Planned | – | – | 6 | |
-| Watchlists | Planned | – | – | 6 | |
+| Funds: brief, dividends, net values, performance, ratings, splits | Complete | Yes | – | 6d | Verified live (splits via TQQQ; SPY has none) |
+| Funds: allocations, holdings, files | Unverified | Yes | – | 6d | Implemented to the documented schema. **The sandbox serves an empty list** for every fund tried (SPY, QQQ, TQQQ, VOO, BND) |
+| Screeners (gainers-losers, top active, high dividend, 52-week, sectors) | Complete | Yes | – | 6d | All verified live, including sector detail and its pagination shape |
+| Watchlists | Complete | Yes | – | 6d | Full lifecycle verified live: create, list, rename, add, reorder, remove, delete |
 | Corporate actions | Blocked | – | – | 6a | Both documented paths and every SDK-scheme alias return 404 in the sandbox |
-| News | Planned | – | – | 6 | Documented; absent from all SDKs |
+| News | Blocked | – | – | 6d | The one remaining documented endpoint, `news/summaries/get`, is a Server-Sent Events stream from Webull's AI assistant, absent from all SDKs. **It 404s in the sandbox** — the gateway rewrites it to `/openapi/news/summary` and returns a bare Spring 404. Not implemented; revisit with production keys |
 | **Connect API / OAuth** | Planned | – | – | 7 | Documented only; credentials are partner-gated |
 | **gRPC trade events** | Planned | – | – | 8 | `.proto` available; unblocked |
 | **MQTT market data** | Planned | – | – | 9 | `.proto` available; no sandbox host published |
@@ -187,6 +189,9 @@ Established against the live sandbox and relied on by the implementation.
 | Pagination bounds | Per endpoint: open orders require `page_size` 10–100; cash activities accept 1–200 and reject 201 with a 417 |
 | Decimal encoding | Confirmed on the wire: `"total_cash_balance":"1000000.00"` — a string, with trailing zeros preserved |
 | Fundamentals in the sandbox | The financial-statement endpoints (balance sheet, income, cash flow) return an empty array and industry comparison an empty object, HTTP 200, for every symbol tried; the other Phase 6c endpoints serve real data. Capital-flow amounts are documented in scientific notation (`"1.78E8"`) but served as plain decimal strings; the SDK decodes both. Capital-flow dates are `yyyyMMdd`, a fourth date form |
+| Watchlist mutation receipts | Documented as `{"success": bool}`; the sandbox returns a bare JSON `true`/`false`. The SDK decodes both, and `success=false` with HTTP 200 is `marketdata.ErrWatchlistFailed` |
+| Fund data in the sandbox | Brief, dividends, net values, performance, ratings and splits serve real data; allocations, holdings and files return an empty list for every fund tried. AUM is documented in scientific notation but served plain |
+| A fourth error shape | The news endpoint's 404 is a bare Spring error (`{timestamp, status, error, message, path}`), with the path rewritten to the SDK scheme (`/openapi/news/summary`) — unlike the two application shapes and the gateway shape |
 
 ## Sandbox validation backlog
 
@@ -226,3 +231,5 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 26 | Whether the event-contract display endpoints (`markets/*`, live data, game stats), milestones and sports filters exist in production; all 404 in the sandbox | production keys |
 | 27 | Futures depth and footprint decoding against real data; the key lacks `FUTURES LV2` and `FOOTPRINT` | a subscribed key |
 | 28 | Financial statements and industry comparison against real data; the sandbox returns them empty for every symbol. The integration subtests skip today and pass when data appears | production keys |
+| 29 | Fund allocations, holdings and files against real data; the sandbox returns them empty for every fund tried | production keys |
+| 30 | Whether `news/summaries/get` (an SSE stream) exists in production; the sandbox 404s it | production keys |

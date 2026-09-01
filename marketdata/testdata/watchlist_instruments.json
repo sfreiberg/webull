@@ -1,0 +1,13 @@
+{
+  "watchlist_id": "12345678",
+  "instruments": [
+    {
+      "instrument_id": "913256135",
+      "symbol": "AAPL",
+      "name": "Apple Inc",
+      "exchange_code": "NSQ",
+      "sort": 1,
+      "added_time": "2024-05-11T01:38:36.839Z"
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+[
+  {
+    "instrument_id": "913256135",
+    "category": "US_STOCK",
+    "currency": "USD",
+    "name": "Tesla Inc",
+    "symbol": "TSLA",
+    "exchange_code": "NSQ",
+    "close": "12.01",
+    "change": "1.01",
+    "change_ratio": "0.0111",
+    "price": "11.01",
+    "volume": "1111111",
+    "market_value": "12345678901",
+    "turnover_rate": "0.1111",
+    "amplitude": "0.1111",
+    "high": "12.11",
+    "low": "11.01",
+    "turnover": "1234567890",
+    "yield": "0.1111",
+    "dividend": "0.25",
+    "ex_date": "2026-01-08",
+    "pe_ttm": "0.1111"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "id": "6391",
+  "name": "Energy - Fossil Fuels",
+  "change_ratio": "0.013",
+  "declined": "39",
+  "advanced": "110",
+  "flat": "107",
+  "data": [
+    {
+      "instrument_id": "913256135",
+      "category": "US_STOCK",
+      "currency": "USD",
+      "name": "Tesla Inc",
+      "symbol": "TSLA",
+      "exchange_code": "NSQ",
+      "close": "12.01",
+      "change_ratio": "0.0111",
+      "price": "11.01",
+      "volume": "1111111",
+      "market_value": "12345678901",
+      "turnover_rate": "0.1111",
+      "amplitude": "0.1111",
+      "high": "12.11",
+      "low": "11.01"
+    }
+  ]
+}
