@@ -2,6 +2,7 @@ package marketdata
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 )
 
@@ -145,4 +146,24 @@ func TestErrorsPropagateFromEveryScreenerMethod(t *testing.T) {
 			"SectorDetail":  func() error { _, e := c.SectorDetail(ctx, SectorDetailRequest{SectorID: "1"}); return e },
 		}
 	})
+}
+
+func TestScreenerDecodersRejectMalformedShapes(t *testing.T) {
+	// The error branches of the lenient decoders: each accepted shape must
+	// still propagate a real decode failure rather than swallow it.
+	var l screenerList[ScreenerStock]
+	if err := json.Unmarshal([]byte(`[{"close": []}]`), &l); err == nil {
+		t.Error("a malformed bare array must be rejected")
+	}
+	if err := json.Unmarshal([]byte(`{"data": "not a list"}`), &l); err == nil {
+		t.Error("a malformed envelope must be rejected")
+	}
+
+	var p SectorsPage
+	if err := json.Unmarshal([]byte(`[{"id": []}]`), &p); err == nil {
+		t.Error("a malformed bare sector list must be rejected")
+	}
+	if err := json.Unmarshal([]byte(`{"data": [{"id": []}]}`), &p); err == nil {
+		t.Error("a malformed sector envelope must be rejected")
+	}
 }

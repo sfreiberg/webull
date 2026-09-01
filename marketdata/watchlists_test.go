@@ -83,6 +83,13 @@ func TestWatchlistUnknownReceiptFailsLoudly(t *testing.T) {
 	}
 }
 
+func TestWatchlistReceiptRejectsMalformedEnvelope(t *testing.T) {
+	var s successBody
+	if err := json.Unmarshal([]byte(`{"success": "yes"}`), &s); err == nil {
+		t.Error("a non-bool success value must be rejected")
+	}
+}
+
 func TestWatchlistInstrumentsUnwrapTheEnvelope(t *testing.T) {
 	c, f := newClient(t, "/market-data/watchlists/instruments/list", "watchlist_instruments.json", 0)
 	got, err := c.WatchlistInstruments(context.Background(), "12345678")
