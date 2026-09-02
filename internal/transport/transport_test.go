@@ -501,3 +501,33 @@ func TestDoOmitsContentTypeOnBodylessRequests(t *testing.T) {
 		t.Errorf("POST with a body should carry application/json, got %q", contentType)
 	}
 }
+
+func TestGetAndPostHelpers(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			if r.URL.Query().Get("k") != "v" {
+				t.Errorf("query = %v", r.URL.Query())
+			}
+			_, _ = w.Write([]byte(`{"ok":"get"}`))
+		case http.MethodPost:
+			body, _ := io.ReadAll(r.Body)
+			if string(body) != `{"in":"post"}` {
+				t.Errorf("body = %s", body)
+			}
+			_, _ = w.Write([]byte(`{"ok":"post"}`))
+		}
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+
+	var out struct {
+		OK string `json:"ok"`
+	}
+	if err := d.Get(context.Background(), hostOf(srv), "/x", url.Values{"k": {"v"}}, &out); err != nil || out.OK != "get" {
+		t.Errorf("Get: %v %+v", err, out)
+	}
+	if err := d.Post(context.Background(), hostOf(srv), "/x", map[string]string{"in": "post"}, &out); err != nil || out.OK != "post" {
+		t.Errorf("Post: %v %+v", err, out)
+	}
+}

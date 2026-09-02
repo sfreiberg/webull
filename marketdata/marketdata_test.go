@@ -349,3 +349,48 @@ func TestSnapshotsDefaultsCategory(t *testing.T) {
 		t.Errorf("default category = %v", f.gotQuery["category"])
 	}
 }
+
+func TestImbalanceDecoding(t *testing.T) {
+	// The sandbox key lacks the LV2 entitlement, so the success paths are
+	// exercised here against the documented schema.
+	c, _ := newClient(t, "/market-data/stocks/noii-bars/list", "imbalance_bars.json", 0)
+	bars, err := c.ImbalanceBars(context.Background(), ImbalanceRequest{Symbol: "AAPL", Type: PreClose})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(bars) != 1 || bars[0].Time.IsZero() || !bars[0].RefPrice.Equal(d("231.10")) || bars[0].Type != PreClose {
+		t.Errorf("bars = %+v", bars)
+	}
+
+	c2, _ := newClient(t, "/market-data/stocks/noii-snapshots/list", "imbalance_snapshot.json", 0)
+	snap, err := c2.ImbalanceSnapshot(context.Background(), ImbalanceRequest{Symbol: "AAPL", Type: PreClose})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !snap.PairedShares.Equal(d("1200300")) || snap.Side != "B" || snap.Time.IsZero() {
+		t.Errorf("snapshot = %+v", snap)
+	}
+}
+
+func TestBarsSendsEndTime(t *testing.T) {
+	c, f := newClient(t, "", "bars.json", 0)
+	end := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := c.Bars(context.Background(), BarsRequest{Symbols: []string{"AAPL"}, Timespan: Daily, End: end}); err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	_ = json.Unmarshal(f.gotBody, &body)
+	if body["end_time"] != float64(end.UnixMilli()) {
+		t.Errorf("body = %v", body)
+	}
+}
+
+func TestBarsListRejectsMalformedShapes(t *testing.T) {
+	var l barsList
+	if err := json.Unmarshal([]byte(`[{"symbol": []}]`), &l); err == nil {
+		t.Error("a malformed bare array must be rejected")
+	}
+	if err := json.Unmarshal([]byte(`{"result": "not a list"}`), &l); err == nil {
+		t.Error("a malformed envelope must be rejected")
+	}
+}
