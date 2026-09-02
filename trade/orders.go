@@ -203,7 +203,7 @@ func Price(s string) NullDecimal {
 //
 // Only Symbol, Side, Type, Quantity and (for limit and stop-limit orders)
 // LimitPrice are needed for a plain equity order; the SDK supplies Webull's
-// required boilerplate. Optional decimal fields are decimal.NullDecimal and are
+// required boilerplate. Optional decimal fields are NullDecimal and are
 // omitted from the request when unset, so a zero price remains expressible.
 //
 // Set InstrumentType for futures, crypto and event contracts. Each asset

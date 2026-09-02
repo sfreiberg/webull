@@ -252,14 +252,13 @@ func TestCryptoProfiles(t *testing.T) {
 
 func TestOptionContractsRequestEncoding(t *testing.T) {
 	c, f := newTestClient(t, "/trading/instruments/options/contracts/list", "options.json")
-	gte, lte := mustDecimal(t, "150"), mustDecimal(t, "250.5")
 	yes := true
 	got, err := c.OptionContracts(context.Background(), OptionContractsRequest{
 		UnderlyingSymbols: []string{"AAPL"},
 		OptionType:        Call,
 		Style:             American,
-		StrikePriceGTE:    &gte,
-		StrikePriceLTE:    &lte,
+		StrikePriceGTE:    Price("150"),
+		StrikePriceLTE:    Price("250.5"),
 		PPInd:             &yes,
 		ShowDeliverables:  true,
 	})

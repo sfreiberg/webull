@@ -60,7 +60,8 @@
 //
 // # Numbers
 //
-// Prices, sizes and ratios are decimal strings and are decoded as
-// decimal.Decimal, or decimal.NullDecimal where the field may be absent -
-// most snapshot fields are, outside a trading session. No field is a float.
+// Prices, sizes and ratios are decimal strings and are decoded as the SDK's
+// Decimal type, or NullDecimal where the field may be absent - most snapshot
+// fields are, outside a trading session. Both embed shopspring's decimal
+// types. No field is a float.
 package marketdata

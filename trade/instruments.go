@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/sfreiberg/webull/internal/query"
-
-	"github.com/shopspring/decimal"
 )
 
 // StockProfile is reference data for an equity instrument.
@@ -184,9 +182,10 @@ type OptionContractsRequest struct {
 	RootSymbol string
 	OptionType OptionType
 	Style      OptionStyle
-	// StrikePriceGTE and StrikePriceLTE bound the strike, inclusive.
-	StrikePriceGTE *decimal.Decimal
-	StrikePriceLTE *decimal.Decimal
+	// StrikePriceGTE and StrikePriceLTE bound the strike, inclusive. An
+	// invalid (zero-value) NullDecimal leaves that bound unset.
+	StrikePriceGTE NullDecimal
+	StrikePriceLTE NullDecimal
 	// PPInd filters on the Penny Program indicator; nil means either.
 	PPInd *bool
 	// ShowDeliverables includes the Deliverables array in each contract.
@@ -212,11 +211,11 @@ func (c *Client) OptionContracts(ctx context.Context, req OptionContractsRequest
 	q.Set("root_symbol", req.RootSymbol)
 	q.Set("option_type", string(req.OptionType))
 	q.Set("style", string(req.Style))
-	if req.StrikePriceGTE != nil {
-		q.Set("strike_price_gte", req.StrikePriceGTE.String())
+	if req.StrikePriceGTE.Valid {
+		q.Set("strike_price_gte", req.StrikePriceGTE.Decimal.String())
 	}
-	if req.StrikePriceLTE != nil {
-		q.Set("strike_price_lte", req.StrikePriceLTE.String())
+	if req.StrikePriceLTE.Valid {
+		q.Set("strike_price_lte", req.StrikePriceLTE.Decimal.String())
 	}
 	q.SetBool("ppind", req.PPInd)
 	if req.ShowDeliverables {
