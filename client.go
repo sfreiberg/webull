@@ -142,6 +142,11 @@ type errorPayload struct {
 	GwMessage string `json:"error_msg"`
 }
 
+// ErrorDecoder returns the SDK's decoder that turns a failed HTTP response
+// into an *APIError. It is exported for the connect package, which builds
+// its own transport yet shares the SDK's error semantics.
+func ErrorDecoder() transport.ErrorDecoder { return decodeAPIError }
+
 // decodeAPIError builds an *APIError from a failed response.
 func decodeAPIError(resp transport.Response) error {
 	err := &APIError{

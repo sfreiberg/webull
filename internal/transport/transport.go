@@ -60,6 +60,12 @@ type Doer struct {
 	// Sleep pauses between retry attempts. Defaults to time.Sleep; tests
 	// replace it to avoid real delays.
 	Sleep func(context.Context, time.Duration) error
+	// Authorizer, if set, returns headers to add to each request after
+	// signing — an OAuth bearer token for the Connect API, which is both
+	// signed and bearer-authenticated. It is called per request so a
+	// rotating token is always current, and its error fails the request
+	// before anything is sent.
+	Authorizer func(context.Context) (map[string]string, error)
 }
 
 // Request describes one call.
@@ -72,13 +78,20 @@ type Request struct {
 	// signed and transmitted, so the signature always covers exactly what is
 	// sent.
 	Body any
+	// Form, when non-nil, is sent as an application/x-www-form-urlencoded
+	// body instead of JSON — the Connect API's token endpoint requires it.
+	// Body and Form are mutually exclusive.
+	Form url.Values
 }
 
 // Do executes req and decodes a successful response into out, which may be nil
 // if the caller does not need the body.
 func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 	var body []byte
-	if req.Body != nil {
+	switch {
+	case req.Form != nil:
+		body = []byte(req.Form.Encode())
+	case req.Body != nil:
 		var err error
 		body, err = json.Marshal(req.Body)
 		if err != nil {
@@ -170,10 +183,23 @@ func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (Response,
 	}) {
 		httpReq.Header.Set(k, v)
 	}
+	if d.Authorizer != nil {
+		headers, err := d.Authorizer(ctx)
+		if err != nil {
+			return Response{}, fmt.Errorf("webull: authorizing request: %w", err)
+		}
+		for k, v := range headers {
+			httpReq.Header.Set(k, v)
+		}
+	}
 	// Only set on requests that actually carry a body: a Content-Type on a
 	// bodyless GET is meaningless and some gateways reject it.
 	if len(body) > 0 {
-		httpReq.Header.Set("Content-Type", "application/json")
+		if req.Form != nil {
+			httpReq.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		} else {
+			httpReq.Header.Set("Content-Type", "application/json")
+		}
 	}
 	httpReq.Header.Set("Accept", "application/json")
 	if d.UserAgent != "" {

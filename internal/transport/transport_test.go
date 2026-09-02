@@ -531,3 +531,53 @@ func TestGetAndPostHelpers(t *testing.T) {
 		t.Errorf("Post: %v %+v", err, out)
 	}
 }
+
+func TestDoFormBodyAndAuthorizer(t *testing.T) {
+	var gotCT, gotAuth string
+	var gotBody string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCT = r.Header.Get("Content-Type")
+		gotAuth = r.Header.Get("Authorization")
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		return map[string]string{"Authorization": "Bearer abc"}, nil
+	}
+	var out struct {
+		OK bool `json:"ok"`
+	}
+	err := d.Do(context.Background(), Request{
+		Method: "POST", Host: hostOf(srv), Path: "/x",
+		Form: url.Values{"grant_type": {"refresh_token"}, "code": {"c"}},
+	}, &out)
+	if err != nil || !out.OK {
+		t.Fatalf("Do: %v", err)
+	}
+	if gotCT != "application/x-www-form-urlencoded" {
+		t.Errorf("content type = %q", gotCT)
+	}
+	if gotAuth != "Bearer abc" {
+		t.Errorf("authorization = %q", gotAuth)
+	}
+	if gotBody != "code=c&grant_type=refresh_token" {
+		t.Errorf("form body = %q", gotBody)
+	}
+}
+
+func TestDoAuthorizerErrorFailsRequest(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("request must not be sent when the authorizer fails")
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		return nil, errors.New("no token")
+	}
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err == nil {
+		t.Error("an authorizer error must fail the request")
+	}
+}
