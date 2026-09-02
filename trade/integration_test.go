@@ -216,16 +216,26 @@ func TestIntegrationOrderLifecycle(t *testing.T) {
 		Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00"),
 	}
 
-	preview, err := c.PreviewOrder(ctx, acct.AccountID, order)
-	if err != nil {
+	var preview *trade.OrderPreview
+	if err := retryTransient(ctx, t, "PreviewOrder", func() error {
+		var e error
+		preview, e = c.PreviewOrder(ctx, acct.AccountID, order)
+		return e
+	}); err != nil {
+		skipIfMarketClosed(t, err)
 		t.Fatalf("PreviewOrder: %v", err)
 	}
 	if preview.EstimatedCost.IsZero() {
 		t.Errorf("preview = %+v", preview)
 	}
 
-	placed, err := c.PlaceOrder(ctx, acct.AccountID, order)
-	if err != nil {
+	var placed *trade.OrderReceipt
+	if err := retryTransient(ctx, t, "PlaceOrder", func() error {
+		var e error
+		placed, e = c.PlaceOrder(ctx, acct.AccountID, order)
+		return e
+	}); err != nil {
+		skipIfMarketClosed(t, err)
 		t.Fatalf("PlaceOrder: %v", err)
 	}
 	t.Cleanup(func() {
@@ -241,10 +251,10 @@ func TestIntegrationOrderLifecycle(t *testing.T) {
 	waitFor := func(what string, pred func(trade.OrderInfo) bool) *trade.OrderInfo {
 		t.Helper()
 		var last *trade.OrderInfo
-		for attempt := 0; ; attempt++ {
-			g, err := c.Order(ctx, acct.AccountID, order.ClientOrderID)
+		for {
+			g, err := readOrder(ctx, c, acct.AccountID, order.ClientOrderID)
 			if err != nil {
-				t.Fatalf("Order: %v", err)
+				t.Fatalf("order never %s: %v; last = %+v", what, err, last)
 			}
 			if len(g.Orders) == 1 {
 				last = &g.Orders[0]
@@ -252,12 +262,9 @@ func TestIntegrationOrderLifecycle(t *testing.T) {
 					return last
 				}
 			}
-			if attempt == 9 {
-				t.Fatalf("order never %s; last = %+v", what, last)
-			}
 			select {
 			case <-ctx.Done():
-				t.Fatalf("context ended waiting until order %s: %v", what, ctx.Err())
+				t.Fatalf("order never %s; last = %+v", what, last)
 			case <-time.After(500 * time.Millisecond):
 			}
 		}
@@ -327,7 +334,7 @@ func TestIntegrationOptionPreview(t *testing.T) {
 		t.Fatalf("LegFromSymbol(%s): %v", chain.Contracts[0].Symbol, err)
 	}
 
-	preview, err := c.PreviewOrder(ctx, acct.AccountID, &trade.Order{
+	preview, err := previewOrder(ctx, t, c, acct.AccountID, &trade.Order{
 		Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit,
 		Quantity: trade.Price("1"), LimitPrice: trade.Price("0.05"),
 		PositionIntent: trade.BuyToOpen, Legs: []trade.OrderLeg{leg},
@@ -347,7 +354,7 @@ func TestIntegrationServerRejectionIsClassified(t *testing.T) {
 
 	// A leg that passes local validation but names a contract that does not
 	// exist, so the rejection comes from the server.
-	_, err := c.PreviewOrder(ctx, acct.AccountID, &trade.Order{
+	_, err := previewOrder(ctx, t, c, acct.AccountID, &trade.Order{
 		Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit,
 		Quantity: trade.Price("1"), LimitPrice: trade.Price("1"),
 		Legs: []trade.OrderLeg{{Symbol: "AAPL", OptionType: trade.Call, ExpireDate: "2026-12-18", StrikePrice: trade.Price("999999")}},
@@ -373,12 +380,22 @@ func TestIntegrationBracketLifecycle(t *testing.T) {
 		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("999")},
 		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, TimeInForce: trade.GTC, Quantity: trade.Price("1"), StopPrice: trade.Price("0.50")},
 	)
-	if _, err := c.PreviewCombo(ctx, acct.AccountID, combo); err != nil {
+	if err := retryTransient(ctx, t, "PreviewCombo", func() error {
+		_, e := c.PreviewCombo(ctx, acct.AccountID, combo)
+		return e
+	}); err != nil {
+		skipIfMarketClosed(t, err)
 		t.Fatalf("PreviewCombo: %v", err)
 	}
 
-	receipt, err := c.PlaceCombo(ctx, acct.AccountID, combo)
+	var receipt *trade.OrderReceipt
+	err := retryTransient(ctx, t, "PlaceCombo", func() error {
+		var e error
+		receipt, e = c.PlaceCombo(ctx, acct.AccountID, combo)
+		return e
+	})
 	if err != nil {
+		skipIfMarketClosed(t, err)
 		t.Fatalf("PlaceCombo: %v", err)
 	}
 	t.Cleanup(func() { _ = c.CancelCombo(context.Background(), acct.AccountID, combo) })
@@ -398,7 +415,9 @@ func TestIntegrationBracketLifecycle(t *testing.T) {
 		}
 	}
 
-	if err := c.CancelCombo(ctx, acct.AccountID, combo); err != nil {
+	if err := retryTransient(ctx, t, "CancelCombo", func() error {
+		return c.CancelCombo(ctx, acct.AccountID, combo)
+	}); err != nil {
 		t.Fatalf("CancelCombo: %v", err)
 	}
 	time.Sleep(time.Second)
@@ -432,7 +451,7 @@ func TestIntegrationMultiLegPreviews(t *testing.T) {
 			TrailingType: trade.TrailByPercentage, TrailingStopStep: trade.Price("0.05")},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p, err := c.PreviewOrder(ctx, acct.AccountID, o)
+			p, err := previewOrder(ctx, t, c, acct.AccountID, o)
 			if err != nil {
 				t.Fatalf("PreviewOrder: %v", err)
 			}
@@ -463,7 +482,10 @@ func TestIntegrationOTOGroupsInSandbox(t *testing.T) {
 		"otoco": trade.OTOCO(buy("1.00"), sell("999"), sell("998")),
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := c.PreviewCombo(ctx, acct.AccountID, combo)
+			err := retryTransient(ctx, t, "PreviewCombo", func() error {
+				_, e := c.PreviewCombo(ctx, acct.AccountID, combo)
+				return e
+			})
 			if err == nil {
 				t.Errorf("%s: the sandbox now accepts this group; update the compatibility matrix and backlog item 17", name)
 				return
@@ -497,14 +519,101 @@ func skipIfCode(t *testing.T, err error, codes ...string) {
 	}
 }
 
+// marketClosedCodes are the codes Webull returns when an order cannot be
+// placed because the market is closed. They are not transient within a test
+// run, so the test skips rather than retries.
+var marketClosedCodes = []string{
+	"OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT",     // a DAY order outside regular hours
+	"OPENAPI_FUTURES_CAN_NOT_TRADING_FOR_NON_TRADING_HOURS", // futures outside their session
+	"OPENAPI_CAN_NOT_TRADING_FOR_FIXGW_NOT_READY",           // the order gateway is not accepting orders now
+}
+
+// skipIfMarketClosed skips the test when err says an order cannot be placed
+// because the market is closed.
+func skipIfMarketClosed(t *testing.T, err error) {
+	t.Helper()
+	skipIfCode(t, err, marketClosedCodes...)
+}
+
+// isTransient reports whether err is a sandbox condition that clears on its
+// own: rate limiting under load, or a just-placed order not yet in a
+// cancellable state.
+func isTransient(err error) bool {
+	if errors.Is(err, webull.ErrRateLimited) {
+		return true
+	}
+	var apiErr *webull.APIError
+	return errors.As(err, &apiErr) && apiErr.Code == "OPENAPI_ORDER_CAN_NOT_BE_CANCEL_FOR_PENDING_SUBMIT"
+}
+
+// retryTransient runs fn until it succeeds, fails non-transiently, or the
+// attempts are exhausted, backing off between tries. It is for integration
+// calls that are safe to repeat: reads, previews, cancels, and placements
+// (a rate-limited request is rejected at the gateway before an order is
+// created, so repeating it cannot double-place).
+func retryTransient(ctx context.Context, t *testing.T, what string, fn func() error) error {
+	t.Helper()
+	var err error
+	for attempt := 0; attempt < 6; attempt++ {
+		if err = fn(); err == nil || !isTransient(err) {
+			return err
+		}
+		delay := time.Duration(attempt+1) * time.Second
+		t.Logf("integration: %s hit a transient condition, retrying in %s: %v", what, delay, err)
+		select {
+		case <-ctx.Done():
+			return err
+		case <-time.After(delay):
+		}
+	}
+	return err
+}
+
+// readOrder reads an order's group, riding out a rate-limit burst under
+// full-suite load by backing off until the read succeeds or the context
+// ends. It returns a non-transient error unchanged, so a poller sees order
+// state rather than a load-induced failure.
+func readOrder(ctx context.Context, c *trade.Client, accountID, clientOrderID string) (*trade.OrderGroup, error) {
+	for {
+		g, err := c.Order(ctx, accountID, clientOrderID)
+		if err == nil || !isTransient(err) {
+			return g, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(time.Second):
+		}
+	}
+}
+
+// previewOrder previews an order, riding out a rate-limit burst so a test
+// sees the server's real answer — a preview or a genuine rejection — rather
+// than a load-induced 429.
+func previewOrder(ctx context.Context, t *testing.T, c *trade.Client, accountID string, o *trade.Order) (*trade.OrderPreview, error) {
+	t.Helper()
+	var p *trade.OrderPreview
+	err := retryTransient(ctx, t, "PreviewOrder", func() error {
+		var e error
+		p, e = c.PreviewOrder(ctx, accountID, o)
+		return e
+	})
+	return p, err
+}
+
 // restingLifecycle places o, confirms it is working, cancels it and confirms
 // the cancellation. o must be priced so that it cannot fill. Order state is
 // polled rather than assumed after a fixed delay.
 func restingLifecycle(ctx context.Context, t *testing.T, c *trade.Client, acct trade.Account, o *trade.Order) {
 	t.Helper()
-	receipt, err := c.PlaceOrder(ctx, acct.AccountID, o)
+	var receipt *trade.OrderReceipt
+	err := retryTransient(ctx, t, "PlaceOrder", func() error {
+		var e error
+		receipt, e = c.PlaceOrder(ctx, acct.AccountID, o)
+		return e
+	})
 	if err != nil {
-		skipIfCode(t, err, "OPENAPI_FUTURES_CAN_NOT_TRADING_FOR_NON_TRADING_HOURS", "OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT")
+		skipIfMarketClosed(t, err)
 		t.Fatalf("PlaceOrder: %v", err)
 	}
 	// The cleanup runs after ctx has been cancelled, so it needs its own.
@@ -516,32 +625,38 @@ func restingLifecycle(ctx context.Context, t *testing.T, c *trade.Client, acct t
 	poll := func(what string, pred func(*trade.OrderGroup) bool) {
 		t.Helper()
 		var last *trade.OrderGroup
-		var lastErr error
-		for attempt := 0; attempt < 12; attempt++ {
-			g, err := c.Order(ctx, acct.AccountID, o.ClientOrderID)
-			if err == nil && pred(g) {
+		for {
+			g, err := readOrder(ctx, c, acct.AccountID, o.ClientOrderID)
+			if err != nil {
+				t.Fatalf("order never %s: %v; last = %+v", what, err, last)
+			}
+			last = g
+			if pred(g) {
 				return
 			}
-			last, lastErr = g, err
 			// A fill is terminal: the account now holds a position, and the
 			// order will never become working or cancelled.
-			if err == nil && len(g.Orders) == 1 && g.Orders[0].Status == trade.StatusFilled {
+			if len(g.Orders) == 1 && g.Orders[0].Status == trade.StatusFilled {
 				t.Fatalf("order filled instead of resting; the sandbox %s account now holds %s %s", acct.AccountClass, o.Symbol, g.Orders[0].TotalQuantity)
 			}
 			select {
 			case <-ctx.Done():
-				t.Fatalf("context ended waiting until order %s: %v (last error: %v)", what, ctx.Err(), lastErr)
+				t.Fatalf("order never %s; last = %+v", what, last)
 			case <-time.After(500 * time.Millisecond):
 			}
 		}
-		t.Fatalf("order never %s; last = %+v; last error: %v", what, last, lastErr)
 	}
 
 	poll("working", func(g *trade.OrderGroup) bool {
 		return len(g.Orders) == 1 && g.Orders[0].InstrumentType == o.InstrumentType &&
 			(g.Orders[0].Status == trade.StatusSubmitted || g.Orders[0].Status == trade.StatusPending)
 	})
-	if _, err := c.CancelOrder(ctx, acct.AccountID, o.ClientOrderID); err != nil {
+	// A just-placed order can briefly report "pending submit" and refuse a
+	// cancel; retryTransient rides that out.
+	if err := retryTransient(ctx, t, "CancelOrder", func() error {
+		_, e := c.CancelOrder(ctx, acct.AccountID, o.ClientOrderID)
+		return e
+	}); err != nil {
 		t.Fatalf("CancelOrder: %v", err)
 	}
 	poll("cancelled", func(g *trade.OrderGroup) bool {
@@ -558,7 +673,7 @@ func TestIntegrationFuturesOrder(t *testing.T) {
 	}
 	o := &trade.Order{InstrumentType: trade.InstrumentFutures, Symbol: contracts[0].Symbol, Side: trade.Buy, Type: trade.Limit,
 		TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("1.00")}
-	if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
+	if _, err := previewOrder(ctx, t, c, acct.AccountID, o); err != nil {
 		t.Fatalf("PreviewOrder: %v", err)
 	}
 	// Futures do not trade during the exchange's daily break; the lifecycle
@@ -575,7 +690,7 @@ func TestIntegrationCryptoOrder(t *testing.T) {
 
 	// The sandbox answers every crypto preview with a system error while
 	// accepting the same order for placement. Record it rather than fail.
-	if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
+	if _, err := previewOrder(ctx, t, c, acct.AccountID, o); err != nil {
 		var apiErr *webull.APIError
 		if errors.As(err, &apiErr) && apiErr.Code == "OPENAPI_SYSTEM_ERROR" {
 			t.Logf("integration: sandbox rejects crypto previews with %s; placement is verified below", apiErr.Code)
@@ -610,7 +725,10 @@ func TestIntegrationEventContractOrder(t *testing.T) {
 			ctx := testutil.IntegrationContext(t) // each lifecycle gets its own budget
 			o := &trade.Order{InstrumentType: trade.InstrumentEvent, Symbol: symbol, Side: trade.Buy, Type: trade.Limit,
 				TimeInForce: tif, Quantity: trade.Price("1"), LimitPrice: trade.Price("0.01"), EventOutcome: trade.OutcomeYes}
-			if _, err := c.PreviewOrder(ctx, acct.AccountID, o); err != nil {
+			if err := retryTransient(ctx, t, "PreviewOrder", func() error {
+				_, e := c.PreviewOrder(ctx, acct.AccountID, o)
+				return e
+			}); err != nil {
 				t.Fatalf("PreviewOrder: %v", err)
 			}
 			restingLifecycle(ctx, t, c, acct, o)
@@ -629,7 +747,7 @@ func TestIntegrationBatchPlace(t *testing.T) {
 	if err != nil {
 		// Batches are DAY only, so outside regular hours this cannot run;
 		// and the sandbox account is not enabled for batch placement at all.
-		skipIfCode(t, err, "OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT")
+		skipIfMarketClosed(t, err)
 		var apiErr *webull.APIError
 		if errors.As(err, &apiErr) && strings.Contains(apiErr.Message, "Account not supported") {
 			t.Skipf("integration: sandbox: batch placement is not enabled for this account: %s", apiErr.Message)
