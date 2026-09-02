@@ -188,7 +188,7 @@ func TestConnectAndReceiveSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if stream.SessionID() != "sess-1" {
 		t.Errorf("session = %q", stream.SessionID())
 	}
@@ -223,7 +223,7 @@ func TestSubscribeValidation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if err := stream.Subscribe(context.Background(), SubscribeRequest{Symbols: []string{"AAPL"}}); err == nil {
 		t.Error("missing Types must be rejected")
 	}
@@ -239,7 +239,7 @@ func TestSubscribeErrorIsWrapped(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	err = stream.Subscribe(context.Background(), SubscribeRequest{Symbols: []string{"AAPL"}, Types: []SubType{SubSnapshot}})
 	if !errors.Is(err, ErrSubscribeFailed) {
 		t.Errorf("err = %v, want ErrSubscribeFailed", err)
@@ -262,7 +262,7 @@ func TestReconnectReplaysSubscriptions(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if err := stream.Subscribe(context.Background(), SubscribeRequest{Symbols: []string{"AAPL", "MSFT"}, Types: []SubType{SubSnapshot, SubTick}}); err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestReconnectReplaysSubscriptions(t *testing.T) {
 func TestUnsubscribeAllForgetsSubscriptions(t *testing.T) {
 	fx := newFixture(t)
 	stream, _ := fx.client.Connect(context.Background())
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	_ = stream.Subscribe(context.Background(), SubscribeRequest{Symbols: []string{"AAPL"}, Types: []SubType{SubSnapshot}})
 	if err := stream.Unsubscribe(context.Background(), UnsubscribeRequest{All: true}); err != nil {
 		t.Fatal(err)
@@ -314,7 +314,7 @@ func TestUnsubscribeAllForgetsSubscriptions(t *testing.T) {
 func TestQueueDropsOldestWhenFull(t *testing.T) {
 	fx := newFixture(t)
 	stream, _ := fx.client.Connect(context.Background(), ConnectOptions{QueueSize: 2})
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	// Three ticks into a queue of two: the first is dropped.
 	for _, px := range []string{"1", "2", "3"} {
 		b, _ := proto.Marshal(&streampb.Tick{Basic: &streampb.Basic{Symbol: "AAPL"}, Price: px})
@@ -463,7 +463,7 @@ func TestDecodeHelpers(t *testing.T) {
 func TestUnsubscribeSpecificForgets(t *testing.T) {
 	fx := newFixture(t)
 	stream, _ := fx.client.Connect(context.Background())
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	_ = stream.Subscribe(context.Background(), SubscribeRequest{Symbols: []string{"AAPL", "MSFT"}, Types: []SubType{SubSnapshot}})
 	if err := stream.Unsubscribe(context.Background(), UnsubscribeRequest{Symbols: []string{"AAPL"}, Types: []SubType{SubSnapshot}}); err != nil {
 		t.Fatal(err)

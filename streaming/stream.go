@@ -203,7 +203,9 @@ func (s *Stream) resubscribe() {
 	}
 	s.mu.Unlock()
 
-	ctx, cancel := context.WithTimeout(context.Background(), s.opts.ConnectTimeout)
+	// A reconnect is driven by paho's callback with no caller context, so a
+	// fresh bounded one is the only option here.
+	ctx, cancel := context.WithTimeout(context.Background(), s.opts.ConnectTimeout) //nolint:contextcheck // callback has no context
 	defer cancel()
 	for g, byType := range byGroup {
 		for st, syms := range byType {
