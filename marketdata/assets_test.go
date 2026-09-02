@@ -257,3 +257,19 @@ func TestAssetErrorsPropagate(t *testing.T) {
 		}
 	})
 }
+
+func TestFuturesDepthDecodes(t *testing.T) {
+	// The sandbox key lacks FUTURES LV2, so the success path is exercised
+	// here against the documented schema.
+	c, f := newClient(t, "/market-data/futures/depths/list", "futures_depth.json", 0)
+	got, err := c.FuturesDepth(context.Background(), "MESmain", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.gotQuery["category"][0] != "US_FUTURES" || f.gotQuery["depth"][0] != "1" {
+		t.Errorf("query = %v", f.gotQuery)
+	}
+	if len(got.Asks) != 1 || !got.Asks[0].Price.Equal(d("6520.25")) || got.QuoteTime.IsZero() {
+		t.Errorf("depth = %+v", got)
+	}
+}

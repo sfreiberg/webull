@@ -1,0 +1,7 @@
+{
+  "symbol": "MESmain",
+  "instrument_id": "1044612340",
+  "quote_time": 1787860801043,
+  "asks": [{"price": "6520.25", "size": "12"}],
+  "bids": [{"price": "6520.00", "size": "9"}]
+}

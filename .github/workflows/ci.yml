@@ -46,13 +46,21 @@ jobs:
       - name: Collect coverage
         run: go test -covermode=atomic -coverprofile=coverage.txt ./...
 
+      # Generated protobuf bindings are excluded from the floor for the same
+      # reason codecov.yml ignores them: they are not meaningfully testable
+      # and Go includes untested packages as 0% rows, which would let a large
+      # generated file quietly consume the floor's headroom. The handwritten
+      # code that wraps them is not excluded.
+      - name: Exclude generated code
+        run: grep -v -E '^github\.com/sfreiberg/webull/internal/eventspb/' coverage.txt > coverage.filtered.txt
+
       # Enforced here rather than delegated to Codecov, so that a fork PR with
       # no upload token, or a Codecov outage, cannot silently weaken the gate.
       - name: Enforce coverage floor
         run: |
-          total=$(go tool cover -func=coverage.txt | awk '/^total:/ {sub(/%/,"",$3); print $3}')
+          total=$(go tool cover -func=coverage.filtered.txt | awk '/^total:/ {sub(/%/,"",$3); print $3}')
           if [ -z "$total" ]; then
-            echo "::error::could not read a total from coverage.txt"
+            echo "::error::could not read a total from coverage.filtered.txt"
             exit 1
           fi
           echo "total coverage: ${total}% (minimum ${COVERAGE_MIN}%)"

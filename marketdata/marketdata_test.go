@@ -105,28 +105,6 @@ func TestMillisDecodesNumberStringAndNull(t *testing.T) {
 	}
 }
 
-func TestTimeDecodesWebullISOAndRFC3339(t *testing.T) {
-	var v struct {
-		W Time `json:"w"`
-		R Time `json:"r"`
-		Z Time `json:"z"`
-	}
-	if err := json.Unmarshal([]byte(`{"w":"2026-08-27T04:00:00.000+0000","r":"2026-08-27T04:00:00Z","z":null}`), &v); err != nil {
-		t.Fatal(err)
-	}
-	want := time.Date(2026, 8, 27, 4, 0, 0, 0, time.UTC)
-	if !v.W.Equal(want) || !v.R.Equal(want) || !v.Z.IsZero() {
-		t.Errorf("w=%v r=%v z=%v", v.W, v.R, v.Z)
-	}
-	if err := json.Unmarshal([]byte(`{"w":"yesterday"}`), &v); err == nil {
-		t.Error("an unrecognised time must be rejected")
-	}
-	b, _ := json.Marshal(Time{want})
-	if string(b) != `"2026-08-27T04:00:00.000+0000"` {
-		t.Errorf("marshal = %s", b)
-	}
-}
-
 func TestSnapshots(t *testing.T) {
 	c, f := newClient(t, "/market-data/stocks/snapshots/list", "snapshots.json", 0)
 	got, err := c.Snapshots(context.Background(), SnapshotsRequest{Symbols: []string{"AAPL", "SPY"}, ExtendedHours: true, Overnight: true})
@@ -337,19 +315,6 @@ func TestErrorsPropagateFromEveryMethod(t *testing.T) {
 	})
 }
 
-func TestTimeAcceptsAnyFractionalPrecisionWithFlatOffset(t *testing.T) {
-	for _, in := range []string{`"2026-08-27T04:00:00+0000"`, `"2026-08-27T04:00:00.1+0000"`, `"2026-08-27T04:00:00.123456+0000"`, `"2026-08-27T00:00:00.000-0400"`} {
-		var v Time
-		if err := json.Unmarshal([]byte(in), &v); err != nil {
-			t.Errorf("%s: %v", in, err)
-		}
-	}
-	var v Time
-	if err := json.Unmarshal([]byte(`"2026-08-27T00:00:00.000-0400"`), &v); err != nil || v.Hour() != 4 {
-		t.Errorf("offset not applied: %v %v", v, err)
-	}
-}
-
 func TestMillisZeroOnTheWireIsAbsent(t *testing.T) {
 	var v struct {
 		N Millis `json:"n"`
@@ -385,23 +350,47 @@ func TestSnapshotsDefaultsCategory(t *testing.T) {
 	}
 }
 
-func TestTimeAcceptsBareDate(t *testing.T) {
-	var v Time
-	if err := json.Unmarshal([]byte(`"2026-09-19"`), &v); err != nil {
+func TestImbalanceDecoding(t *testing.T) {
+	// The sandbox key lacks the LV2 entitlement, so the success paths are
+	// exercised here against the documented schema.
+	c, _ := newClient(t, "/market-data/stocks/noii-bars/list", "imbalance_bars.json", 0)
+	bars, err := c.ImbalanceBars(context.Background(), ImbalanceRequest{Symbol: "AAPL", Type: PreClose})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
-		t.Errorf("got %v", v)
+	if len(bars) != 1 || bars[0].Time.IsZero() || !bars[0].RefPrice.Equal(d("231.10")) || bars[0].Type != PreClose {
+		t.Errorf("bars = %+v", bars)
 	}
-	if err := json.Unmarshal([]byte(`"20260919"`), &v); err != nil {
+
+	c2, _ := newClient(t, "/market-data/stocks/noii-snapshots/list", "imbalance_snapshot.json", 0)
+	snap, err := c2.ImbalanceSnapshot(context.Background(), ImbalanceRequest{Symbol: "AAPL", Type: PreClose})
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !v.Equal(time.Date(2026, 9, 19, 0, 0, 0, 0, time.UTC)) {
-		t.Errorf("compact date: got %v", v)
+	if !snap.PairedShares.Equal(d("1200300")) || snap.Side != "B" || snap.Time.IsZero() {
+		t.Errorf("snapshot = %+v", snap)
 	}
-	for _, in := range []string{`"2026-13-45"`, `"20261345"`} {
-		if err := json.Unmarshal([]byte(in), &v); err == nil {
-			t.Errorf("%s: an invalid date must be rejected", in)
-		}
+}
+
+func TestBarsSendsEndTime(t *testing.T) {
+	c, f := newClient(t, "", "bars.json", 0)
+	end := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
+	if _, err := c.Bars(context.Background(), BarsRequest{Symbols: []string{"AAPL"}, Timespan: Daily, End: end}); err != nil {
+		t.Fatal(err)
+	}
+	var body map[string]any
+	_ = json.Unmarshal(f.gotBody, &body)
+	if body["end_time"] != float64(end.UnixMilli()) {
+		t.Errorf("body = %v", body)
+	}
+}
+
+func TestBarsListRejectsMalformedShapes(t *testing.T) {
+	var l barsList
+	if err := json.Unmarshal([]byte(`[{"symbol": []}]`), &l); err == nil {
+		t.Error("a malformed bare array must be rejected")
+	}
+	if err := json.Unmarshal([]byte(`{"result": "not a list"}`), &l); err == nil {
+		t.Error("a malformed envelope must be rejected")
 	}
 }

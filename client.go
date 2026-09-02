@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/sfreiberg/webull/events"
 	"github.com/sfreiberg/webull/internal/signing"
 	"github.com/sfreiberg/webull/internal/transport"
 	"github.com/sfreiberg/webull/marketdata"
@@ -30,6 +31,9 @@ type Client struct {
 	Trade *trade.Client
 	// MarketData covers snapshots, quotes, ticks, bars and reference data.
 	MarketData *marketdata.Client
+	// Events streams real-time trade events over gRPC. Each Subscribe call
+	// opens its own connection whose lifetime belongs to the caller.
+	Events *events.Client
 
 	cfg  Config
 	doer *transport.Doer
@@ -74,10 +78,15 @@ func NewClient(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	eventsHost, err := cfg.host(serviceEvents)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
 		Trade:      trade.New(doer, tradingHost),
 		MarketData: marketdata.New(doer, marketDataHost),
+		Events:     events.New(doer.Signer, eventsHost),
 		cfg:        cfg,
 		doer:       doer,
 	}, nil

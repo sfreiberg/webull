@@ -80,7 +80,10 @@ news. Streaming and Connect are not implemented yet.
 | Corporate actions | Blocked | – | – | 6a | Both documented paths and every SDK-scheme alias return 404 in the sandbox |
 | News | Blocked | – | – | 6d | The one remaining documented endpoint, `news/summaries/get`, is a Server-Sent Events stream from Webull's AI assistant, absent from all SDKs. **It 404s in the sandbox** — the gateway rewrites it to `/openapi/news/summary` and returns a bare Spring 404. Not implemented; revisit with production keys |
 | **Connect API / OAuth** | Planned | – | – | 7 | Documented only; credentials are partner-gated |
-| **gRPC trade events** | Planned | – | – | 8 | `.proto` available; unblocked |
+| **gRPC trade events** | Complete | Yes | Yes | 8 | Verified live: a cancelled sandbox order's CANCEL_SUCCESS event arrived typed on the stream |
+| Order events | Complete | Yes | Yes | 8 | Typed to the documented payload; CANCEL_SUCCESS observed live |
+| Position events | Unverified | Yes | – | 8 | Typed to the one documented shape (event-contract settlement); no live event observed |
+| Option events | Partial | Yes | – | 8 | Delivered with the raw payload only; Webull documents no payload shape |
 | **MQTT market data** | Planned | – | – | 9 | `.proto` available; no sandbox host published |
 | **Broker API** | Excluded | – | – | – | Out of scope; see below |
 | **FIX** | Excluded | – | – | – | See below |
@@ -195,6 +198,8 @@ Established against the live sandbox and relied on by the implementation.
 | Fund data in the sandbox | Brief, dividends, net values, performance, ratings and splits serve real data; allocations, holdings and files return an empty list for every fund tried. AUM is documented in scientific notation but served plain |
 | A fourth error shape | The news endpoint's 404 is a bare Spring error (`{timestamp, status, error, message, path}`), with the path rewritten to the SDK scheme (`/openapi/news/summary`) — unlike the two application shapes and the gateway shape |
 | Sector period spelling | The server accepts `MO1`/`MO3` (letter O, per the reference docs) and rejects `M01`/`M03` (digit zero, per Webull's MCP and skills repos) with `417 UNSUPPORTED_PERIOD` — the docs are right and those repos are wrong. Each period returns genuinely different statistics, and an invalid value fails loudly rather than defaulting |
+| gRPC signature | The event stream's canonical string joins the sorted signature-header pairs with `=` rather than `&` — a quirk both official composers exhibit when no URI participates, confirmed against the live server, which helpfully echoes the signature it expected in its `Unauthenticated` error. The body digest is lowercase hex of the serialized protobuf, unlike HTTP's uppercase |
+| Event stream behaviour | Placing a resting order emits no event — the documented scenes begin at fills, modifies and cancels; `CANCEL_SUCCESS` for a cancelled order arrived within ~2s. Heartbeat pings carry `text/plain` and a request ID that repeats across pings on one connection |
 
 ## Sandbox validation backlog
 
@@ -236,3 +241,4 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 28 | Financial statements and industry comparison against real data; the sandbox returns them empty for every symbol. The integration subtests skip today and pass when data appears | production keys |
 | 29 | Fund allocations, holdings and files against real data; the sandbox returns them empty for every fund tried | production keys |
 | 30 | Whether `news/summaries/get` (an SSE stream) exists in production; the sandbox 404s it | production keys |
+| 31 | Position and option event payloads against real data; only order events have been observed live. Position events are typed to the documented event-contract settlement shape | a fill or settlement in the sandbox account |

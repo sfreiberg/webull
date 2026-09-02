@@ -199,3 +199,21 @@ func TestCanonicalOmitsPathSeparatorWhenPathIsEmpty(t *testing.T) {
 		t.Errorf("canonical = %q", decoded)
 	}
 }
+
+// TestSignStreamGoldenVector pins the gRPC metadata signature to a vector
+// computed independently with Webull's published algorithm: signature
+// headers only (no host, path or query), a lowercase hex body digest, and
+// the same encode-then-HMAC finish as HTTP.
+func TestSignStreamGoldenVector(t *testing.T) {
+	s := New("test-key", "test-secret")
+	s.Now = func() time.Time { return time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC) }
+	s.Nonce = func() string { return "8b8f2f2e-0000-4000-8000-000000000000" }
+
+	got := s.SignStream([]byte{0x08, 0x07, 0x10, 0x01, 0x2a, 0x02, 0x41, 0x31})
+	if got[HeaderSignature] != "VItf+M2xl4/L0UasRbpltRb2y2lBtzx4eqI9AtDymsA=" {
+		t.Errorf("signature = %q", got[HeaderSignature])
+	}
+	if got[HeaderAlgorithm] != "HMAC-SHA256" || got[HeaderVersion] != "1.0" || got[HeaderAppKey] != "test-key" {
+		t.Errorf("metadata = %v", got)
+	}
+}

@@ -89,18 +89,62 @@ func New(appKey, appSecret string) *Signer {
 	}
 }
 
-// Sign returns the headers to attach to req, including the signature itself.
-// The returned map is freshly allocated and owned by the caller.
-func (s *Signer) Sign(req Request) map[string]string {
-	headers := map[string]string{
+// signatureHeaders builds the five signature headers every signed request
+// carries. Both Sign and SignStream start from this one set, so a new
+// header or version bump cannot be applied to one and missed in the other.
+func (s *Signer) signatureHeaders() map[string]string {
+	return map[string]string{
 		HeaderAppKey:    s.AppKey,
 		HeaderTimestamp: s.now().UTC().Format(timestampLayout),
 		HeaderVersion:   signatureVersion,
 		HeaderAlgorithm: algorithm,
 		HeaderNonce:     s.nonce(),
 	}
+}
 
+// Sign returns the headers to attach to req, including the signature itself.
+// The returned map is freshly allocated and owned by the caller.
+func (s *Signer) Sign(req Request) map[string]string {
+	headers := s.signatureHeaders()
 	headers[HeaderSignature] = s.sign(canonical(req, headers))
+	return headers
+}
+
+// SignStream returns the metadata to attach to a gRPC request whose exact
+// serialized message bytes are body. The canonical string differs from the
+// HTTP form, matching Webull's event-stream signer: no path, host or query
+// parameters participate; the body digest is lowercase hex rather than
+// uppercase; and — a quirk shared by both official composers when there is
+// no URI, verified against the live server — the sorted key=value pairs
+// are joined by "=" rather than "&", with only the body digest appended by
+// an "&".
+func (s *Signer) SignStream(body []byte) map[string]string {
+	headers := s.signatureHeaders()
+
+	// Lowercased keys determine the sort order, exactly as in canonical.
+	params := make(map[string]string, len(headers))
+	for k, v := range headers {
+		params[strings.ToLower(k)] = v
+	}
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	pairs := make([]string, 0, len(keys))
+	for _, k := range keys {
+		pairs = append(pairs, k+"="+params[k])
+	}
+
+	var sb strings.Builder
+	sb.WriteString(strings.Join(pairs, "="))
+	if len(body) > 0 {
+		sum := sha256.Sum256(body)
+		sb.WriteString("&")
+		sb.WriteString(hex.EncodeToString(sum[:]))
+	}
+
+	headers[HeaderSignature] = s.sign(escape(sb.String()))
 	return headers
 }
 
