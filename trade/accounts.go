@@ -28,9 +28,9 @@ func (c *Client) Accounts(ctx context.Context) ([]Account, error) {
 
 // Balance is the financial summary of an account.
 //
-// Fields documented as always present are decimal.Decimal. The rest are
-// decimal.NullDecimal: Webull omits them for some account classes, and an
-// omitted margin figure is not the same thing as a margin figure of zero.
+// Fields documented as always present are Decimal. The rest are NullDecimal:
+// Webull omits them for some account classes, and an omitted margin figure is
+// not the same thing as a margin figure of zero.
 type Balance struct {
 	Currency                  string  `json:"total_asset_currency"`
 	TotalCashBalance          Decimal `json:"total_cash_balance"`

@@ -69,9 +69,10 @@
 // # Numbers
 //
 // Webull transmits every price, quantity and monetary amount as a decimal
-// string. This package preserves that exactness with decimal.Decimal for
-// fields that are always present and decimal.NullDecimal where a field may be
-// absent, so that "not reported" is distinguishable from zero. No field is
+// string. This package preserves that exactness with the SDK's Decimal type
+// for fields that are always present and NullDecimal where a field may be
+// absent, so that "not reported" is distinguishable from zero. Both embed
+// shopspring's decimal types, so all their methods are available. No field is
 // ever a float. Price builds a set NullDecimal from a literal.
 //
 // # Pagination
