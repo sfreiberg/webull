@@ -104,6 +104,45 @@ func (s *Signer) Sign(req Request) map[string]string {
 	return headers
 }
 
+// SignStream returns the metadata to attach to a gRPC request whose exact
+// serialized message bytes are body. The canonical string differs from the
+// HTTP form, matching Webull's event-stream signer: no path, host or query
+// parameters participate; the body digest is lowercase hex rather than
+// uppercase; and — a quirk shared by both official composers when there is
+// no URI, verified against the live server — the sorted key=value pairs
+// are joined by "=" rather than "&", with only the body digest appended by
+// an "&".
+func (s *Signer) SignStream(body []byte) map[string]string {
+	headers := map[string]string{
+		HeaderAppKey:    s.AppKey,
+		HeaderTimestamp: s.now().UTC().Format(timestampLayout),
+		HeaderVersion:   signatureVersion,
+		HeaderAlgorithm: algorithm,
+		HeaderNonce:     s.nonce(),
+	}
+
+	keys := make([]string, 0, len(headers))
+	for k := range headers {
+		keys = append(keys, strings.ToLower(k))
+	}
+	sort.Strings(keys)
+	pairs := make([]string, 0, len(keys))
+	for _, k := range keys {
+		pairs = append(pairs, k+"="+headers[k])
+	}
+
+	var sb strings.Builder
+	sb.WriteString(strings.Join(pairs, "="))
+	if len(body) > 0 {
+		sum := sha256.Sum256(body)
+		sb.WriteString("&")
+		sb.WriteString(hex.EncodeToString(sum[:]))
+	}
+
+	headers[HeaderSignature] = s.sign(escape(sb.String()))
+	return headers
+}
+
 // sign computes the base64 HMAC-SHA256 of s over the signing key.
 func (s *Signer) sign(canonical string) string {
 	mac := hmac.New(sha256.New, []byte(s.appSecret+keySuffix))

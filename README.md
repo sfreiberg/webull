@@ -8,14 +8,14 @@
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
 > **Status: pre-release.** Trading (accounts, instrument data, orders across
-> every asset class) and the Market Data HTTP API (quotes, fundamentals,
-> funds, screeners, watchlists) are implemented, and verified against
-> Webull's sandbox except where the
+> every asset class), the Market Data HTTP API (quotes, fundamentals,
+> funds, screeners, watchlists) and real-time trade events over gRPC are
+> implemented, and verified against Webull's sandbox except where the
 > [compatibility matrix](docs/COMPATIBILITY.md) says otherwise. A few
 > documented market-data endpoints that do not exist in the sandbox — news
 > and corporate actions among them — are recorded there as blocked rather
-> than implemented. Streaming and the Connect API are not yet implemented.
-> The public API may change without notice until v1.0.0.
+> than implemented. MQTT market-data streaming and the Connect API are not
+> yet implemented. The public API may change without notice until v1.0.0.
 
 ## Disclaimer
 
@@ -225,6 +225,30 @@ bars, err := client.MarketData.Bars(ctx, marketdata.BarsRequest{
 
 Data the key is not subscribed to fails with `marketdata.ErrNotSubscribed`, and
 the wrapped `*webull.APIError` names the product required.
+
+## Trade events
+
+```go
+stream, err := client.Events.Subscribe(ctx, events.SubscribeRequest{
+    AccountIDs: []string{acct.AccountID},
+})
+defer stream.Close()
+for {
+    ev, err := stream.Recv()
+    if err != nil {
+        break
+    }
+    if ev.Kind == events.KindOrder {
+        fmt.Println(ev.Order.Scene, ev.Order.Symbol, ev.Order.FilledQuantity)
+    }
+}
+```
+
+`Subscribe` blocks until the server acknowledges, so a returned stream is
+live. `Recv` swallows heartbeats and reconnects on transient failures;
+authentication rejection and the server's connection limit surface as
+`events.ErrAuthFailed` and `events.ErrConnectionLimit` instead of being
+retried.
 
 ## Numbers
 

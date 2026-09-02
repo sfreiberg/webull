@@ -12,6 +12,14 @@ called out explicitly.
 
 ### Added
 
+- `events` package: real-time trade events over gRPC, reachable as
+  `client.Events`. `Subscribe` blocks until the server acknowledges, so a
+  returned `Stream` is live; `Recv` handles heartbeats, reconnects on
+  transient failures with a fixed delay, and renews an expired
+  subscription. Order events are fully typed; authentication rejection and
+  the server's connection limit are `ErrAuthFailed` and
+  `ErrConnectionLimit`. The vendored `events.proto` and its generated
+  bindings are committed with their Apache-2.0 provenance.
 - Fund reference data: `FundBrief`, `FundAllocations`, `FundDividends`,
   `FundFiles`, `FundHoldings`, `FundNetValues`, `FundPerformance`,
   `FundRatings` and `FundSplits`.
@@ -75,8 +83,9 @@ called out explicitly.
   `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
   handlers and are not implemented.
 - News is not implemented: the one documented endpoint is a Server-Sent
-  Events stream that does not exist in the sandbox. Streaming and the
-  Connect API are not implemented yet. The Broker API and FIX are out of
-  scope; see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+  Events stream that does not exist in the sandbox. MQTT market-data
+  streaming and the Connect API are not implemented yet. The Broker API
+  and FIX are out of scope; see
+  [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 [Unreleased]: https://github.com/sfreiberg/webull/commits/main
