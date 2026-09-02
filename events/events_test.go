@@ -108,7 +108,7 @@ func TestSubscribeSignsAndDeliversTypedOrderEvents(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 
 	ev, err := stream.Recv()
 	if err != nil {
@@ -149,7 +149,7 @@ func TestSubscribeDefaultsToAllTypes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if got := f.gotReqs[0].GetSubscribeType(); got != 7 {
 		t.Errorf("default mask = %d, want 7", got)
 	}
@@ -185,7 +185,7 @@ func TestConnectionLimitMidStreamIsTerminal(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if _, err := stream.Recv(); !errors.Is(err, ErrConnectionLimit) {
 		t.Errorf("err = %v, want ErrConnectionLimit", err)
 	}
@@ -206,7 +206,7 @@ func TestExpiredSubscriptionResubscribes(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	ev, err := stream.Recv()
 	if err != nil {
 		t.Fatalf("Recv after expiry: %v", err)
@@ -230,7 +230,7 @@ func TestTransientFailureReconnects(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	ev, err := stream.Recv()
 	if err != nil {
 		t.Fatalf("Recv after reconnect: %v", err)
@@ -250,7 +250,7 @@ func TestNonRetryableStatusEndsTheStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if _, err := stream.Recv(); err == nil || f.callCount() != 1 {
 		t.Errorf("err = %v, calls = %d; a non-retryable status must not reconnect", err, f.callCount())
 	}
@@ -266,7 +266,7 @@ func TestReconnectAttemptsAreBounded(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	_, err = stream.Recv()
 	if err == nil || !strings.Contains(err.Error(), "gave up") {
 		t.Errorf("err = %v, want reconnect exhaustion", err)
@@ -366,7 +366,7 @@ func TestSubscribeAgainstDeadServerFails(t *testing.T) {
 	}
 }
 
-func TestReconnectFailurePropagates(t *testing.T) {
+func TestReconnectRetriesThroughAnOutage(t *testing.T) {
 	f := &fakeServer{handler: func(_ int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
 		_ = stream.Send(ack())
 		return status.Error(codes.Unavailable, "going away")
@@ -377,8 +377,9 @@ func TestReconnectFailurePropagates(t *testing.T) {
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
 
-	// The dialer serves exactly one connection, so the reconnect's own
-	// subscribe fails deterministically.
+	// The dialer serves exactly one connection, so every reconnect
+	// attempt fails; the stream must keep retrying until the budget is
+	// spent rather than dying at the first failed dial.
 	var dials atomic.Int32
 	c := New(signing.New("k", "s"), "ignored")
 	c.host = "passthrough:///bufnet"
@@ -392,13 +393,19 @@ func TestReconnectFailurePropagates(t *testing.T) {
 		}),
 	}
 
-	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}, ReconnectDelay: 10 * time.Millisecond})
+	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}, ReconnectDelay: 5 * time.Millisecond, MaxReconnectAttempts: 3})
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
-	if _, err := stream.Recv(); err == nil {
-		t.Error("a failed reconnect must end the stream with an error")
+	defer func() { _ = stream.Close() }()
+	_, err = stream.Recv()
+	if err == nil || !strings.Contains(err.Error(), "gave up") {
+		t.Errorf("a persistent outage must exhaust the attempt budget, got %v", err)
+	}
+	// The initial connect plus retries against the dead dialer: only the
+	// first connection ever succeeded.
+	if dials.Load() < 2 {
+		t.Errorf("dials = %d; the outage must have been retried", dials.Load())
 	}
 }
 

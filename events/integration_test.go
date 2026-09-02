@@ -41,7 +41,7 @@ func TestIntegrationEventStream(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	t.Log("subscribed: the sandbox acknowledged the event stream")
 
 	// A $1.00 GTC limit buy cannot fill and works at any hour; cancelling

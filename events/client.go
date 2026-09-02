@@ -78,7 +78,7 @@ func (c *Client) Subscribe(ctx context.Context, req SubscribeRequest) (*Stream, 
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	s := &Stream{client: c, req: req, ctx: ctx, cancel: cancel}
-	if err := s.connect(); err != nil {
+	if err := s.connect(ctx); err != nil {
 		cancel()
 		return nil, err
 	}
@@ -101,7 +101,7 @@ type Stream struct {
 }
 
 // connect dials, subscribes, and consumes the acknowledgement.
-func (s *Stream) connect() error {
+func (s *Stream) connect(ctx context.Context) error {
 	opts := s.client.dialOpts
 	if opts == nil {
 		opts = []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12}))}
@@ -127,7 +127,7 @@ func (s *Stream) connect() error {
 	}
 	md := metadata.New(s.client.signer.SignStream(body))
 
-	rpc, err := eventspb.NewEventServiceClient(conn).Subscribe(metadata.NewOutgoingContext(s.ctx, md), pbReq)
+	rpc, err := eventspb.NewEventServiceClient(conn).Subscribe(metadata.NewOutgoingContext(ctx, md), pbReq)
 	if err != nil {
 		_ = conn.Close()
 		return fmt.Errorf("events: subscribe: %w", err)
@@ -167,11 +167,16 @@ func controlError(resp *eventspb.SubscribeResponse) error {
 }
 
 // retryable reports whether a stream error is worth a reconnect: the same
-// transient status codes Webull's own client retries.
+// transient status codes Webull's own client retries. Unknown counts only
+// for a genuine gRPC status, so a local failure mapped to Unknown by
+// status.Code does not loop.
 func retryable(err error) bool {
 	switch status.Code(err) {
-	case codes.Unavailable, codes.Internal, codes.Unknown:
+	case codes.Unavailable, codes.Internal:
 		return true
+	case codes.Unknown:
+		var se interface{ GRPCStatus() *status.Status }
+		return errors.As(err, &se)
 	}
 	return false
 }
@@ -180,7 +185,8 @@ func retryable(err error) bool {
 // internally, transient failures reconnect after the configured delay, and
 // an expired subscription is renewed. Terminal failures — authentication
 // rejection, the connection limit, context cancellation, or reconnect
-// attempts exhausted — end the stream with an error.
+// attempts exhausted — end the stream with an error. A delivered event
+// resets the attempt count.
 func (s *Stream) Recv() (*Event, error) {
 	failures := 0
 	for {
@@ -192,11 +198,7 @@ func (s *Stream) Recv() (*Event, error) {
 			if !retryable(err) {
 				return nil, fmt.Errorf("events: stream: %w", err)
 			}
-			failures++
-			if s.req.MaxReconnectAttempts > 0 && failures > s.req.MaxReconnectAttempts {
-				return nil, fmt.Errorf("events: gave up after %d reconnect attempts: %w", failures-1, err)
-			}
-			if err := s.reconnect(); err != nil {
+			if err := s.reconnect(&failures); err != nil {
 				return nil, err
 			}
 			continue
@@ -208,12 +210,11 @@ func (s *Stream) Recv() (*Event, error) {
 		case eventspb.EventType_AuthError, eventspb.EventType_NumOfConnExceed:
 			return nil, controlError(resp)
 		case eventspb.EventType_SubscribeExpired:
-			if err := s.reconnect(); err != nil {
+			if err := s.reconnect(&failures); err != nil {
 				return nil, err
 			}
 			continue
 		}
-		failures = 0
 		return decodeEvent(
 			Kind(resp.GetEventType()),
 			resp.GetContentType(),
@@ -224,24 +225,35 @@ func (s *Stream) Recv() (*Event, error) {
 	}
 }
 
-// reconnect closes the failed connection, waits out the delay, and opens a
-// fresh subscription.
-func (s *Stream) reconnect() error {
-	s.mu.Lock()
-	if s.conn != nil {
-		_ = s.conn.Close()
-		s.conn = nil
+// reconnect retries until a subscription is acknowledged again, so an
+// outage spanning several attempts is ridden out rather than ending the
+// stream at the first failed dial. It stops on a terminal error, on
+// context cancellation, or when the attempt budget is spent.
+func (s *Stream) reconnect(failures *int) error {
+	for {
+		*failures++
+		if s.req.MaxReconnectAttempts > 0 && *failures > s.req.MaxReconnectAttempts {
+			return fmt.Errorf("events: gave up after %d reconnect attempts", *failures-1)
+		}
+		s.mu.Lock()
+		if s.conn != nil {
+			_ = s.conn.Close()
+			s.conn = nil
+		}
+		s.mu.Unlock()
+		select {
+		case <-s.ctx.Done():
+			return s.ctx.Err()
+		case <-time.After(s.req.delay()):
+		}
+		err := s.connect(s.ctx)
+		if err == nil {
+			return nil
+		}
+		if errors.Is(err, ErrAuthFailed) || errors.Is(err, ErrConnectionLimit) || !retryable(err) {
+			return err
+		}
 	}
-	s.mu.Unlock()
-	select {
-	case <-s.ctx.Done():
-		return s.ctx.Err()
-	case <-time.After(s.req.delay()):
-	}
-	if err := s.connect(); err != nil {
-		return err
-	}
-	return nil
 }
 
 // Close ends the stream and releases its connection. It is safe to call
