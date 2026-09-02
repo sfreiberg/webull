@@ -581,3 +581,70 @@ func TestDoAuthorizerErrorFailsRequest(t *testing.T) {
 		t.Error("an authorizer error must fail the request")
 	}
 }
+
+func TestDoRejectsBodyAndForm(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a request with both Body and Form must not be sent")
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	err := d.Do(context.Background(), Request{
+		Method: "POST", Host: hostOf(srv), Path: "/x",
+		Body: map[string]string{"a": "b"},
+		Form: url.Values{"a": {"b"}},
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "both Body and Form") {
+		t.Errorf("err = %v, want a Body-and-Form error", err)
+	}
+}
+
+func TestDoResolvesAuthorizerOncePerRequest(t *testing.T) {
+	// A retried request must not re-run the authorizer: a token refresh that
+	// failed terminally would only fail again, and re-running one multiplies
+	// real calls to the token endpoint.
+	var serverHits int
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHits++
+		if got := r.Header.Get("Authorization"); got != "Bearer once" {
+			t.Errorf("attempt %d: authorization = %q", serverHits, got)
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	var authCalls int
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		authCalls++
+		return map[string]string{"Authorization": "Bearer once"}, nil
+	}
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err == nil {
+		t.Fatal("expected the 500s to surface")
+	}
+	if serverHits != 3 {
+		t.Errorf("server hits = %d, want 3 attempts", serverHits)
+	}
+	if authCalls != 1 {
+		t.Errorf("authorizer calls = %d, want 1 per request", authCalls)
+	}
+}
+
+func TestDoAuthorizerHeadersCannotShadowSignature(t *testing.T) {
+	// Signing headers are set after the authorizer's, so a colliding key
+	// cannot silently invalidate the signature.
+	var gotSig string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotSig = r.Header.Get("x-signature")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		return map[string]string{"x-signature": "forged"}, nil
+	}
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if gotSig == "forged" || gotSig == "" {
+		t.Errorf("x-signature = %q, want the signer's value", gotSig)
+	}
+}

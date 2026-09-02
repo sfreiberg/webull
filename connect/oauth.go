@@ -31,11 +31,13 @@ type Config struct {
 	RedirectURI string
 	// Scopes are the access scopes requested; empty requests all of them.
 	Scopes []string
-	// TokenStore persists tokens across access-token lifetimes. When nil, an
-	// in-memory store is used, which does not survive a restart.
-	TokenStore TokenStore
+	// Endpoint overrides the host derived from Environment, for testing
+	// against a local server or routing through a proxy. Optional.
+	Endpoint string
 	// HTTPClient is used for all HTTP requests; nil uses a default with a
-	// 30-second timeout.
+	// 30-second timeout. As with the root package, redirects are refused on
+	// a copy of the supplied client, so signing material and the client
+	// secret can never be forwarded to a redirect target.
 	HTTPClient *http.Client
 	// UserAgent identifies the calling application; optional.
 	UserAgent string
@@ -63,6 +65,14 @@ func (c Config) scopeString() string {
 	return strings.Join(c.Scopes, ":")
 }
 
+// host returns the configured override, or the environment's host.
+func (c Config) host() string {
+	if c.Endpoint != "" {
+		return c.Endpoint
+	}
+	return oauthHosts[c.Environment]
+}
+
 // Authorizer builds authorization URLs and exchanges codes for tokens. It
 // does not hold a user's token; a Client does. It is the entry point to the
 // OAuth flow and is safe for concurrent use.
@@ -70,6 +80,8 @@ type Authorizer struct {
 	cfg  Config
 	host string
 	doer *transport.Doer
+	// now is the clock, used to default a token's CreatedAt; tests fix it.
+	now func() time.Time
 }
 
 // NewAuthorizer returns an Authorizer for the given configuration.
@@ -83,14 +95,15 @@ func NewAuthorizer(cfg Config) (*Authorizer, error) {
 	}
 	return &Authorizer{
 		cfg:  cfg,
-		host: oauthHosts[cfg.Environment],
+		host: cfg.host(),
 		doer: &transport.Doer{
-			HTTPClient:  cfg.httpClient(),
+			HTTPClient:  transport.NewHTTPClient(cfg.HTTPClient),
 			Signer:      signing.New(cfg.AppKey, cfg.AppSecret),
 			UserAgent:   userAgent,
-			DecodeError: webull.ErrorDecoder(),
+			DecodeError: transport.APIErrorDecoder,
 			Retry:       transport.DefaultRetryPolicy(),
 		},
+		now: time.Now,
 	}, nil
 }
 
@@ -143,13 +156,11 @@ func (a *Authorizer) token(ctx context.Context, form url.Values) (*Token, error)
 	if err != nil {
 		return nil, err
 	}
-	return &tok, nil
-}
-
-// httpClient returns the configured client, or a default with a timeout.
-func (c Config) httpClient() *http.Client {
-	if c.HTTPClient != nil {
-		return c.HTTPClient
+	if tok.CreatedAt.IsZero() {
+		// The standard OAuth response shape has no created_at. Without a
+		// value the expiries would sit in year 1 and a seconds-old token
+		// would read as terminally expired, so receipt time stands in.
+		tok.CreatedAt = Time{Time: a.now()}
 	}
-	return &http.Client{Timeout: 30 * time.Second}
+	return &tok, nil
 }

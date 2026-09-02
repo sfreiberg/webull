@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/sfreiberg/webull"
@@ -39,8 +38,9 @@ func Example() {
 	}
 
 	// 3. Build a client and act on the user's account. The client refreshes
-	// the access token before it expires.
-	client, err := authorizer.Client(context.Background(), token)
+	// the access token before it expires; Token reads back the rotated pair
+	// for persistence.
+	client, err := authorizer.Client(token)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -53,14 +53,13 @@ func Example() {
 	}
 }
 
-// ExampleAuthorizer_Client_persistentStore shows supplying a TokenStore so a
-// user's session survives the 30-minute access-token lifetime and process
-// restarts. The store is scoped to one user; a platform keeps one per user.
-func ExampleAuthorizer_Client_persistentStore() {
-	// A real store persists to a database keyed by the user; this sketch
-	// uses the in-memory default.
-	store := &connect.MemoryTokenStore{}
-
+// ExampleAuthorizer_ClientFromStore shows keeping a user's token pair in a
+// TokenStore, so their session survives the 30-minute access-token lifetime
+// and process restarts. The store is scoped to one user and is the source of
+// truth: it is read on first use and rotated pairs are saved back, so a pair
+// already in the store is never overwritten with a stale one. A platform
+// keeps one store per connected user.
+func ExampleAuthorizer_ClientFromStore() {
 	authorizer, err := connect.NewAuthorizer(connect.Config{
 		ClientID:     os.Getenv("WEBULL_CONNECT_CLIENT_ID"),
 		ClientSecret: os.Getenv("WEBULL_CONNECT_CLIENT_SECRET"),
@@ -68,11 +67,26 @@ func ExampleAuthorizer_Client_persistentStore() {
 		AppSecret:    os.Getenv("WEBULL_APP_SECRET"),
 		Environment:  webull.Production,
 		RedirectURI:  "https://app.example.com/webull/callback",
-		TokenStore:   store,
-		HTTPClient:   &http.Client{},
 	})
 	if err != nil {
 		log.Fatal(err)
 	}
-	_ = authorizer
+
+	// A real store persists to a database keyed by the user; this sketch
+	// uses the in-memory one, seeded from a fresh authorization.
+	token, err := authorizer.ExchangeCode(context.Background(), "the-code")
+	if err != nil {
+		log.Fatal(err)
+	}
+	store := connect.NewMemoryTokenStore(token)
+
+	client, err := authorizer.ClientFromStore(store)
+	if err != nil {
+		log.Fatal(err)
+	}
+	accounts, err := client.Trade.Accounts(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(len(accounts))
 }

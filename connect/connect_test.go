@@ -2,6 +2,7 @@ package connect
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -78,11 +79,11 @@ func newFixture(t *testing.T, f *fakeServer) *Authorizer {
 		ClientID: "cid", ClientSecret: "csec", AppKey: "k", AppSecret: "s",
 		Environment: webull.Sandbox, RedirectURI: "https://app.example/callback",
 		HTTPClient: srv.Client(),
+		Endpoint:   strings.TrimPrefix(srv.URL, "https://"),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	a.host = strings.TrimPrefix(srv.URL, "https://")
 	return a
 }
 
@@ -186,7 +187,7 @@ func TestClientCarriesBearerToken(t *testing.T) {
 	f := &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("A", "R", now) }}
 	a := newFixture(t, f)
 
-	c, err := a.Client(context.Background(), ptr(mkToken("access-live", "refresh-live", now)))
+	c, err := a.Client(ptr(mkToken("access-live", "refresh-live", now)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -221,7 +222,7 @@ func TestNearExpiryTriggersRefresh(t *testing.T) {
 		return mkToken("fresh-access", "rotated-refresh", now)
 	}}
 	a := newFixture(t, f)
-	c, err := a.Client(context.Background(), &seeded)
+	c, err := a.Client(&seeded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -248,7 +249,7 @@ func TestExpiredRefreshTokenIsTerminal(t *testing.T) {
 	// Both access and refresh are long expired.
 	seeded := mkToken("old", "old-refresh", now.Add(-30*24*time.Hour))
 	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("x", "y", now) }})
-	c, err := a.Client(context.Background(), &seeded)
+	c, err := a.Client(&seeded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -265,7 +266,7 @@ func TestConcurrentRefreshHappensOnce(t *testing.T) {
 		return mkToken("fresh", "r1", now)
 	}}
 	a := newFixture(t, f)
-	c, err := a.Client(context.Background(), &seeded)
+	c, err := a.Client(&seeded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,35 +288,61 @@ func TestConcurrentRefreshHappensOnce(t *testing.T) {
 	}
 }
 
-func TestClientLoadsFromStoreWhenNotSeeded(t *testing.T) {
+func TestClientFromStoreLoadsLazily(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
-	store := &MemoryTokenStore{}
-	_ = store.Save(context.Background(), ptr(mkToken("stored-access", "stored-refresh", now)))
+	store := NewMemoryTokenStore(ptr(mkToken("stored-access", "stored-refresh", now)))
 
 	f := &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("x", "y", now) }}
-	srv := httptest.NewTLSServer(f.handler())
-	t.Cleanup(srv.Close)
-	a, err := NewAuthorizer(Config{
-		ClientID: "cid", ClientSecret: "csec", AppKey: "k", AppSecret: "s",
-		Environment: webull.Sandbox, RedirectURI: "https://x", HTTPClient: srv.Client(),
-		TokenStore: store,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	a.host = strings.TrimPrefix(srv.URL, "https://")
-
-	// A client built with the token in the store, then read back from a
-	// fresh source pointing at the same store.
-	c, err := a.Client(context.Background(), ptr(mkToken("stored-access", "stored-refresh", now)))
+	a := newFixture(t, f)
+	c, err := a.ClientFromStore(store)
 	if err != nil {
 		t.Fatal(err)
 	}
 	c.src.now = func() time.Time { return now }
-	c.src.tok = nil // force a load from the store
 	tok, err := c.Token(context.Background())
 	if err != nil || tok.AccessToken != "stored-access" {
 		t.Errorf("did not load from store: %+v %v", tok, err)
+	}
+}
+
+// countingStore records writes, to prove construction never writes.
+type countingStore struct {
+	MemoryTokenStore
+	saves atomic.Int32
+}
+
+func (c *countingStore) Save(ctx context.Context, tok *Token) error {
+	c.saves.Add(1)
+	return c.MemoryTokenStore.Save(ctx, tok)
+}
+
+func TestClientFromStoreNeverClobbersTheStore(t *testing.T) {
+	// The store may hold a pair newer than anything the caller has cached —
+	// refresh tokens rotate — so nothing may be written until a refresh
+	// produces a genuinely newer pair.
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	store := &countingStore{}
+	_ = store.MemoryTokenStore.Save(context.Background(), ptr(mkToken("newer-access", "r1", now)))
+
+	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("x", "y", now) }})
+	c, err := a.ClientFromStore(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.src.now = func() time.Time { return now }
+	tok, err := c.Token(context.Background())
+	if err != nil || tok.RefreshToken != "r1" {
+		t.Fatalf("tok = %+v, %v", tok, err)
+	}
+	if n := store.saves.Load(); n != 0 {
+		t.Errorf("store written %d times before any refresh; the stored pair must win", n)
+	}
+}
+
+func TestClientFromStoreRequiresAStore(t *testing.T) {
+	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return Token{} }})
+	if _, err := a.ClientFromStore(nil); err == nil {
+		t.Error("a nil store must be rejected")
 	}
 }
 
@@ -340,10 +367,10 @@ func TestConfigValidation(t *testing.T) {
 
 func TestClientRejectsEmptyToken(t *testing.T) {
 	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return Token{} }})
-	if _, err := a.Client(context.Background(), nil); !errors.Is(err, ErrNoToken) {
+	if _, err := a.Client(nil); !errors.Is(err, ErrNoToken) {
 		t.Errorf("nil token: err = %v, want ErrNoToken", err)
 	}
-	if _, err := a.Client(context.Background(), &Token{}); !errors.Is(err, ErrNoToken) {
+	if _, err := a.Client(&Token{}); !errors.Is(err, ErrNoToken) {
 		t.Errorf("empty token: err = %v, want ErrNoToken", err)
 	}
 }
@@ -358,8 +385,8 @@ func TestTokenEndpointErrorIsAPIError(t *testing.T) {
 	a, _ := NewAuthorizer(Config{
 		ClientID: "c", ClientSecret: "s", AppKey: "k", AppSecret: "s",
 		Environment: webull.Sandbox, RedirectURI: "https://x", HTTPClient: srv.Client(),
+		Endpoint: strings.TrimPrefix(srv.URL, "https://"),
 	})
-	a.host = strings.TrimPrefix(srv.URL, "https://")
 	_, err := a.ExchangeCode(context.Background(), "bad")
 	var apiErr *webull.APIError
 	if !errors.As(err, &apiErr) || apiErr.Code != "OPENAPI_PARAM_ERR" {
@@ -384,9 +411,9 @@ func TestRefreshFailureSurfacesThroughTradeCall(t *testing.T) {
 	a, _ := NewAuthorizer(Config{
 		ClientID: "c", ClientSecret: "s", AppKey: "k", AppSecret: "s",
 		Environment: webull.Sandbox, RedirectURI: "https://x", HTTPClient: srv.Client(),
+		Endpoint: strings.TrimPrefix(srv.URL, "https://"),
 	})
-	a.host = strings.TrimPrefix(srv.URL, "https://")
-	c, err := a.Client(context.Background(), &seeded)
+	c, err := a.Client(&seeded)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -406,7 +433,7 @@ func (errStore) Save(context.Context, *Token) error   { return nil }
 func TestStoreLoadErrorSurfaces(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return Token{} }})
-	c, err := a.Client(context.Background(), ptr(mkToken("a", "r", now)))
+	c, err := a.Client(ptr(mkToken("a", "r", now)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,5 +454,167 @@ func TestNewAuthorizerAppendsUserAgent(t *testing.T) {
 	}
 	if !strings.HasPrefix(a.doer.UserAgent, "acme/2 ") {
 		t.Errorf("user agent = %q", a.doer.UserAgent)
+	}
+}
+
+func TestTokenDecodesQuotedAndNumericLifetimes(t *testing.T) {
+	// Observed Webull responses quote their numbers; the OAuth 2.0 standard
+	// form is numeric. Both must decode.
+	for name, body := range map[string]string{
+		"quoted":  `{"access_token":"a","refresh_token":"r","expires_in":"1800","rt_expires_in":"1296000"}`,
+		"numeric": `{"access_token":"a","refresh_token":"r","expires_in":1800,"rt_expires_in":1296000}`,
+	} {
+		var tok Token
+		if err := json.Unmarshal([]byte(body), &tok); err != nil {
+			t.Errorf("%s: %v", name, err)
+			continue
+		}
+		if tok.AccessExpiresIn != 1800 || tok.RefreshExpiresIn != 1296000 {
+			t.Errorf("%s: lifetimes = %d, %d", name, tok.AccessExpiresIn, tok.RefreshExpiresIn)
+		}
+	}
+	var tok Token
+	if err := json.Unmarshal([]byte(`{"expires_in":"soon"}`), &tok); err == nil {
+		t.Error("a non-numeric lifetime must be an error, not a silent zero")
+	}
+}
+
+func TestMissingCreatedAtDefaultsToReceiptTime(t *testing.T) {
+	// The standard OAuth response has no created_at; without a fallback the
+	// expiries would sit in year 1 and a fresh token would read as expired.
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"access_token":"a","refresh_token":"r","token_type":"Bearer",` +
+			`"expires_in":1800,"rt_expires_in":1296000,"identity_id":"id"}`))
+	}))
+	t.Cleanup(srv.Close)
+	a, err := NewAuthorizer(Config{
+		ClientID: "c", ClientSecret: "s", AppKey: "k", AppSecret: "s",
+		Environment: webull.Sandbox, RedirectURI: "https://x", HTTPClient: srv.Client(),
+		Endpoint: strings.TrimPrefix(srv.URL, "https://"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.now = func() time.Time { return now }
+	tok, err := a.ExchangeCode(context.Background(), "code")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !tok.CreatedAt.Equal(now) {
+		t.Errorf("CreatedAt = %v, want the receipt time", tok.CreatedAt)
+	}
+	if !tok.AccessExpiry().Equal(now.Add(30 * time.Minute)) {
+		t.Errorf("AccessExpiry = %v", tok.AccessExpiry())
+	}
+	if !tok.accessValid(now, refreshLeeway) {
+		t.Error("a fresh token must be valid at receipt")
+	}
+}
+
+func TestFailedRefreshIsSharedByConcurrentCallers(t *testing.T) {
+	// When a refresh fails, every caller queued behind it must share that
+	// failure rather than each re-driving its own doomed refresh against a
+	// token endpoint that just said no.
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var tokenCalls atomic.Int32
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if tokenCalls.Add(1) == 1 {
+			close(entered)
+		}
+		<-release
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error_code":"UNAUTHORIZED","message":"nope"}`))
+	}))
+	t.Cleanup(srv.Close)
+	a, err := NewAuthorizer(Config{
+		ClientID: "c", ClientSecret: "s", AppKey: "k", AppSecret: "s",
+		Environment: webull.Sandbox, RedirectURI: "https://x", HTTPClient: srv.Client(),
+		Endpoint: strings.TrimPrefix(srv.URL, "https://"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seeded := mkToken("expired", "r0", now.Add(-40*time.Minute))
+	c, err := a.Client(&seeded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.src.now = func() time.Time { return now }
+
+	var wg sync.WaitGroup
+	errs := make([]error, 20)
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func(i int) {
+			defer wg.Done()
+			_, errs[i] = c.Token(context.Background())
+		}(i)
+	}
+	// Hold the one in-flight refresh open until every other goroutine has had
+	// ample time to queue behind it, then let it fail.
+	<-entered
+	time.Sleep(250 * time.Millisecond)
+	close(release)
+	wg.Wait()
+
+	for i, err := range errs {
+		if err == nil {
+			t.Errorf("caller %d: expected the shared refresh failure", i)
+		}
+	}
+	if n := tokenCalls.Load(); n != 1 {
+		t.Errorf("token endpoint called %d times; a failed refresh must be shared, not serially retried", n)
+	}
+}
+
+func TestWaiterContextCancelsIndependently(t *testing.T) {
+	// A waiter whose own context expires must not be held hostage by the
+	// in-flight refresh.
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var once sync.Once
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		once.Do(func() { close(entered) })
+		<-release
+		writeToken(w, mkToken("fresh", "r1", now))
+	}))
+	t.Cleanup(srv.Close)
+	a, err := NewAuthorizer(Config{
+		ClientID: "c", ClientSecret: "s", AppKey: "k", AppSecret: "s",
+		Environment: webull.Sandbox, RedirectURI: "https://x", HTTPClient: srv.Client(),
+		Endpoint: strings.TrimPrefix(srv.URL, "https://"),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	seeded := mkToken("expired", "r0", now.Add(-40*time.Minute))
+	c, err := a.Client(&seeded)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.src.now = func() time.Time { return now }
+
+	// Leader blocks in the refresh.
+	leaderDone := make(chan error, 1)
+	go func() {
+		_, err := c.Token(context.Background())
+		leaderDone <- err
+	}()
+	<-entered
+
+	// A waiter with an already-cancelled context returns at once.
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if _, err := c.Token(ctx); !errors.Is(err, context.Canceled) {
+		t.Errorf("waiter err = %v, want context.Canceled", err)
+	}
+
+	close(release)
+	if err := <-leaderDone; err != nil {
+		t.Errorf("leader: %v", err)
 	}
 }

@@ -18,12 +18,18 @@ type TokenStore interface {
 	Save(ctx context.Context, tok *Token) error
 }
 
-// MemoryTokenStore keeps a token in memory. It is the default and is safe
-// for concurrent use, but it does not survive a restart; supply a persistent
-// TokenStore for anything longer-lived than one process.
+// MemoryTokenStore keeps a token in memory. It is safe for concurrent use,
+// but it does not survive a restart; supply a persistent TokenStore for
+// anything longer-lived than one process. The zero value is an empty store.
 type MemoryTokenStore struct {
 	mu  sync.RWMutex
 	tok *Token
+}
+
+// NewMemoryTokenStore returns an in-memory store holding tok, which may be
+// nil for an empty store. It holds one user's token pair.
+func NewMemoryTokenStore(tok *Token) *MemoryTokenStore {
+	return &MemoryTokenStore{tok: tok}
 }
 
 // Load returns the stored token, or nil when none is stored.

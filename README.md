@@ -321,8 +321,9 @@ authorizer, _ := connect.NewAuthorizer(connect.Config{
 url := authorizer.AuthorizationURL(state)
 token, _ := authorizer.ExchangeCode(ctx, code)
 
-// Trade on the user's behalf; the access token refreshes itself.
-client, _ := authorizer.Client(ctx, token)
+// Trade on the user's behalf; the access token refreshes itself. Use
+// ClientFromStore to keep the rotating token pair in a store of your own.
+client, _ := authorizer.Client(token)
 accounts, _ := client.Trade.Accounts(ctx)
 ```
 

@@ -24,10 +24,13 @@ called out explicitly.
   Connect API), reachable through an `Authorizer` — build an authorization
   URL, exchange the returned code for a `Token`, then get a `Client` whose
   `Trade` reaches the same operations as the root package on the user's
-  account. The access token refreshes automatically before expiry and the
-  rotating token pair is written to a pluggable `TokenStore`. Implemented to
-  Webull's documentation; the credentials are partner-gated and unavailable,
-  so it is `Unverified`.
+  account. The access token refreshes automatically before expiry —
+  concurrent refreshes collapse to one shared call, success or failure — and
+  the rotating token pair lives in a per-user `TokenStore`
+  (`ClientFromStore`), which is never written until a refresh produces a
+  newer pair. Token decoding tolerates both quoted and numeric lifetimes and
+  a missing `created_at`. Implemented to Webull's documentation; the
+  credentials are partner-gated and unavailable, so it is `Unverified`.
 - `streaming` package: real-time market data over MQTT, reachable as
   `client.Streaming`. `Connect` opens the broker connection; `Subscribe`
   and `Unsubscribe` register interest over the signed HTTP endpoints; `Recv`

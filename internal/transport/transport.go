@@ -50,6 +50,14 @@ type Response struct {
 // create an import cycle.
 type ErrorDecoder func(Response) error
 
+// APIErrorDecoder is registered by the root webull package at init and turns
+// failed responses into its *APIError. It lives here so that sibling packages
+// that build their own Doer — connect — share the root package's error
+// semantics without the root exporting an accessor that returns an internal
+// type no caller outside the module could use. Every package in the module
+// that reads it imports the root package, so it is always set.
+var APIErrorDecoder ErrorDecoder
+
 // Doer performs signed requests.
 type Doer struct {
 	HTTPClient  *http.Client
@@ -60,11 +68,14 @@ type Doer struct {
 	// Sleep pauses between retry attempts. Defaults to time.Sleep; tests
 	// replace it to avoid real delays.
 	Sleep func(context.Context, time.Duration) error
-	// Authorizer, if set, returns headers to add to each request after
-	// signing — an OAuth bearer token for the Connect API, which is both
-	// signed and bearer-authenticated. It is called per request so a
-	// rotating token is always current, and its error fails the request
-	// before anything is sent.
+	// Authorizer, if set, returns headers to add to each request — an OAuth
+	// bearer token for the Connect API, which is both signed and
+	// bearer-authenticated. It is called once per request, before the retry
+	// loop, so its error fails the request before anything is sent and is
+	// never itself retried: a token refresh that just failed terminally
+	// would only fail again, and retrying it would multiply real calls to
+	// the token endpoint. Its headers are applied before signing, so the
+	// signature headers win any collision.
 	Authorizer func(context.Context) (map[string]string, error)
 }
 
@@ -80,7 +91,7 @@ type Request struct {
 	Body any
 	// Form, when non-nil, is sent as an application/x-www-form-urlencoded
 	// body instead of JSON — the Connect API's token endpoint requires it.
-	// Body and Form are mutually exclusive.
+	// Body and Form are mutually exclusive; setting both is an error.
 	Form url.Values
 }
 
@@ -89,6 +100,10 @@ type Request struct {
 func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 	var body []byte
 	switch {
+	case req.Form != nil && req.Body != nil:
+		// A silent preference would transmit one and drop the other; a caller
+		// setting both has a bug that must surface, not a coin flip.
+		return errors.New("webull: request cannot carry both Body and Form")
 	case req.Form != nil:
 		body = []byte(req.Form.Encode())
 	case req.Body != nil:
@@ -96,6 +111,15 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 		body, err = json.Marshal(req.Body)
 		if err != nil {
 			return fmt.Errorf("webull: encoding request body: %w", err)
+		}
+	}
+
+	var authHeaders map[string]string
+	if d.Authorizer != nil {
+		var err error
+		authHeaders, err = d.Authorizer(ctx)
+		if err != nil {
+			return fmt.Errorf("webull: authorizing request: %w", err)
 		}
 	}
 
@@ -119,7 +143,7 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 			}
 		}
 
-		resp, err := d.attempt(ctx, req, body)
+		resp, err := d.attempt(ctx, req, body, authHeaders)
 		if err != nil {
 			// A transport-level failure. Retrying is only safe when the
 			// request is idempotent, because the server may have processed a
@@ -158,8 +182,10 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 	return lastErr
 }
 
-// attempt performs a single signed request.
-func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (Response, error) {
+// attempt performs a single signed request. authHeaders were resolved once in
+// Do; they go on first so that signing headers, set below and stamped fresh
+// for this attempt, win any collision.
+func (d *Doer) attempt(ctx context.Context, req Request, body []byte, authHeaders map[string]string) (Response, error) {
 	u := url.URL{Scheme: "https", Host: req.Host, Path: req.Path}
 	if len(req.Query) > 0 {
 		u.RawQuery = req.Query.Encode()
@@ -175,6 +201,9 @@ func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (Response,
 		return Response{}, fmt.Errorf("webull: building request: %w", err)
 	}
 
+	for k, v := range authHeaders {
+		httpReq.Header.Set(k, v)
+	}
 	for k, v := range d.Signer.Sign(signing.Request{
 		Host:  req.Host,
 		Path:  req.Path,
@@ -182,15 +211,6 @@ func (d *Doer) attempt(ctx context.Context, req Request, body []byte) (Response,
 		Body:  body,
 	}) {
 		httpReq.Header.Set(k, v)
-	}
-	if d.Authorizer != nil {
-		headers, err := d.Authorizer(ctx)
-		if err != nil {
-			return Response{}, fmt.Errorf("webull: authorizing request: %w", err)
-		}
-		for k, v := range headers {
-			httpReq.Header.Set(k, v)
-		}
 	}
 	// Only set on requests that actually carry a body: a Content-Type on a
 	// bodyless GET is meaningless and some gateways reject it.

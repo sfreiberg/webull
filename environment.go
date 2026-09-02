@@ -22,15 +22,14 @@ const (
 	serviceMarketData service = "marketdata"
 	serviceStreaming  service = "streaming"
 	serviceEvents     service = "events"
-	serviceConnect    service = "connect"
 )
 
 // hosts maps each environment and service to its host.
 //
-// These are table entries rather than a derived pattern on purpose. Most
-// sandbox hosts insert ".sandbox" before ".webull.com", but the Connect API
-// does not: its production host carries a "us-" prefix that its sandbox host
-// lacks. Deriving one host from another would silently produce a wrong name.
+// These are table entries rather than a derived pattern on purpose: deriving
+// one host from another would silently produce a wrong name the day Webull
+// breaks the pattern, as the Connect API hosts already do (see
+// internal/endpoints, resolved by the connect package rather than here).
 //
 // Market data over HTTP is served by the trading host. The data-api hosts
 // that Webull's SDKs list for market data do not answer HTTP requests; they
@@ -41,14 +40,12 @@ var hosts = map[Environment]map[service]string{
 		serviceMarketData: "api.webull.com",
 		serviceStreaming:  "data-api.webull.com",
 		serviceEvents:     "events-api.webull.com",
-		serviceConnect:    "us-oauth-open-api.webull.com",
 	},
 	Sandbox: {
 		serviceTrading:    "api.sandbox.webull.com",
 		serviceMarketData: "api.sandbox.webull.com",
 		serviceStreaming:  "data-api.sandbox.webull.com",
 		serviceEvents:     "events-api.sandbox.webull.com",
-		serviceConnect:    "oauth-open-api.sandbox.webull.com",
 	},
 }
 

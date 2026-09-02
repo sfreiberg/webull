@@ -58,7 +58,7 @@ func TestIntegrationConnectFlow(t *testing.T) {
 	}
 	t.Logf("exchanged: access token expires %s, user %s", tok.AccessExpiry(), tok.IdentityID)
 
-	client, err := a.Client(ctx, tok)
+	client, err := a.Client(tok)
 	if err != nil {
 		t.Fatalf("Client: %v", err)
 	}

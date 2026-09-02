@@ -1,6 +1,19 @@
 package webull
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/sfreiberg/webull/internal/endpoints"
+	"github.com/sfreiberg/webull/internal/transport"
+)
+
+// The public constant restates the transport's so godoc shows the value;
+// this keeps the two from drifting.
+func TestDefaultTimeoutMatchesTransport(t *testing.T) {
+	if DefaultTimeout != transport.DefaultTimeout {
+		t.Errorf("DefaultTimeout = %v, transport.DefaultTimeout = %v", DefaultTimeout, transport.DefaultTimeout)
+	}
+}
 
 func TestEnvironmentValid(t *testing.T) {
 	for env, want := range map[Environment]bool{
@@ -38,14 +51,14 @@ func TestHostsAreDistinctPerEnvironment(t *testing.T) {
 }
 
 // The Connect API breaks the ".sandbox" naming pattern that the other services
-// follow, so hosts must be looked up rather than derived. This locks that in.
+// follow, so hosts must be looked up rather than derived. The connect package
+// resolves these shared constants; this locks their values in.
 func TestConnectHostsAreNotDerivable(t *testing.T) {
-	prod, sand := hosts[Production][serviceConnect], hosts[Sandbox][serviceConnect]
-	if prod != "us-oauth-open-api.webull.com" {
-		t.Errorf("connect production host = %q", prod)
+	if endpoints.ConnectProduction != "us-oauth-open-api.webull.com" {
+		t.Errorf("connect production host = %q", endpoints.ConnectProduction)
 	}
-	if sand != "oauth-open-api.sandbox.webull.com" {
-		t.Errorf("connect sandbox host = %q", sand)
+	if endpoints.ConnectSandbox != "oauth-open-api.sandbox.webull.com" {
+		t.Errorf("connect sandbox host = %q", endpoints.ConnectSandbox)
 	}
 }
 
