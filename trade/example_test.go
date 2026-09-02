@@ -143,3 +143,61 @@ func ExamplePrice() {
 	fmt.Println(q.Decimal)
 	// Output: 10.5
 }
+
+// ExampleClient_PlaceCombo places a bracket: an entry order with a
+// take-profit and a stop-loss that are activated once it fills, and are
+// mutually cancelling. Bracket, OTO, OCO and OTOCO build a Combo from plain
+// Orders; PlaceCombo submits it and CancelCombo cancels the whole group.
+func ExampleClient_PlaceCombo() {
+	client, accountID := exampleClient()
+
+	combo := trade.Bracket(
+		&trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("180.00")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("200.00")},   // take profit
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, TimeInForce: trade.GTC, Quantity: trade.Price("1"), StopPrice: trade.Price("170.00")}, // stop loss
+	)
+
+	receipt, err := client.Trade.PlaceCombo(context.Background(), accountID, combo)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("placed group", receipt.ComboOrderID)
+
+	// Cancelling the unfilled master cancels the whole group.
+	if err := client.Trade.CancelCombo(context.Background(), accountID, combo); err != nil {
+		log.Fatal(err)
+	}
+}
+
+// ExampleClient_PlaceOrder_verticalSpread places a two-leg vertical spread.
+// A multi-leg strategy is one Order carrying an OptionStrategy and its legs;
+// the price is the net debit or credit for the spread.
+func ExampleClient_PlaceOrder_verticalSpread() {
+	client, accountID := exampleClient()
+
+	long, err := trade.LegFromSymbol("AAPL261218C00240000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	short, err := trade.LegFromSymbol("AAPL261218C00250000")
+	if err != nil {
+		log.Fatal(err)
+	}
+	long.Side, short.Side = trade.Buy, trade.Sell
+
+	receipt, err := client.Trade.PlaceOrder(context.Background(), accountID, &trade.Order{
+		Symbol:         "AAPL",
+		Side:           trade.Buy,
+		Type:           trade.Limit,
+		TimeInForce:    trade.Day,
+		Quantity:       trade.Price("1"),    // one spread
+		LimitPrice:     trade.Price("3.50"), // net debit
+		PositionIntent: trade.BuyToOpen,
+		OptionStrategy: trade.StrategyVertical,
+		Legs:           []trade.OrderLeg{long, short},
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println("placed", receipt.OrderID)
+}
