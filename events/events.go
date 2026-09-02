@@ -10,7 +10,7 @@
 //		if err != nil {
 //			break
 //		}
-//		if ev.Kind == events.KindOrder {
+//		if ev.Kind == events.KindOrder && ev.Order != nil {
 //			fmt.Println(ev.Order.Scene, ev.Order.Symbol)
 //		}
 //	}
@@ -29,6 +29,7 @@ package events
 import (
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/shopspring/decimal"
@@ -77,7 +78,9 @@ const (
 // Event is one business event from the stream.
 type Event struct {
 	Kind Kind
-	// Order is populated for KindOrder events carrying a JSON payload.
+	// Order is populated for KindOrder events whose JSON payload decodes;
+	// check it for nil, since a payload in an unexpected shape leaves it
+	// unset with the raw bytes still in Payload.
 	Order *OrderEvent
 	// Position is populated for KindPosition events carrying a JSON
 	// payload. Webull documents only the event-contract settlement shape,
@@ -138,7 +141,9 @@ type PositionEvent struct {
 	SettleAmount decimal.NullDecimal `json:"settle_amount"`
 }
 
-// jsonContentType is the payload content type carrying JSON.
+// jsonContentType is the payload content type carrying JSON. Matching is
+// by prefix so that a parameterised form such as
+// "application/json;charset=UTF-8" also decodes.
 const jsonContentType = "application/json"
 
 // decodeEvent builds an Event from a business response.
@@ -151,7 +156,7 @@ func decodeEvent(kind Kind, contentType string, payload []byte, requestID string
 	if ts != 0 {
 		ev.Time = time.UnixMilli(ts).UTC()
 	}
-	if contentType != jsonContentType {
+	if !strings.HasPrefix(contentType, jsonContentType) {
 		return ev
 	}
 	switch kind {

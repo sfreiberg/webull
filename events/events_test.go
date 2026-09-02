@@ -3,6 +3,8 @@ package events
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net"
 	"strings"
 	"sync"
@@ -64,7 +66,7 @@ func newFixture(t *testing.T, f *fakeServer) *Client {
 
 	c := New(signing.New("k", "s"), "ignored")
 	c.host = "passthrough:///bufnet"
-	c.dialOpts = []grpc.DialOption{
+	c.DialOptions = []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) { return lis.DialContext(ctx) }),
 	}
@@ -256,24 +258,30 @@ func TestNonRetryableStatusEndsTheStream(t *testing.T) {
 	}
 }
 
-func TestReconnectAttemptsAreBounded(t *testing.T) {
+func TestAcknowledgedReconnectResetsTheBudget(t *testing.T) {
+	// The server acknowledges each reconnect before dropping the stream
+	// again; every acknowledgement resets the attempt count, so even
+	// MaxReconnectAttempts=1 survives more drops than the budget.
 	f := &fakeServer{handler: func(call int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
 		_ = stream.Send(ack())
-		return status.Error(codes.Unavailable, "still down")
+		if call < 4 {
+			return status.Error(codes.Unavailable, "dropped")
+		}
+		_ = stream.Send(orderEvent(orderPayload))
+		return nil
 	}}
 	c := newFixture(t, f)
-	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}, ReconnectDelay: time.Millisecond, MaxReconnectAttempts: 2})
+	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}, ReconnectDelay: time.Millisecond, MaxReconnectAttempts: 1})
 	if err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
 	defer func() { _ = stream.Close() }()
-	_, err = stream.Recv()
-	if err == nil || !strings.Contains(err.Error(), "gave up") {
-		t.Errorf("err = %v, want reconnect exhaustion", err)
+	ev, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("Recv: %v", err)
 	}
-	// Initial connect + two reconnects.
-	if f.callCount() != 3 {
-		t.Errorf("calls = %d, want 3", f.callCount())
+	if ev.Kind != KindOrder || f.callCount() != 4 {
+		t.Errorf("event = %+v, calls = %d, want 4", ev, f.callCount())
 	}
 }
 
@@ -355,7 +363,7 @@ func TestSubscribeAgainstDeadServerFails(t *testing.T) {
 	f := &fakeServer{handler: func(_ int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error { return nil }}
 	c := newFixture(t, f)
 	// Replace the dialer with one that cannot connect.
-	c.dialOpts = []grpc.DialOption{
+	c.DialOptions = []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			return nil, errors.New("no route")
@@ -383,7 +391,7 @@ func TestReconnectRetriesThroughAnOutage(t *testing.T) {
 	var dials atomic.Int32
 	c := New(signing.New("k", "s"), "ignored")
 	c.host = "passthrough:///bufnet"
-	c.dialOpts = []grpc.DialOption{
+	c.DialOptions = []grpc.DialOption{
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
 			if dials.Add(1) > 1 {
@@ -450,5 +458,129 @@ func TestRequestDefaults(t *testing.T) {
 	}
 	if m := (SubscribeRequest{Types: []SubscriptionType{Options}}).mask(); m != 4 {
 		t.Errorf("mask = %d", m)
+	}
+}
+
+func TestJSONContentTypeWithParametersDecodes(t *testing.T) {
+	resp := orderEvent(orderPayload)
+	resp.ContentType = "application/json;charset=UTF-8"
+	f := &fakeServer{handler: func(_ int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
+		_ = stream.Send(ack())
+		_ = stream.Send(resp)
+		return nil
+	}}
+	c := newFixture(t, f)
+	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}})
+	if err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	defer func() { _ = stream.Close() }()
+	ev, err := stream.Recv()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ev.Order == nil {
+		t.Errorf("a parameterised JSON content type must still decode: %+v", ev)
+	}
+}
+
+func TestRenewalIsImmediateAndUncharged(t *testing.T) {
+	var lastExpiry atomic.Int64
+	f := &fakeServer{handler: func(call int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
+		_ = stream.Send(ack())
+		if call < 4 {
+			lastExpiry.Store(time.Now().UnixNano())
+			_ = stream.Send(&eventspb.SubscribeResponse{EventType: eventspb.EventType_SubscribeExpired})
+			return nil
+		}
+		_ = stream.Send(orderEvent(orderPayload))
+		return nil
+	}}
+	c := newFixture(t, f)
+	// Three expiries against a budget of one: renewals must not be
+	// charged, and must not wait out the one-hour reconnect delay.
+	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}, ReconnectDelay: time.Hour, MaxReconnectAttempts: 1})
+	if err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	defer func() { _ = stream.Close() }()
+	start := time.Now()
+	ev, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("Recv: %v", err)
+	}
+	if ev.Kind != KindOrder || f.callCount() != 4 {
+		t.Errorf("event = %+v, calls = %d", ev, f.callCount())
+	}
+	if time.Since(start) > 5*time.Second {
+		t.Errorf("renewal took %v; it must not wait out the reconnect delay", time.Since(start))
+	}
+}
+
+func TestRetryableClassification(t *testing.T) {
+	cases := map[string]struct {
+		err  error
+		want bool
+	}{
+		"clean EOF":         {io.EOF, true},
+		"unavailable":       {status.Error(codes.Unavailable, "x"), true},
+		"internal":          {status.Error(codes.Internal, "x"), true},
+		"genuine unknown":   {status.Error(codes.Unknown, "x"), true},
+		"local error":       {errors.New("dial tcp: refused"), false},
+		"permission denied": {status.Error(codes.PermissionDenied, "x"), false},
+		"wrapped status":    {fmt.Errorf("events: stream: %w", status.Error(codes.Unavailable, "x")), true},
+	}
+	for name, tc := range cases {
+		if got := retryable(tc.err); got != tc.want {
+			t.Errorf("%s: retryable = %v, want %v", name, got, tc.want)
+		}
+	}
+}
+
+func TestRenewalFallsBackToReconnectOnFailure(t *testing.T) {
+	// The dialer serves two connections; the third dial (the immediate
+	// renewal after expiry) fails, pushing renew into the reconnect loop,
+	// which then succeeds on the fourth.
+	lis := bufconn.Listen(1 << 20)
+	var dials atomic.Int32
+	f := &fakeServer{handler: func(call int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
+		_ = stream.Send(ack())
+		if call == 1 {
+			_ = stream.Send(&eventspb.SubscribeResponse{EventType: eventspb.EventType_SubscribeExpired})
+			return nil
+		}
+		_ = stream.Send(orderEvent(orderPayload))
+		return nil
+	}}
+	srv := grpc.NewServer()
+	eventspb.RegisterEventServiceServer(srv, f)
+	go func() { _ = srv.Serve(lis) }()
+	t.Cleanup(srv.Stop)
+
+	c := New(signing.New("k", "s"), "ignored")
+	c.host = "passthrough:///bufnet"
+	c.DialOptions = []grpc.DialOption{
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithContextDialer(func(ctx context.Context, _ string) (net.Conn, error) {
+			if dials.Add(1) == 2 {
+				return nil, errors.New("blip")
+			}
+			return lis.DialContext(ctx)
+		}),
+	}
+	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}, ReconnectDelay: 5 * time.Millisecond})
+	if err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	defer func() { _ = stream.Close() }()
+	ev, err := stream.Recv()
+	if err != nil {
+		t.Fatalf("Recv: %v", err)
+	}
+	if ev.Kind != KindOrder {
+		t.Errorf("event = %+v", ev)
+	}
+	if dials.Load() < 3 {
+		t.Errorf("dials = %d; the failed renewal must fall back to reconnect", dials.Load())
 	}
 }

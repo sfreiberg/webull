@@ -64,7 +64,9 @@ func TestIntegrationEventStream(t *testing.T) {
 		err error
 	}
 	results := make(chan result, 1)
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		for {
 			ev, err := stream.Recv()
 			if err != nil {
@@ -75,9 +77,14 @@ func TestIntegrationEventStream(t *testing.T) {
 				results <- result{ev, nil}
 				return
 			}
-			t.Logf("unrelated event: kind=%d payload=%s", ev.Kind, ev.Payload)
 		}
 	}()
+	// Join the goroutine before the test completes: a stray Recv result
+	// logged after completion would panic the test binary.
+	t.Cleanup(func() {
+		_ = stream.Close()
+		<-done
+	})
 
 	select {
 	case r := <-results:

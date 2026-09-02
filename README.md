@@ -238,7 +238,7 @@ for {
     if err != nil {
         break
     }
-    if ev.Kind == events.KindOrder {
+    if ev.Kind == events.KindOrder && ev.Order != nil {
         fmt.Println(ev.Order.Scene, ev.Order.Symbol, ev.Order.FilledQuantity)
     }
 }

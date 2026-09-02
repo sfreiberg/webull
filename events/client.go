@@ -5,12 +5,15 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"io"
+	"strings"
 	"sync"
 	"time"
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/proto"
@@ -25,16 +28,30 @@ type Client struct {
 	signer *signing.Signer
 	host   string
 
-	// dialOpts replaces the TLS dial options in tests.
-	dialOpts []grpc.DialOption
+	// DialOptions, when non-nil, replaces the default dial options (TLS
+	// with system roots, and keepalive pings that detect a half-open
+	// connection). Use it to route through a proxy, trust a private CA,
+	// or reach a plaintext test server. Set it before the first
+	// Subscribe; it must not change afterwards.
+	DialOptions []grpc.DialOption
 }
 
 // New returns a Client that connects to host with signer's credentials.
+// Host may carry an explicit port; without one, 443 is used.
 //
 // It exists so the root webull package can compose a Client; callers of the
 // SDK should use webull.NewClient.
 func New(signer *signing.Signer, host string) *Client {
 	return &Client{signer: signer, host: host}
+}
+
+// target returns the dial target, appending the default port only when the
+// host does not already carry one.
+func (c *Client) target() string {
+	if strings.Contains(c.host, ":") {
+		return c.host
+	}
+	return c.host + ":443"
 }
 
 // SubscribeRequest selects the accounts and event families to stream.
@@ -47,7 +64,8 @@ type SubscribeRequest struct {
 	// five seconds, matching Webull's own clients.
 	ReconnectDelay time.Duration
 	// MaxReconnectAttempts bounds consecutive failed reconnects; zero
-	// means unlimited. A successful reconnect resets the count.
+	// means unlimited. A reconnect that reaches acknowledgement resets
+	// the count. A renewal after SubscribeExpired is not charged.
 	MaxReconnectAttempts int
 }
 
@@ -93,7 +111,7 @@ type Stream struct {
 	ctx    context.Context
 	cancel context.CancelFunc
 
-	// mu guards conn, which Close may replace concurrently with a
+	// mu guards conn, which Close may tear down concurrently with a
 	// reconnect running under Recv.
 	mu   sync.Mutex
 	conn *grpc.ClientConn
@@ -102,11 +120,17 @@ type Stream struct {
 
 // connect dials, subscribes, and consumes the acknowledgement.
 func (s *Stream) connect(ctx context.Context) error {
-	opts := s.client.dialOpts
+	opts := s.client.DialOptions
 	if opts == nil {
-		opts = []grpc.DialOption{grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12}))}
+		opts = []grpc.DialOption{
+			grpc.WithTransportCredentials(credentials.NewTLS(&tls.Config{MinVersion: tls.VersionTLS12})),
+			// Without keepalive a half-open connection (a NAT timeout, a
+			// server gone without RST) blocks Recv forever with no error
+			// for the reconnect logic to act on.
+			grpc.WithKeepaliveParams(keepalive.ClientParameters{Time: time.Minute, Timeout: 20 * time.Second}),
+		}
 	}
-	conn, err := grpc.NewClient(s.client.host+":443", opts...)
+	conn, err := grpc.NewClient(s.client.target(), opts...)
 	if err != nil {
 		return fmt.Errorf("events: dial: %w", err)
 	}
@@ -117,9 +141,9 @@ func (s *Stream) connect(ctx context.Context) error {
 		Accounts:      s.req.AccountIDs,
 	}
 	// The signature covers the serialized message bytes. gRPC marshals the
-	// message again when sending, which is safe here: the message has no
-	// maps or unknown fields, so both marshals produce identical bytes —
-	// the same assumption Webull's own client makes.
+	// message again when sending, which is safe here: both marshals run in
+	// the same binary over a message with no maps or unknown fields, so
+	// the bytes cannot diverge.
 	body, err := proto.Marshal(pbReq)
 	if err != nil {
 		_ = conn.Close()
@@ -148,10 +172,18 @@ func (s *Stream) connect(ctx context.Context) error {
 		return fmt.Errorf("events: unexpected first response %v", first.GetEventType())
 	}
 
+	// Publish under the lock, re-checking for a concurrent Close: without
+	// the check, a Close that ran while the acknowledgement was in flight
+	// would leave this fresh connection — a live subscription counting
+	// against the key's connection limit — leaked with nobody to close it.
 	s.mu.Lock()
-	s.conn = conn
+	if s.ctx.Err() != nil {
+		s.mu.Unlock()
+		_ = conn.Close()
+		return s.ctx.Err()
+	}
+	s.conn, s.rpc = conn, rpc
 	s.mu.Unlock()
-	s.rpc = rpc
 	return nil
 }
 
@@ -166,11 +198,15 @@ func controlError(resp *eventspb.SubscribeResponse) error {
 	return nil
 }
 
-// retryable reports whether a stream error is worth a reconnect: the same
-// transient status codes Webull's own client retries. Unknown counts only
-// for a genuine gRPC status, so a local failure mapped to Unknown by
+// retryable reports whether a stream error is worth a reconnect: a clean
+// server-side end of stream (a long-lived stream being rotated), or the
+// same transient status codes Webull's own client retries. Unknown counts
+// only for a genuine gRPC status, so a local failure mapped to Unknown by
 // status.Code does not loop.
 func retryable(err error) bool {
+	if errors.Is(err, io.EOF) {
+		return true
+	}
 	switch status.Code(err) {
 	case codes.Unavailable, codes.Internal:
 		return true
@@ -181,12 +217,20 @@ func retryable(err error) bool {
 	return false
 }
 
+// isTerminal reports whether a connect error must end the stream rather
+// than be retried.
+func isTerminal(err error) bool {
+	return errors.Is(err, ErrAuthFailed) || errors.Is(err, ErrConnectionLimit) ||
+		errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) ||
+		!retryable(err)
+}
+
 // Recv returns the next business event. Heartbeats are consumed
 // internally, transient failures reconnect after the configured delay, and
-// an expired subscription is renewed. Terminal failures — authentication
-// rejection, the connection limit, context cancellation, or reconnect
-// attempts exhausted — end the stream with an error. A delivered event
-// resets the attempt count.
+// an expired subscription is renewed immediately without being charged to
+// the reconnect budget. Terminal failures — authentication rejection, the
+// connection limit, context cancellation, or reconnect attempts exhausted
+// — end the stream with an error.
 func (s *Stream) Recv() (*Event, error) {
 	failures := 0
 	for {
@@ -204,13 +248,14 @@ func (s *Stream) Recv() (*Event, error) {
 			continue
 		}
 
+		if err := controlError(resp); err != nil {
+			return nil, err
+		}
 		switch resp.GetEventType() {
 		case eventspb.EventType_SubscribeSuccess, eventspb.EventType_Ping:
 			continue
-		case eventspb.EventType_AuthError, eventspb.EventType_NumOfConnExceed:
-			return nil, controlError(resp)
 		case eventspb.EventType_SubscribeExpired:
-			if err := s.reconnect(&failures); err != nil {
+			if err := s.renew(&failures); err != nil {
 				return nil, err
 			}
 			continue
@@ -225,39 +270,64 @@ func (s *Stream) Recv() (*Event, error) {
 	}
 }
 
+// renew resubscribes immediately after a SubscribeExpired: the transport
+// is healthy and nothing failed, so there is no delay and no charge to the
+// reconnect budget. A renewal that fails transiently falls back to the
+// delayed reconnect loop.
+func (s *Stream) renew(failures *int) error {
+	s.dropConn()
+	err := s.connect(s.ctx)
+	if err == nil {
+		return nil
+	}
+	if isTerminal(err) {
+		return err
+	}
+	return s.reconnect(failures)
+}
+
 // reconnect retries until a subscription is acknowledged again, so an
 // outage spanning several attempts is ridden out rather than ending the
 // stream at the first failed dial. It stops on a terminal error, on
-// context cancellation, or when the attempt budget is spent.
+// context cancellation, or when the attempt budget is spent; reaching
+// acknowledgement resets the budget.
 func (s *Stream) reconnect(failures *int) error {
 	for {
 		*failures++
 		if s.req.MaxReconnectAttempts > 0 && *failures > s.req.MaxReconnectAttempts {
 			return fmt.Errorf("events: gave up after %d reconnect attempts", *failures-1)
 		}
-		s.mu.Lock()
-		if s.conn != nil {
-			_ = s.conn.Close()
-			s.conn = nil
-		}
-		s.mu.Unlock()
+		s.dropConn()
+		timer := time.NewTimer(s.req.delay())
 		select {
 		case <-s.ctx.Done():
+			timer.Stop()
 			return s.ctx.Err()
-		case <-time.After(s.req.delay()):
+		case <-timer.C:
 		}
 		err := s.connect(s.ctx)
 		if err == nil {
+			*failures = 0
 			return nil
 		}
-		if errors.Is(err, ErrAuthFailed) || errors.Is(err, ErrConnectionLimit) || !retryable(err) {
+		if isTerminal(err) {
 			return err
 		}
 	}
 }
 
+// dropConn closes and forgets the current connection.
+func (s *Stream) dropConn() {
+	s.mu.Lock()
+	if s.conn != nil {
+		_ = s.conn.Close()
+		s.conn = nil
+	}
+	s.mu.Unlock()
+}
+
 // Close ends the stream and releases its connection. It is safe to call
-// more than once.
+// more than once and from any goroutine.
 func (s *Stream) Close() error {
 	s.cancel()
 	s.mu.Lock()

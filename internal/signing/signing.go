@@ -89,17 +89,23 @@ func New(appKey, appSecret string) *Signer {
 	}
 }
 
-// Sign returns the headers to attach to req, including the signature itself.
-// The returned map is freshly allocated and owned by the caller.
-func (s *Signer) Sign(req Request) map[string]string {
-	headers := map[string]string{
+// signatureHeaders builds the five signature headers every signed request
+// carries. Both Sign and SignStream start from this one set, so a new
+// header or version bump cannot be applied to one and missed in the other.
+func (s *Signer) signatureHeaders() map[string]string {
+	return map[string]string{
 		HeaderAppKey:    s.AppKey,
 		HeaderTimestamp: s.now().UTC().Format(timestampLayout),
 		HeaderVersion:   signatureVersion,
 		HeaderAlgorithm: algorithm,
 		HeaderNonce:     s.nonce(),
 	}
+}
 
+// Sign returns the headers to attach to req, including the signature itself.
+// The returned map is freshly allocated and owned by the caller.
+func (s *Signer) Sign(req Request) map[string]string {
+	headers := s.signatureHeaders()
 	headers[HeaderSignature] = s.sign(canonical(req, headers))
 	return headers
 }
@@ -113,22 +119,21 @@ func (s *Signer) Sign(req Request) map[string]string {
 // are joined by "=" rather than "&", with only the body digest appended by
 // an "&".
 func (s *Signer) SignStream(body []byte) map[string]string {
-	headers := map[string]string{
-		HeaderAppKey:    s.AppKey,
-		HeaderTimestamp: s.now().UTC().Format(timestampLayout),
-		HeaderVersion:   signatureVersion,
-		HeaderAlgorithm: algorithm,
-		HeaderNonce:     s.nonce(),
-	}
+	headers := s.signatureHeaders()
 
-	keys := make([]string, 0, len(headers))
-	for k := range headers {
-		keys = append(keys, strings.ToLower(k))
+	// Lowercased keys determine the sort order, exactly as in canonical.
+	params := make(map[string]string, len(headers))
+	for k, v := range headers {
+		params[strings.ToLower(k)] = v
+	}
+	keys := make([]string, 0, len(params))
+	for k := range params {
+		keys = append(keys, k)
 	}
 	sort.Strings(keys)
 	pairs := make([]string, 0, len(keys))
 	for _, k := range keys {
-		pairs = append(pairs, k+"="+headers[k])
+		pairs = append(pairs, k+"="+params[k])
 	}
 
 	var sb strings.Builder
