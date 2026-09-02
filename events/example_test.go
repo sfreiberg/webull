@@ -43,7 +43,7 @@ func ExampleClient_Subscribe() {
 			if errors.Is(err, events.ErrAuthFailed) || errors.Is(err, events.ErrConnectionLimit) {
 				log.Fatalf("stream ended: %v", err)
 			}
-			break // the context was cancelled or the stream closed
+			break // the stream was closed (see Close, or a terminal error above)
 		}
 		if ev.Kind == events.KindOrder && ev.Order != nil {
 			fmt.Println(ev.Order.Scene, ev.Order.Symbol, ev.Order.FilledQuantity)

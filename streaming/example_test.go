@@ -46,8 +46,11 @@ func ExampleClient_Connect() {
 		if err != nil {
 			break // the context was cancelled or the stream closed
 		}
-		if msg.Type == streaming.TypeTick && msg.Tick != nil {
-			fmt.Println(msg.Tick.Symbol, msg.Tick.Price, msg.Tick.Volume)
+		switch {
+		case msg.Type == streaming.TypeSnapshot && msg.Snapshot != nil:
+			fmt.Println("snapshot", msg.Snapshot.Symbol, msg.Snapshot.Price)
+		case msg.Type == streaming.TypeTick && msg.Tick != nil:
+			fmt.Println("tick", msg.Tick.Symbol, msg.Tick.Price, msg.Tick.Volume)
 		}
 	}
 }

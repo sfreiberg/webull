@@ -336,7 +336,7 @@ this SDK against the live sandbox:
 | Symptom | Usual cause |
 |---|---|
 | `404 Route Not Found` | A sandbox key against production, or the reverse — the two are not interchangeable. Also returned for an unprovisioned key. |
-| `401 MISSING_APP_KEY` | Credentials not set on `Config`. |
+| `webull: AppKey and AppSecret are required` from `NewClient` | Empty credentials — the SDK rejects them before any request, so this never reaches the server as a 401. |
 | `417 OPENAPI_PARAM_ERR` | A parameter Webull rejected. Webull uses **417**, not 400, for validation errors; the message names the field. |
 | `403 MARKET_DATA_NOT_SUBSCRIBED` | The key is not entitled to that market data. Matches `marketdata.ErrNotSubscribed`, and the message names the product (for example `STOCK QUOTES LV2`). |
 | `429 TOO_MANY_REQUESTS` | Rate limited. Matches `webull.ErrRateLimited`; `APIError.RetryAfter` carries Webull's requested delay. |
