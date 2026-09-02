@@ -264,7 +264,7 @@ for {
     if err != nil {
         break
     }
-    if msg.Type == streaming.TypeTick {
+    if msg.Type == streaming.TypeTick && msg.Tick != nil {
         fmt.Println(msg.Tick.Symbol, msg.Tick.Price, msg.Tick.Volume)
     }
 }

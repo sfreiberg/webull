@@ -100,8 +100,9 @@ func (c *Client) Connect(ctx context.Context, opts ...ConnectOptions) (*Stream, 
 		client:  c,
 		session: o.SessionID,
 		opts:    o,
-		queue:   make(chan queued, o.QueueSize),
+		queue:   make(chan *Message, o.QueueSize),
 		subs:    map[subKey]subscription{},
+		closed:  make(chan struct{}),
 	}
 	if err := s.connect(ctx); err != nil {
 		return nil, err
@@ -134,6 +135,8 @@ func (s *Stream) Subscribe(ctx context.Context, req SubscribeRequest) error {
 	if len(req.Symbols) == 0 || len(req.Types) == 0 {
 		return errors.New("streaming: Subscribe requires Symbols and Types")
 	}
+	s.subMu.Lock()
+	defer s.subMu.Unlock()
 	if err := s.client.subscribe(ctx, s.session, req); err != nil {
 		return err
 	}
@@ -183,6 +186,8 @@ func (s *Stream) Unsubscribe(ctx context.Context, req UnsubscribeRequest) error 
 		body["category"] = string(category(req.Category))
 		body["sub_types"] = subTypeStrings(req.Types)
 	}
+	s.subMu.Lock()
+	defer s.subMu.Unlock()
 	if err := s.client.doer.Post(ctx, s.client.httpHost, "/market-data/streaming/unsubscribe", body, nil); err != nil {
 		return fmt.Errorf("%w: %w", ErrSubscribeFailed, err)
 	}

@@ -13,12 +13,17 @@
 //	for {
 //		msg, err := stream.Recv(ctx)
 //		if err != nil {
-//			break
+//			break // the context ended or the stream was closed
 //		}
 //		if msg.Type == streaming.TypeSnapshot {
 //			fmt.Println(msg.Snapshot.Symbol, msg.Snapshot.Price)
 //		}
 //	}
+//
+// Recv returns an error only when the context ends or Close is called; a
+// payload that fails to decode is counted by Stream.Dropped rather than
+// ending the stream. Dropped also counts messages evicted when a slow
+// consumer lets the queue fill.
 //
 // The MQTT connection authenticates with the app key; what flows over it is
 // governed by Subscribe and Unsubscribe, which are HTTP calls binding the

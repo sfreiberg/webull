@@ -303,9 +303,9 @@ func TestUnsubscribeAllForgetsSubscriptions(t *testing.T) {
 	if err := stream.Unsubscribe(context.Background(), UnsubscribeRequest{All: true}); err != nil {
 		t.Fatal(err)
 	}
-	stream.mu.Lock()
+	stream.subMu.Lock()
 	n := len(stream.subs)
-	stream.mu.Unlock()
+	stream.subMu.Unlock()
 	if n != 0 {
 		t.Errorf("unsubscribe all left %d subscriptions", n)
 	}
@@ -332,6 +332,29 @@ func TestQueueDropsOldestWhenFull(t *testing.T) {
 	}
 	if got[0] != "2" || got[1] != "3" {
 		t.Errorf("queue kept %v, want the newest two", got)
+	}
+	if stream.Dropped() == 0 {
+		t.Error("a full-queue eviction must be counted in Dropped")
+	}
+}
+
+func TestDecodeFailureIsCountedNotFatal(t *testing.T) {
+	fx := newFixture(t)
+	stream, _ := fx.client.Connect(context.Background())
+	defer func() { _ = stream.Close() }()
+	// A malformed payload on a modeled topic must not reach Recv as an
+	// error; it is counted and the stream stays healthy.
+	fx.fake.publish("snapshot", []byte("ÿÿ not protobuf"))
+	fx.fake.publish("snapshot", snapshotPayload(t))
+	msg, err := stream.Recv(context.Background())
+	if err != nil {
+		t.Fatalf("a bad payload must not end the stream: %v", err)
+	}
+	if msg.Snapshot == nil || msg.Snapshot.Symbol != "AAPL" {
+		t.Errorf("the good message must still arrive: %+v", msg)
+	}
+	if stream.Dropped() != 1 {
+		t.Errorf("Dropped = %d, want 1 decode failure", stream.Dropped())
 	}
 }
 
@@ -468,9 +491,9 @@ func TestUnsubscribeSpecificForgets(t *testing.T) {
 	if err := stream.Unsubscribe(context.Background(), UnsubscribeRequest{Symbols: []string{"AAPL"}, Types: []SubType{SubSnapshot}}); err != nil {
 		t.Fatal(err)
 	}
-	stream.mu.Lock()
+	stream.subMu.Lock()
 	n := len(stream.subs)
-	stream.mu.Unlock()
+	stream.subMu.Unlock()
 	if n != 1 {
 		t.Errorf("after unsubscribing AAPL, %d subscriptions remain, want 1 (MSFT)", n)
 	}
