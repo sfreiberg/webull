@@ -71,8 +71,9 @@ func (s *Stream) connect(ctx context.Context) error {
 		s.enqueue(queued{msg: msg, err: wrapDecode(m.Topic(), err)})
 	})
 	// On every (re)connection, replay the subscription set so a dropped
-	// connection resumes streaming what it had.
-	opts.SetOnConnectHandler(func(mqtt.Client) {
+	// connection resumes streaming what it had. The handler runs on paho's
+	// goroutine with no caller context, so resubscribe makes its own.
+	opts.SetOnConnectHandler(func(mqtt.Client) { //nolint:contextcheck // callback has no context
 		s.resubscribe()
 	})
 
@@ -205,7 +206,7 @@ func (s *Stream) resubscribe() {
 
 	// A reconnect is driven by paho's callback with no caller context, so a
 	// fresh bounded one is the only option here.
-	ctx, cancel := context.WithTimeout(context.Background(), s.opts.ConnectTimeout) //nolint:contextcheck // callback has no context
+	ctx, cancel := context.WithTimeout(context.Background(), s.opts.ConnectTimeout)
 	defer cancel()
 	for g, byType := range byGroup {
 		for st, syms := range byType {

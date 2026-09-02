@@ -24,7 +24,7 @@ func TestIntegrationStreaming(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	t.Logf("connected: broker accepted session %s", stream.SessionID())
 
 	if err := stream.Subscribe(ctx, streaming.SubscribeRequest{
@@ -85,7 +85,7 @@ func TestIntegrationUnsubscribeAll(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Connect: %v", err)
 	}
-	defer stream.Close()
+	defer func() { _ = stream.Close() }()
 	if err := stream.Subscribe(ctx, streaming.SubscribeRequest{Symbols: []string{"AAPL"}, Types: []streaming.SubType{streaming.SubSnapshot}}); err != nil {
 		t.Fatalf("Subscribe: %v", err)
 	}
