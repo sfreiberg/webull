@@ -46,6 +46,35 @@ go get github.com/sfreiberg/webull
 
 Go 1.26 or later.
 
+## Authentication
+
+Every request is signed with an app key and secret issued by the
+[Webull developer portal](https://developer.webull.com/apis/docs/authentication/overview).
+The SDK handles the signature (HMAC-SHA256 over a canonical form of the
+request); you supply the credentials and choose an environment:
+
+```go
+client, err := webull.NewClient(webull.Config{
+    AppKey:      os.Getenv("WEBULL_APP_KEY"),
+    AppSecret:   os.Getenv("WEBULL_APP_SECRET"),
+    Environment: webull.Sandbox, // or webull.Production
+})
+```
+
+Keep credentials out of source: read them from the environment or a secret
+store. The SDK never logs them or includes them in error messages.
+
+**Sandbox and production keys are separate.** A sandbox key returns
+`404 Route Not Found` for every production host and vice versa — the most
+common cause of a request that "should work" failing. There is no default
+environment: choosing between simulated and real orders is not a decision the
+SDK makes for you. Orders placed against `Production` are real.
+
+Some deployments additionally require a per-user access token
+(`token_check_enabled`); `client.TokenCheckEnabled(ctx)` reports whether yours
+does. The sandbox does not, so most integrations need only the app key and
+secret.
+
 ## Quick start
 
 Credentials come from the [Webull developer portal](https://developer.webull.com/apis/docs/authentication/overview).
@@ -298,6 +327,26 @@ if errors.Is(err, webull.ErrRateLimited) {
 
 The SDK never retries a `POST`: in this API a replayed order is a duplicated
 order.
+
+## Troubleshooting
+
+A few failures are common enough to name, most of them settled while building
+this SDK against the live sandbox:
+
+| Symptom | Usual cause |
+|---|---|
+| `404 Route Not Found` | A sandbox key against production, or the reverse — the two are not interchangeable. Also returned for an unprovisioned key. |
+| `401 MISSING_APP_KEY` | Credentials not set on `Config`. |
+| `417 OPENAPI_PARAM_ERR` | A parameter Webull rejected. Webull uses **417**, not 400, for validation errors; the message names the field. |
+| `403 MARKET_DATA_NOT_SUBSCRIBED` | The key is not entitled to that market data. Matches `marketdata.ErrNotSubscribed`, and the message names the product (for example `STOCK QUOTES LV2`). |
+| `429 TOO_MANY_REQUESTS` | Rate limited. Matches `webull.ErrRateLimited`; `APIError.RetryAfter` carries Webull's requested delay. |
+| An order rejected off-hours | The sandbox enforces market hours for `DAY` orders. Use `GTC`, or trade during the regular session. |
+
+Some endpoints are implemented but cannot be exercised by a sandbox key —
+entitlement-gated data, or endpoints the sandbox serves empty. These are
+marked `Unverified` in the [compatibility matrix](docs/COMPATIBILITY.md) with
+the specific reason, so a surprising empty result can be checked against a
+known limitation rather than mistaken for a bug.
 
 ## License
 
