@@ -84,7 +84,9 @@ news. Streaming and Connect are not implemented yet.
 | Order events | Complete | Yes | Yes | 8 | Typed to the documented payload; CANCEL_SUCCESS observed live |
 | Position events | Unverified | Yes | – | 8 | Typed to the one documented shape (event-contract settlement); no live event observed |
 | Option events | Partial | Yes | – | 8 | Delivered with the raw payload only; Webull documents no payload shape |
-| **MQTT market data** | Planned | – | – | 9 | `.proto` available; no sandbox host published |
+| **MQTT market data** | Complete | Yes | Yes | 9 | Verified live: the sandbox broker exists on `data-api.sandbox.webull.com:1883` (TLS over TCP), and connect + signed subscribe + unsubscribe succeed |
+| Snapshot, quote, tick streaming | Complete | Yes | Yes | 9 | Typed decoders for every `message.proto` payload; connect/subscribe verified live, tick flow needs an open market |
+| Event-contract streaming | Unverified | Yes | – | 9 | Decoders implemented to `message.proto`; the sandbox served no event stream after hours |
 | **Broker API** | Excluded | – | – | – | Out of scope; see below |
 | **FIX** | Excluded | – | – | – | See below |
 
@@ -164,6 +166,8 @@ Established against the live sandbox and relied on by the implementation.
 | Order history freshness | Immediately after a cancel, `get` reports `CANCELLED` while `history` still reports `PENDING` |
 | Preview response | Carries an undocumented `currency` field |
 | Market-data host | HTTP market data is served by the trading host (`api.sandbox.webull.com`). The `data-api` hosts Webull's SDKs list for market data do not answer HTTPS at all; their DNS names (`us-openapi-push…`) identify them as the MQTT brokers |
+| MQTT CONNACK codes | The broker rejects a bad app key with a non-standard CONNACK code (104 invalid key, 3 blank key, and the enum's 103/105); **paho maps every non-standard code to a nil error and reports the connection as successful**, so authentication is enforced at the signed subscribe call (`streaming.ErrSubscribeFailed`), not at connect |
+| MQTT auth model | The CONNECT username is the app key and the password is ignored; the session id in the CONNECT client-id is bound by the signed HTTP `streaming/subscribe` call. Subscribing for an unbound session returns `417 INVALID_SESSION` |
 | Entitlement errors | `403 MARKET_DATA_NOT_SUBSCRIBED` with the product named in the message (`please subscribe to FOOTPRINT`, `STOCK QUOTES LV2`). Depth beyond the key's level is a `417 ILLEGAL_PARAMETER: depth not more than 1`, not an entitlement error. An unsupported category is `417 UNSUPPORTED_CATEGORY` |
 | Market-data error shape | A third shape: `{error_code, message, status}` |
 | Market-data timestamps | Three forms: integer epoch milliseconds (snapshot `last_trade_time`, `quote_time`), string epoch milliseconds (tick `time`), and ISO 8601 with a `+0000` offset (bar `time`, `effective_start_date`) that RFC 3339 parsing rejects |
@@ -212,13 +216,13 @@ resolved and are kept for a release or two so the answers are discoverable.
 |---|---|---|
 | ~~2~~ | ~~Whether `data-api.sandbox.webull.com` exists~~ — **resolved: it resolves but is the MQTT broker; HTTP market data is on the trading host, sandbox included.** | – |
 | ~~1~~ | ~~Which endpoint path scheme the server honours~~ — **resolved: both, they are aliases. Using the documented scheme.** | – |
-| 2b | Whether MQTT has a sandbox broker (`data-api.sandbox.webull.com` resolves) | Phase 9 |
+| ~~2b~~ | ~~Whether MQTT has a sandbox broker~~ — **resolved: yes, `data-api.sandbox.webull.com` accepts TLS MQTT on 1883 and 8883; CONNACK 0 for a valid app key.** | – |
 | ~~3~~ | ~~Whether sandbox credentials are separate from production~~ — **resolved: yes. A sandbox key 404s every path in production.** | – |
 | ~~4~~ | ~~Whether sandbox simulates market hours~~ — **resolved: yes, for order placement.** A `DAY` order in the `CORE` session is rejected outside regular hours with `OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT`; `GTC` orders and previews are accepted at any time. Integration tests place GTC orders | – |
 | ~~5~~ | ~~Confirm the server accepts our HMAC-SHA256 signature~~ — **resolved: accepted, with and without query parameters.** | – |
 | 6 | Whether `token_check_enabled` is true in production (it is **false** in sandbox) | when production keys exist |
-| 7 | Whether MQTT port 1883 or 8883 is preferred, and TLS expectations | Phase 9 |
-| 8 | Whether streaming requires its own token | Phase 9 |
+| ~~7~~ | ~~MQTT port and TLS~~ — **resolved: 1883 is TLS-over-TCP (the Python SDK default and what the SDK uses); 8883 is MQTT-over-WebSocket. Both answer TLS 1.3.** | – |
+| ~~8~~ | ~~Whether streaming needs its own token~~ — **resolved: no. The MQTT password is ignored; the app key is the CONNECT username, and the signed HTTP subscribe call binds the session and is the real auth boundary.** | – |
 | ~~9~~ | ~~Timestamp formats per endpoint~~ — **resolved: three forms, see the known-behaviour table; `marketdata.Millis` and `marketdata.Time` decode them.** | – |
 | ~~10~~ | ~~Entitlement behaviour on 403~~ — **resolved: `MARKET_DATA_NOT_SUBSCRIBED` naming the product; typed as `marketdata.ErrNotSubscribed`.** | – |
 | ~~11~~ | ~~Whether optional order fields accept an explicit `null`~~ — **resolved: accepted.** | – |

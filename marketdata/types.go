@@ -12,8 +12,9 @@ import (
 	"github.com/sfreiberg/webull/internal/wire"
 )
 
-// Category identifies an asset class in market-data requests.
-type Category string
+// Category identifies an asset class in market-data requests. It is an
+// alias of the shared wire type also used by the streaming package.
+type Category = wire.Category
 
 // Categories. USStock and USETF are accepted by the stock endpoints; the rest
 // each have their own.

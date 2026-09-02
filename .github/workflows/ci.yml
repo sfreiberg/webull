@@ -52,7 +52,7 @@ jobs:
       # generated file quietly consume the floor's headroom. The handwritten
       # code that wraps them is not excluded.
       - name: Exclude generated code
-        run: grep -v -E '^github\.com/sfreiberg/webull/internal/eventspb/' coverage.txt > coverage.filtered.txt
+        run: grep -v -E '^github\.com/sfreiberg/webull/internal/(eventspb|streampb)/' coverage.txt > coverage.filtered.txt
 
       # Enforced here rather than delegated to Codecov, so that a fork PR with
       # no upload token, or a Codecov outage, cannot silently weaken the gate.
