@@ -531,3 +531,241 @@ func TestGetAndPostHelpers(t *testing.T) {
 		t.Errorf("Post: %v %+v", err, out)
 	}
 }
+
+func TestDoFormBodyAndAuthorizer(t *testing.T) {
+	var gotCT, gotAuth string
+	var gotBody string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotCT = r.Header.Get("Content-Type")
+		gotAuth = r.Header.Get("Authorization")
+		b, _ := io.ReadAll(r.Body)
+		gotBody = string(b)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		return map[string]string{"Authorization": "Bearer abc"}, nil
+	}
+	var out struct {
+		OK bool `json:"ok"`
+	}
+	err := d.Do(context.Background(), Request{
+		Method: "POST", Host: hostOf(srv), Path: "/x",
+		Form: url.Values{"grant_type": {"refresh_token"}, "code": {"c"}},
+	}, &out)
+	if err != nil || !out.OK {
+		t.Fatalf("Do: %v", err)
+	}
+	if gotCT != "application/x-www-form-urlencoded" {
+		t.Errorf("content type = %q", gotCT)
+	}
+	if gotAuth != "Bearer abc" {
+		t.Errorf("authorization = %q", gotAuth)
+	}
+	if gotBody != "code=c&grant_type=refresh_token" {
+		t.Errorf("form body = %q", gotBody)
+	}
+}
+
+func TestDoAuthorizerErrorFailsRequest(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("request must not be sent when the authorizer fails")
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		return nil, errors.New("no token")
+	}
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err == nil {
+		t.Error("an authorizer error must fail the request")
+	}
+}
+
+func TestDoRejectsBodyAndForm(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("a request with both Body and Form must not be sent")
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	err := d.Do(context.Background(), Request{
+		Method: "POST", Host: hostOf(srv), Path: "/x",
+		Body: map[string]string{"a": "b"},
+		Form: url.Values{"a": {"b"}},
+	}, nil)
+	if err == nil || !strings.Contains(err.Error(), "both Body and Form") {
+		t.Errorf("err = %v, want a Body-and-Form error", err)
+	}
+}
+
+func TestDoResolvesAuthorizerOncePerRequest(t *testing.T) {
+	// A retried request must not re-run the authorizer: a token refresh that
+	// failed terminally would only fail again, and re-running one multiplies
+	// real calls to the token endpoint.
+	var serverHits int
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		serverHits++
+		if got := r.Header.Get("Authorization"); got != "Bearer once" {
+			t.Errorf("attempt %d: authorization = %q", serverHits, got)
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	var authCalls int
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		authCalls++
+		return map[string]string{"Authorization": "Bearer once"}, nil
+	}
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err == nil {
+		t.Fatal("expected the 500s to surface")
+	}
+	if serverHits != 3 {
+		t.Errorf("server hits = %d, want 3 attempts", serverHits)
+	}
+	if authCalls != 1 {
+		t.Errorf("authorizer calls = %d, want 1 per request", authCalls)
+	}
+}
+
+func TestDoAuthorizerHeadersCannotShadowSignature(t *testing.T) {
+	// Signing headers are set after the authorizer's, so a colliding key
+	// cannot silently invalidate the signature.
+	var gotSig string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotSig = r.Header.Get("x-signature")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.Authorizer = func(context.Context) (map[string]string, error) {
+		return map[string]string{"x-signature": "forged"}, nil
+	}
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if gotSig == "forged" || gotSig == "" {
+		t.Errorf("x-signature = %q, want the signer's value", gotSig)
+	}
+}
+
+func TestNewHTTPClientDefaults(t *testing.T) {
+	c := NewHTTPClient(nil)
+	if c.Timeout != DefaultTimeout {
+		t.Errorf("timeout = %v, want %v", c.Timeout, DefaultTimeout)
+	}
+	if c.CheckRedirect == nil {
+		t.Fatal("redirects must be refused")
+	}
+	if err := c.CheckRedirect(nil, nil); !errors.Is(err, ErrRedirectNotAllowed) {
+		t.Errorf("CheckRedirect = %v, want ErrRedirectNotAllowed", err)
+	}
+}
+
+func TestNewHTTPClientCopiesTheCaller(t *testing.T) {
+	base := &http.Client{Timeout: 5 * time.Second, Transport: &http.Transport{}}
+	c := NewHTTPClient(base)
+	if c == base {
+		t.Fatal("the caller's client must not be mutated; a copy must be returned")
+	}
+	if base.CheckRedirect != nil {
+		t.Error("the caller's client gained a CheckRedirect")
+	}
+	if c.Timeout != base.Timeout {
+		t.Errorf("timeout = %v, want the caller's %v", c.Timeout, base.Timeout)
+	}
+	if c.Transport != base.Transport {
+		t.Error("the copy must share the caller's Transport to keep connection pooling")
+	}
+}
+
+func TestNewHTTPClientRefusesRedirects(t *testing.T) {
+	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("the redirect target must never be reached")
+	}))
+	t.Cleanup(target.Close)
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, target.URL, http.StatusFound)
+	}))
+	t.Cleanup(srv.Close)
+
+	c := NewHTTPClient(srv.Client())
+	resp, err := c.Get(srv.URL)
+	if err == nil {
+		_ = resp.Body.Close()
+		t.Fatal("expected the redirect to be refused")
+	}
+	if !errors.Is(err, ErrRedirectNotAllowed) {
+		t.Errorf("err = %v, want ErrRedirectNotAllowed", err)
+	}
+}
+
+func TestDoErrorsOnEmptySuccessBodyWithOut(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+	var out struct{}
+	err := newDoer(t, srv, DefaultRetryPolicy()).Do(context.Background(),
+		Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "expected a response body") {
+		t.Errorf("err = %v, want an empty-body error", err)
+	}
+}
+
+func TestDoErrorsOnUndecodableSuccessBody(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"broken`))
+	}))
+	t.Cleanup(srv.Close)
+	var out struct{}
+	err := newDoer(t, srv, DefaultRetryPolicy()).Do(context.Background(),
+		Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "decoding response") {
+		t.Errorf("err = %v, want a decode error", err)
+	}
+}
+
+func TestDoRejectsInvalidMethod(t *testing.T) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		t.Error("an unbuildable request must not be sent")
+	}))
+	t.Cleanup(srv.Close)
+	err := newDoer(t, srv, DefaultRetryPolicy()).Do(context.Background(),
+		Request{Method: "GET METHOD", Host: hostOf(srv), Path: "/x"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "building request") {
+		t.Errorf("err = %v, want a build error", err)
+	}
+}
+
+func TestDoSendsUserAgent(t *testing.T) {
+	var got string
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Header.Get("User-Agent")
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	t.Cleanup(srv.Close)
+	d := newDoer(t, srv, DefaultRetryPolicy())
+	d.UserAgent = "sdk-test/1"
+	if err := d.Do(context.Background(), Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if got != "sdk-test/1" {
+		t.Errorf("User-Agent = %q", got)
+	}
+}
+
+func TestDoSurfacesBodyReadFailure(t *testing.T) {
+	// A Content-Length larger than what is sent makes the read fail with an
+	// unexpected EOF once the connection closes.
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "1000")
+		_, _ = w.Write([]byte(`{"partial`))
+	}))
+	t.Cleanup(srv.Close)
+	err := newDoer(t, srv, RetryPolicy{MaxAttempts: 1}).Do(context.Background(),
+		Request{Method: "GET", Host: hostOf(srv), Path: "/x"}, nil)
+	if err == nil || !strings.Contains(err.Error(), "reading response") {
+		t.Errorf("err = %v, want a read error", err)
+	}
+}

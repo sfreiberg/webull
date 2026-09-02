@@ -4,9 +4,13 @@ import (
 	"errors"
 	"net/http"
 	"time"
+
+	"github.com/sfreiberg/webull/internal/transport"
 )
 
-// DefaultTimeout applies to requests when Config.HTTPClient is nil.
+// DefaultTimeout applies to requests when Config.HTTPClient is nil. It is
+// restated here rather than referencing transport.DefaultTimeout so godoc
+// shows the value; a test asserts the two stay equal.
 const DefaultTimeout = 30 * time.Second
 
 // Config describes how a Client connects to Webull.
@@ -30,9 +34,11 @@ type Config struct {
 
 	// EndpointOverrides replaces the host for a named service, for testing
 	// against a local server or routing through a proxy. Keys are service
-	// names: "trading", "marketdata", "streaming", "events", "connect". Each
-	// is resolved independently: trading and market data share a host by
-	// default, but overriding one does not override the other.
+	// names: "trading", "marketdata", "streaming", "events". Each is
+	// resolved independently: trading and market data share a host by
+	// default, but overriding one does not override the other. The Connect
+	// API is configured through connect.Config, which has its own Endpoint
+	// override.
 	EndpointOverrides map[string]string
 
 	// UserAgent is appended to the SDK's own User-Agent, identifying the
@@ -56,27 +62,12 @@ func (c *Config) validate() error {
 }
 
 // ErrRedirectNotAllowed is returned when Webull responds with a redirect.
-var ErrRedirectNotAllowed = errors.New("webull: refusing to follow a redirect")
+// Redirects are refused because Go forwards the signature headers — including
+// the app key — to the redirect target; see transport.NewHTTPClient.
+var ErrRedirectNotAllowed = transport.ErrRedirectNotAllowed
 
-// httpClient returns the client to use, with redirects refused.
-//
-// Redirects must not be followed. Go strips only Authorization and Cookie
-// across hosts, so the signature headers — including the app key — would be
-// forwarded verbatim to a redirect target, and Go permits an https-to-http
-// downgrade. The request could not succeed anyway, because the host is part of
-// the signed canonical string.
-//
-// A caller-supplied client is shallow-copied rather than mutated, so the
-// caller's own client is left alone. The copy shares its Transport, which is
-// what keeps connection pooling intact.
+// httpClient returns the client to use, with redirects refused. The policy
+// lives in transport.NewHTTPClient, shared with the connect package.
 func (c *Config) httpClient() *http.Client {
-	client := &http.Client{Timeout: DefaultTimeout}
-	if c.HTTPClient != nil {
-		cp := *c.HTTPClient
-		client = &cp
-	}
-	client.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
-		return ErrRedirectNotAllowed
-	}
-	return client
+	return transport.NewHTTPClient(c.HTTPClient)
 }

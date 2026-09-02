@@ -304,6 +304,33 @@ signed HTTP calls that gate it, and a subscribe refused for a bad key is
 `streaming.ErrSubscribeFailed`. A dropped connection reconnects and replays
 its subscriptions.
 
+## Connect API (OAuth)
+
+To act on *another* user's Webull account — the model for a platform whose
+users link their Webull accounts — use the `connect` package's OAuth flow:
+
+```go
+authorizer, _ := connect.NewAuthorizer(connect.Config{
+    ClientID: clientID, ClientSecret: clientSecret,
+    AppKey: appKey, AppSecret: appSecret,
+    Environment: webull.Production,
+    RedirectURI: "https://app.example.com/webull/callback",
+})
+
+// Send the user here; on the callback, exchange the code.
+url := authorizer.AuthorizationURL(state)
+token, _ := authorizer.ExchangeCode(ctx, code)
+
+// Trade on the user's behalf; the access token refreshes itself. Use
+// ClientFromStore to keep the rotating token pair in a store of your own.
+client, _ := authorizer.Client(token)
+accounts, _ := client.Trade.Accounts(ctx)
+```
+
+Connect credentials are issued by Webull to partner platforms, not
+self-service, so this is implemented to the documentation and marked
+`Unverified` in the [compatibility matrix](docs/COMPATIBILITY.md).
+
 ## Numbers
 
 Every price, quantity and amount is a fixed-point decimal, never a float.

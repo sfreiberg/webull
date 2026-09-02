@@ -79,7 +79,7 @@ news. Streaming and Connect are not implemented yet.
 | Watchlists | Complete | Yes | – | 6d | Full lifecycle verified live: create, list, rename, add, reorder, remove, delete |
 | Corporate actions | Blocked | – | – | 6a | Both documented paths and every SDK-scheme alias return 404 in the sandbox |
 | News | Blocked | – | – | 6d | The one remaining documented endpoint, `news/summaries/get`, is a Server-Sent Events stream from Webull's AI assistant, absent from all SDKs. **It 404s in the sandbox** — the gateway rewrites it to `/openapi/news/summary` and returns a bare Spring 404. Not implemented; revisit with production keys |
-| **Connect API / OAuth** | Planned | – | – | 7 | Documented only; credentials are partner-gated |
+| **Connect API / OAuth** | Unverified | Yes | Yes | 7 | The full OAuth flow (authorization URL, code exchange, rotating refresh) and a Connect-authenticated Trade client, implemented to the documented spec. **Connect credentials are partner-gated and were not available**, so nothing here has been exercised against the live service; the integration test skips until credentials are set |
 | **gRPC trade events** | Complete | Yes | Yes | 8 | Verified live: a cancelled sandbox order's CANCEL_SUCCESS event arrived typed on the stream |
 | Order events | Complete | Yes | Yes | 8 | Typed to the documented payload; CANCEL_SUCCESS observed live |
 | Position events | Unverified | Yes | – | 8 | Typed to the one documented shape (event-contract settlement); no live event observed |
@@ -246,3 +246,4 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 29 | Fund allocations, holdings and files against real data; the sandbox returns them empty for every fund tried | production keys |
 | 30 | Whether `news/summaries/get` (an SSE stream) exists in production; the sandbox 404s it | production keys |
 | 31 | Position and option event payloads against real data; only order events have been observed live. Position events are typed to the documented event-contract settlement shape | a fill or settlement in the sandbox account |
+| 32 | The entire Connect API / OAuth flow against the live service: the token-endpoint signature over a form body, refresh rotation, and Bearer-authenticated trading. Credentials are partner-gated | Connect credentials from Webull |

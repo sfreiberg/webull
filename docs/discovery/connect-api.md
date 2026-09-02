@@ -54,7 +54,11 @@ the sounder approach.
 | Sandbox | Login redirect | `passport.webull.com/oauth2/sandbox/authenticate/login` |
 
 The login redirect shares a hostname across environments and distinguishes them
-by path; the API hosts are distinguished by hostname. Note also that the
+by path; the API hosts are distinguished by hostname. The application does not
+send the user to `passport.webull.com` itself: the official reference
+(`developer.webull.com/apis/docs/reference/connect-api/get-authorization-code`)
+gives the authorization URL as `GET /oauth2/auth-codes/get` on the API host,
+which redirects the browser to the hosted login page above. Note also that the
 production host carries a `us-` prefix that the sandbox host does not, so the
 two are not related by a simple substitution the way the Trading API hosts are.
 Endpoint resolution must treat these as table entries, not as a pattern.

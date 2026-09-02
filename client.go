@@ -142,6 +142,12 @@ type errorPayload struct {
 	GwMessage string `json:"error_msg"`
 }
 
+// The decoder is registered with the internal transport rather than exported:
+// the connect package builds its own Doer and must share these error
+// semantics, but a public accessor would return an internal type no caller
+// outside the module could name or use.
+func init() { transport.APIErrorDecoder = decodeAPIError }
+
 // decodeAPIError builds an *APIError from a failed response.
 func decodeAPIError(resp transport.Response) error {
 	err := &APIError{

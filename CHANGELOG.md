@@ -20,6 +20,17 @@ called out explicitly.
 
 ### Added
 
+- `connect` package: OAuth 2.0 access to other users' Webull accounts (the
+  Connect API), reachable through an `Authorizer` — build an authorization
+  URL, exchange the returned code for a `Token`, then get a `Client` whose
+  `Trade` reaches the same operations as the root package on the user's
+  account. The access token refreshes automatically before expiry —
+  concurrent refreshes collapse to one shared call, success or failure — and
+  the rotating token pair lives in a per-user `TokenStore`
+  (`ClientFromStore`), which is never written until a refresh produces a
+  newer pair. Token decoding tolerates both quoted and numeric lifetimes and
+  a missing `created_at`. Implemented to Webull's documentation; the
+  credentials are partner-gated and unavailable, so it is `Unverified`.
 - `streaming` package: real-time market data over MQTT, reachable as
   `client.Streaming`. `Connect` opens the broker connection; `Subscribe`
   and `Unsubscribe` register interest over the signed HTTP endpoints; `Recv`
@@ -100,8 +111,8 @@ called out explicitly.
   `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
   handlers and are not implemented.
 - News is not implemented: the one documented endpoint is a Server-Sent
-  Events stream that does not exist in the sandbox. The Connect API is not
-  implemented yet. The Broker API and FIX are out of scope; see
+  Events stream that does not exist in the sandbox. The Broker API and FIX
+  are out of scope; see
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 [Unreleased]: https://github.com/sfreiberg/webull/commits/main
