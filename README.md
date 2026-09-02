@@ -250,6 +250,31 @@ authentication rejection and the server's connection limit surface as
 `events.ErrAuthFailed` and `events.ErrConnectionLimit` instead of being
 retried.
 
+## Market data streaming
+
+```go
+stream, err := client.Streaming.Connect(ctx)
+defer stream.Close()
+err = stream.Subscribe(ctx, streaming.SubscribeRequest{
+    Symbols: []string{"AAPL"},
+    Types:   []streaming.SubType{streaming.SubSnapshot, streaming.SubTick},
+})
+for {
+    msg, err := stream.Recv(ctx)
+    if err != nil {
+        break
+    }
+    if msg.Type == streaming.TypeTick && msg.Tick != nil {
+        fmt.Println(msg.Tick.Symbol, msg.Tick.Price, msg.Tick.Volume)
+    }
+}
+```
+
+The MQTT connection carries the data; `Subscribe` and `Unsubscribe` are
+signed HTTP calls that gate it, and a subscribe refused for a bad key is
+`streaming.ErrSubscribeFailed`. A dropped connection reconnects and replays
+its subscriptions.
+
 ## Numbers
 
 Every price, quantity and amount is a `decimal.Decimal` from

@@ -12,6 +12,15 @@ called out explicitly.
 
 ### Added
 
+- `streaming` package: real-time market data over MQTT, reachable as
+  `client.Streaming`. `Connect` opens the broker connection; `Subscribe`
+  and `Unsubscribe` register interest over the signed HTTP endpoints; `Recv`
+  returns typed snapshots, quotes, ticks and their event-contract variants.
+  A dropped connection reconnects and replays its subscriptions.
+  Authentication is enforced at `Subscribe` (`ErrSubscribeFailed`), since
+  the broker accepts the MQTT connection for any well-formed key. The
+  vendored `message.proto` and its generated bindings are committed with
+  their Apache-2.0 provenance.
 - `events` package: real-time trade events over gRPC, reachable as
   `client.Events`. `Subscribe` blocks until the server acknowledges, so a
   returned `Stream` is live; `Recv` handles heartbeats, reconnects on
@@ -83,9 +92,8 @@ called out explicitly.
   `/openapi/...` paths used by Webull's own SDKs are live aliases of the same
   handlers and are not implemented.
 - News is not implemented: the one documented endpoint is a Server-Sent
-  Events stream that does not exist in the sandbox. MQTT market-data
-  streaming and the Connect API are not implemented yet. The Broker API
-  and FIX are out of scope; see
+  Events stream that does not exist in the sandbox. The Connect API is not
+  implemented yet. The Broker API and FIX are out of scope; see
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 [Unreleased]: https://github.com/sfreiberg/webull/commits/main

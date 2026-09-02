@@ -30,4 +30,5 @@ ignore:
   # Generated protobuf bindings are not meaningfully testable and would inflate
   # the number. The handwritten code that wraps them is not excluded.
   - "internal/eventspb/**"
+  - "internal/streampb/**"
   - "examples/**"

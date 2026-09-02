@@ -1,0 +1,105 @@
+syntax = "proto3";
+
+message Basic {
+  string symbol = 1;
+  string instrument_id = 2;
+  string timestamp = 3;
+  string trading_session = 4;
+}
+
+message Snapshot {
+  Basic basic = 1;
+  string trade_time = 2;
+  string price = 3;
+  string open = 4;
+  string high = 5;
+  string low = 6;
+  string pre_close = 7;
+  string volume = 8;
+  string change = 9;
+  string change_ratio = 10;
+
+  string ext_trade_time = 11;
+  string ext_price = 12;
+  string ext_high = 13;
+  string ext_low = 14;
+  string ext_volume = 15;
+  string ext_change = 16;
+  string ext_change_ratio = 17;
+
+  string ovn_trade_time = 18;
+  string ovn_price = 19;
+  string ovn_high = 20;
+  string ovn_low = 21;
+  string ovn_volume = 22;
+  string ovn_change = 23;
+  string ovn_change_ratio = 24;
+}
+
+message Quote {
+  Basic basic = 1;
+  repeated AskBid asks = 2;
+  repeated AskBid bids = 3;
+}
+
+message Tick {
+  Basic basic = 1;
+  string time = 2;
+  string price = 3;
+  string volume = 4;
+  string side = 5;
+}
+
+message AskBid {
+  string price = 1;
+  string size = 2;
+  repeated Order order = 3;
+  repeated Broker broker = 4;
+}
+
+message Order {
+  string mpid = 1;
+  string size = 2;
+}
+
+message Broker {
+  string bid = 1;
+  string name = 2;
+}
+
+message EventSnapshot {
+    Basic basic = 1;
+    string price = 2;
+    string volume = 3;
+    string last_trade_time = 4;
+    string open_interest = 5;
+    string yes_ask = 6;
+    string yes_bid = 7;
+    string yes_ask_size = 8;
+    string yes_bid_size = 9;
+    string no_ask = 10;
+    string no_bid = 11;
+    string no_ask_size = 12;
+    string no_bid_size = 13;
+}
+
+message EventQuote {
+    Basic basic = 1;
+    repeated EventAskBid yes_bids = 2;
+    repeated EventAskBid no_bids = 3;
+}
+
+message EventAskBid {
+    string price = 1;
+    string size = 2;
+}
+
+message EventTick {
+    Basic basic = 1;
+    string yes_price = 2;
+    string no_price = 3;
+    string volume = 4;
+    string side = 5;
+    string trade_id = 6;
+    string time = 7;
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/sfreiberg/webull/internal/signing"
 	"github.com/sfreiberg/webull/internal/transport"
 	"github.com/sfreiberg/webull/marketdata"
+	"github.com/sfreiberg/webull/streaming"
 	"github.com/sfreiberg/webull/trade"
 )
 
@@ -34,6 +35,9 @@ type Client struct {
 	// Events streams real-time trade events over gRPC. Each Subscribe call
 	// opens its own connection whose lifetime belongs to the caller.
 	Events *events.Client
+	// Streaming delivers real-time market data over MQTT. Each Connect call
+	// opens its own connection whose lifetime belongs to the caller.
+	Streaming *streaming.Client
 
 	cfg  Config
 	doer *transport.Doer
@@ -82,11 +86,16 @@ func NewClient(cfg Config) (*Client, error) {
 	if err != nil {
 		return nil, err
 	}
+	streamingHost, err := cfg.host(serviceStreaming)
+	if err != nil {
+		return nil, err
+	}
 
 	return &Client{
 		Trade:      trade.New(doer, tradingHost),
 		MarketData: marketdata.New(doer, marketDataHost),
 		Events:     events.New(doer.Signer, eventsHost),
+		Streaming:  streaming.New(doer, marketDataHost, streamingHost),
 		cfg:        cfg,
 		doer:       doer,
 	}, nil

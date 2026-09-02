@@ -52,7 +52,7 @@ jobs:
       # generated file quietly consume the floor's headroom. The handwritten
       # code that wraps them is not excluded.
       - name: Exclude generated code
-        run: grep -v -E '^github\.com/sfreiberg/webull/internal/eventspb/' coverage.txt > coverage.filtered.txt
+        run: grep -v -E '^github\.com/sfreiberg/webull/internal/(eventspb|streampb)/' coverage.txt > coverage.filtered.txt
 
       # Enforced here rather than delegated to Codecov, so that a fork PR with
       # no upload token, or a Codecov outage, cannot silently weaken the gate.
@@ -89,6 +89,14 @@ jobs:
           if [ -n "$unformatted" ]; then
             echo "::error::these files are not gofmt'd:"
             echo "$unformatted"
+            exit 1
+          fi
+      - name: go mod tidy
+        run: |
+          go mod tidy
+          if ! git diff --quiet go.mod go.sum; then
+            echo "::error::go.mod/go.sum are not tidy; run 'go mod tidy'"
+            git diff go.mod go.sum
             exit 1
           fi
       # golangci-lint bundles staticcheck, govet and errcheck, so they are not
