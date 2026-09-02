@@ -306,10 +306,17 @@ its subscriptions.
 
 ## Numbers
 
-Every price, quantity and amount is a `decimal.Decimal` from
-[shopspring/decimal](https://github.com/shopspring/decimal), never a float.
-Optional fields are `decimal.NullDecimal` so that "not reported" is
-distinguishable from zero. `trade.Price("1.50")` is a shorthand for setting one.
+Every price, quantity and amount is a fixed-point decimal, never a float.
+The types embed [shopspring/decimal](https://github.com/shopspring/decimal),
+so all of its methods are available directly — `snapshot.Price.String()`,
+`amount.Decimal.Equal(...)` and so on. Optional fields use a nullable form so
+that "not reported" is distinguishable from zero. `trade.Price("1.50")` is a
+shorthand for setting one.
+
+The wrapper adds one thing over shopspring's own types: it decodes Webull's
+absent forms — JSON `null` **and an empty string** — to an absent or zero
+value. Webull returns `""` for an unreported number (an option greek outside
+market hours, for instance), which shopspring's own decoder rejects.
 
 ## Errors
 

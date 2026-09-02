@@ -10,12 +10,22 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sfreiberg/webull/internal/query"
-
 	"github.com/shopspring/decimal"
 
+	"github.com/sfreiberg/webull/internal/query"
 	"github.com/sfreiberg/webull/internal/transport"
+	"github.com/sfreiberg/webull/internal/wire"
 )
+
+// Decimal is the SDK's fixed-point decimal type. It embeds
+// github.com/shopspring/decimal.Decimal, so all of that type's methods are
+// available, and additionally decodes Webull's absent forms — null and an
+// empty string — where shopspring's own type rejects "".
+type Decimal = wire.Decimal
+
+// NullDecimal is the SDK's nullable fixed-point decimal type, the counterpart
+// of Decimal for fields that may be absent.
+type NullDecimal = wire.NullDecimal
 
 // Side is the direction of an order.
 type Side string
@@ -185,8 +195,8 @@ const (
 // Price returns a set NullDecimal from a literal, for optional price fields.
 // It panics on a malformed string, like regexp.MustCompile; use
 // decimal.NewFromString for untrusted input.
-func Price(s string) decimal.NullDecimal {
-	return decimal.NewNullDecimal(decimal.RequireFromString(s))
+func Price(s string) NullDecimal {
+	return wire.NewNullDecimal(decimal.RequireFromString(s))
 }
 
 // Order describes an order to preview or place.
@@ -234,24 +244,24 @@ type Order struct {
 	// ExpireDate is yyyy-MM-dd and is required when TimeInForce is GTD.
 	ExpireDate string `json:"expire_date,omitzero"`
 
-	Quantity decimal.NullDecimal `json:"quantity,omitzero"`
+	Quantity NullDecimal `json:"quantity,omitzero"`
 	// TotalCashAmount places a fractional equity order by dollar value; set
 	// EntrustType to ByAmount.
-	TotalCashAmount decimal.NullDecimal `json:"total_cash_amount,omitzero"`
-	LimitPrice      decimal.NullDecimal `json:"limit_price,omitzero"`
-	StopPrice       decimal.NullDecimal `json:"stop_price,omitzero"`
+	TotalCashAmount NullDecimal `json:"total_cash_amount,omitzero"`
+	LimitPrice      NullDecimal `json:"limit_price,omitzero"`
+	StopPrice       NullDecimal `json:"stop_price,omitzero"`
 
-	TrailingType     TrailingType        `json:"trailing_type,omitzero"`
-	TrailingStopStep decimal.NullDecimal `json:"trailing_stop_step,omitzero"`
+	TrailingType     TrailingType `json:"trailing_type,omitzero"`
+	TrailingStopStep NullDecimal  `json:"trailing_stop_step,omitzero"`
 
 	// CurrentAsk and CurrentBid are accepted by preview only, for stock and
 	// option orders.
-	CurrentAsk decimal.NullDecimal `json:"current_ask,omitzero"`
-	CurrentBid decimal.NullDecimal `json:"current_bid,omitzero"`
+	CurrentAsk NullDecimal `json:"current_ask,omitzero"`
+	CurrentBid NullDecimal `json:"current_bid,omitzero"`
 
-	AlgoType         AlgoType            `json:"algo_type,omitzero"`
-	TargetVolPercent decimal.NullDecimal `json:"target_vol_percent,omitzero"`
-	MaxTargetPercent decimal.NullDecimal `json:"max_target_percent,omitzero"`
+	AlgoType         AlgoType    `json:"algo_type,omitzero"`
+	TargetVolPercent NullDecimal `json:"target_vol_percent,omitzero"`
+	MaxTargetPercent NullDecimal `json:"max_target_percent,omitzero"`
 	// AlgoStartTime and AlgoEndTime are HH:mm:ss in US Eastern time.
 	AlgoStartTime string `json:"algo_start_time,omitzero"`
 	AlgoEndTime   string `json:"algo_end_time,omitzero"`
@@ -274,16 +284,16 @@ type Order struct {
 // InstrumentType set to InstrumentEquity, no option fields, and Quantity in
 // shares — it is never defaulted from the order's contract count.
 type OrderLeg struct {
-	Side     Side                `json:"side"`
-	Quantity decimal.NullDecimal `json:"quantity,omitzero"`
+	Side     Side        `json:"side"`
+	Quantity NullDecimal `json:"quantity,omitzero"`
 	// Market defaults to "US"; InstrumentType to InstrumentOption.
 	Market         string         `json:"market,omitzero"`
 	InstrumentType InstrumentType `json:"instrument_type,omitzero"`
 	// Symbol is the option's root symbol, such as "AAPL" or "SPXW". For index
 	// weeklies this differs from the underlying ("SPX"), and Webull rejects the
 	// underlying; LegFromSymbol sets it correctly.
-	Symbol      string              `json:"symbol"`
-	StrikePrice decimal.NullDecimal `json:"strike_price,omitzero"`
+	Symbol      string      `json:"symbol"`
+	StrikePrice NullDecimal `json:"strike_price,omitzero"`
 	// ExpireDate is yyyy-MM-dd.
 	ExpireDate string     `json:"option_expire_date,omitzero"`
 	OptionType OptionType `json:"option_type,omitzero"`
@@ -317,7 +327,7 @@ func LegFromSymbol(symbol string) (OrderLeg, error) {
 		Symbol:      m[1],
 		ExpireDate:  expiry.Format("2006-01-02"),
 		OptionType:  optType,
-		StrikePrice: decimal.NewNullDecimal(strike),
+		StrikePrice: wire.NewNullDecimal(strike),
 	}, nil
 }
 
@@ -345,9 +355,9 @@ func classify(err error) error {
 // it. A NullDecimal that has been assigned and then unmarshalled from null
 // keeps its old payload with Valid false, which would otherwise serialise as
 // an explicit null.
-func clear(d *decimal.NullDecimal) {
+func clear(d *NullDecimal) {
 	if !d.Valid {
-		*d = decimal.NullDecimal{}
+		*d = NullDecimal{}
 	}
 }
 
@@ -399,7 +409,7 @@ func (o *Order) prepare() error {
 	if o.TimeInForce == "" {
 		o.TimeInForce = Day
 	}
-	for _, d := range []*decimal.NullDecimal{&o.Quantity, &o.TotalCashAmount, &o.LimitPrice, &o.StopPrice,
+	for _, d := range []*NullDecimal{&o.Quantity, &o.TotalCashAmount, &o.LimitPrice, &o.StopPrice,
 		&o.TrailingStopStep, &o.CurrentAsk, &o.CurrentBid, &o.TargetVolPercent, &o.MaxTargetPercent} {
 		clear(d)
 	}
@@ -524,8 +534,8 @@ type OrderReceipt struct {
 
 // OrderPreview estimates the cost of an order without placing it.
 type OrderPreview struct {
-	EstimatedCost           decimal.Decimal `json:"estimated_cost"`
-	EstimatedTransactionFee decimal.Decimal `json:"estimated_transaction_fee"`
+	EstimatedCost           Decimal `json:"estimated_cost"`
+	EstimatedTransactionFee Decimal `json:"estimated_transaction_fee"`
 	// Currency is returned by the API but not documented.
 	Currency string `json:"currency"`
 }
@@ -539,7 +549,7 @@ type orderEnvelope struct {
 // previewing and then placing the same Order value does not forward them.
 func (o *Order) forPlacement() Order {
 	c := *o
-	c.CurrentAsk, c.CurrentBid = decimal.NullDecimal{}, decimal.NullDecimal{}
+	c.CurrentAsk, c.CurrentBid = NullDecimal{}, NullDecimal{}
 	return c
 }
 
@@ -576,19 +586,19 @@ func (c *Client) PlaceOrder(ctx context.Context, accountID string, order *Order)
 // OrderModification changes a working order, identified by ClientOrderID.
 // Unset fields are left as they are.
 type OrderModification struct {
-	ClientOrderID string              `json:"client_order_id"`
-	Type          OrderType           `json:"order_type,omitzero"`
-	TimeInForce   TimeInForce         `json:"time_in_force,omitzero"`
-	Quantity      decimal.NullDecimal `json:"quantity,omitzero"`
-	LimitPrice    decimal.NullDecimal `json:"limit_price,omitzero"`
-	StopPrice     decimal.NullDecimal `json:"stop_price,omitzero"`
+	ClientOrderID string      `json:"client_order_id"`
+	Type          OrderType   `json:"order_type,omitzero"`
+	TimeInForce   TimeInForce `json:"time_in_force,omitzero"`
+	Quantity      NullDecimal `json:"quantity,omitzero"`
+	LimitPrice    NullDecimal `json:"limit_price,omitzero"`
+	StopPrice     NullDecimal `json:"stop_price,omitzero"`
 
-	TrailingType     TrailingType        `json:"trailing_type,omitzero"`
-	TrailingStopStep decimal.NullDecimal `json:"trailing_stop_step,omitzero"`
-	TargetVolPercent decimal.NullDecimal `json:"target_vol_percent,omitzero"`
-	MaxTargetPercent decimal.NullDecimal `json:"max_target_percent,omitzero"`
-	AlgoStartTime    string              `json:"algo_start_time,omitzero"`
-	AlgoEndTime      string              `json:"algo_end_time,omitzero"`
+	TrailingType     TrailingType `json:"trailing_type,omitzero"`
+	TrailingStopStep NullDecimal  `json:"trailing_stop_step,omitzero"`
+	TargetVolPercent NullDecimal  `json:"target_vol_percent,omitzero"`
+	MaxTargetPercent NullDecimal  `json:"max_target_percent,omitzero"`
+	AlgoStartTime    string       `json:"algo_start_time,omitzero"`
+	AlgoEndTime      string       `json:"algo_end_time,omitzero"`
 
 	// Legs modifies option leg quantities by leg ID, as returned by Order.
 	Legs []LegModification `json:"legs,omitempty"`
@@ -597,8 +607,8 @@ type OrderModification struct {
 // LegModification changes the quantity of one option leg. Both fields are
 // required.
 type LegModification struct {
-	ID       string              `json:"id"`
-	Quantity decimal.NullDecimal `json:"quantity,omitzero"`
+	ID       string      `json:"id"`
+	Quantity NullDecimal `json:"quantity,omitzero"`
 }
 
 // ReplaceOrder modifies a working order.
@@ -606,7 +616,7 @@ func (c *Client) ReplaceOrder(ctx context.Context, accountID string, mod OrderMo
 	if mod.ClientOrderID == "" {
 		return nil, fmt.Errorf("%w: ClientOrderID is required", ErrInvalidOrder)
 	}
-	for _, d := range []*decimal.NullDecimal{&mod.Quantity, &mod.LimitPrice, &mod.StopPrice, &mod.TrailingStopStep,
+	for _, d := range []*NullDecimal{&mod.Quantity, &mod.LimitPrice, &mod.StopPrice, &mod.TrailingStopStep,
 		&mod.TargetVolPercent, &mod.MaxTargetPercent} {
 		clear(d)
 	}
@@ -668,24 +678,24 @@ type OrderInfo struct {
 	TimeInForce    TimeInForce    `json:"time_in_force"`
 	ExpireDate     string         `json:"expire_date"`
 
-	TotalQuantity  decimal.Decimal     `json:"total_quantity"`
-	FilledQuantity decimal.NullDecimal `json:"filled_quantity"`
+	TotalQuantity  Decimal     `json:"total_quantity"`
+	FilledQuantity NullDecimal `json:"filled_quantity"`
 	// FilledPrice is the average fill price and is unset until a fill.
-	FilledPrice      decimal.NullDecimal `json:"filled_price"`
-	LimitPrice       decimal.NullDecimal `json:"limit_price"`
-	StopPrice        decimal.NullDecimal `json:"stop_price"`
-	TrailingType     TrailingType        `json:"trailing_type"`
-	TrailingStopStep decimal.NullDecimal `json:"trailing_stop_step"`
+	FilledPrice      NullDecimal  `json:"filled_price"`
+	LimitPrice       NullDecimal  `json:"limit_price"`
+	StopPrice        NullDecimal  `json:"stop_price"`
+	TrailingType     TrailingType `json:"trailing_type"`
+	TrailingStopStep NullDecimal  `json:"trailing_stop_step"`
 
 	// PlaceTime and FilledTime are UTC. FilledTime is zero until a fill.
 	PlaceTime  time.Time `json:"place_time_at"`
 	FilledTime time.Time `json:"filled_time_at,omitzero"`
 
-	AlgoType         AlgoType            `json:"algo_type"`
-	TargetVolPercent decimal.NullDecimal `json:"target_vol_percent"`
-	MaxTargetPercent decimal.NullDecimal `json:"max_target_percent"`
-	AlgoStartTime    string              `json:"algo_start_time"`
-	AlgoEndTime      string              `json:"algo_end_time"`
+	AlgoType         AlgoType    `json:"algo_type"`
+	TargetVolPercent NullDecimal `json:"target_vol_percent"`
+	MaxTargetPercent NullDecimal `json:"max_target_percent"`
+	AlgoStartTime    string      `json:"algo_start_time"`
+	AlgoEndTime      string      `json:"algo_end_time"`
 
 	EventOutcome   EventOutcome   `json:"event_outcome"`
 	EventTradeMode EventTradeMode `json:"event_trade_mode"`
@@ -703,30 +713,30 @@ type OrderInfo struct {
 
 // OrderInfoLeg is the state of one leg of an option order.
 type OrderInfoLeg struct {
-	ID       string          `json:"id"`
-	Symbol   string          `json:"symbol"`
-	Side     Side            `json:"side"`
-	Quantity decimal.Decimal `json:"quantity"`
+	ID       string  `json:"id"`
+	Symbol   string  `json:"symbol"`
+	Side     Side    `json:"side"`
+	Quantity Decimal `json:"quantity"`
 
-	OptionType          OptionType          `json:"option_type"`
-	Style               OptionStyle         `json:"option_category"`
-	StrikePrice         decimal.NullDecimal `json:"strike_price"`
-	ExpireDate          string              `json:"option_expire_date"`
-	ContractMultiplier  decimal.NullDecimal `json:"option_contract_multiplier"`
-	ContractDeliverable decimal.NullDecimal `json:"option_contract_deliverable"`
+	OptionType          OptionType  `json:"option_type"`
+	Style               OptionStyle `json:"option_category"`
+	StrikePrice         NullDecimal `json:"strike_price"`
+	ExpireDate          string      `json:"option_expire_date"`
+	ContractMultiplier  NullDecimal `json:"option_contract_multiplier"`
+	ContractDeliverable NullDecimal `json:"option_contract_deliverable"`
 }
 
 // Commission is the commission charged on an order.
 type Commission struct {
-	Actual     decimal.NullDecimal `json:"actual_commission"`
-	Receivable decimal.NullDecimal `json:"receivable_commission"`
+	Actual     NullDecimal `json:"actual_commission"`
+	Receivable NullDecimal `json:"receivable_commission"`
 }
 
 // Fee is one regulatory or exchange fee on an order.
 type Fee struct {
-	Type       string              `json:"type"`
-	Actual     decimal.NullDecimal `json:"actual_value"`
-	Receivable decimal.NullDecimal `json:"receivable_value"`
+	Type       string      `json:"type"`
+	Actual     NullDecimal `json:"actual_value"`
+	Receivable NullDecimal `json:"receivable_value"`
 }
 
 // Order retrieves an order by its client order ID.

@@ -6,8 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -20,65 +18,65 @@ type Snapshot struct {
 	Symbol       string `json:"symbol"`
 	InstrumentID string `json:"instrument_id"`
 
-	Price         decimal.NullDecimal `json:"price"`
-	Open          decimal.NullDecimal `json:"open"`
-	High          decimal.NullDecimal `json:"high"`
-	Low           decimal.NullDecimal `json:"low"`
-	Close         decimal.NullDecimal `json:"close"`
-	PreClose      decimal.NullDecimal `json:"pre_close"`
-	Volume        decimal.NullDecimal `json:"volume"`
-	Change        decimal.NullDecimal `json:"change"`
-	ChangeRatio   decimal.NullDecimal `json:"change_ratio"`
-	LastTradeTime Millis              `json:"last_trade_time"`
+	Price         NullDecimal `json:"price"`
+	Open          NullDecimal `json:"open"`
+	High          NullDecimal `json:"high"`
+	Low           NullDecimal `json:"low"`
+	Close         NullDecimal `json:"close"`
+	PreClose      NullDecimal `json:"pre_close"`
+	Volume        NullDecimal `json:"volume"`
+	Change        NullDecimal `json:"change"`
+	ChangeRatio   NullDecimal `json:"change_ratio"`
+	LastTradeTime Millis      `json:"last_trade_time"`
 
-	Ask       decimal.NullDecimal `json:"ask"`
-	AskSize   decimal.NullDecimal `json:"ask_size"`
-	Bid       decimal.NullDecimal `json:"bid"`
-	BidSize   decimal.NullDecimal `json:"bid_size"`
-	QuoteTime Millis              `json:"quote_time"`
+	Ask       NullDecimal `json:"ask"`
+	AskSize   NullDecimal `json:"ask_size"`
+	Bid       NullDecimal `json:"bid"`
+	BidSize   NullDecimal `json:"bid_size"`
+	QuoteTime Millis      `json:"quote_time"`
 
-	Turnover decimal.NullDecimal `json:"turnover"`
-	EPS      decimal.NullDecimal `json:"eps"`
-	EPSTTM   decimal.NullDecimal `json:"eps_ttm"`
-	LotSize  decimal.NullDecimal `json:"lot_size"`
-	BPS      decimal.NullDecimal `json:"bps"`
+	Turnover NullDecimal `json:"turnover"`
+	EPS      NullDecimal `json:"eps"`
+	EPSTTM   NullDecimal `json:"eps_ttm"`
+	LotSize  NullDecimal `json:"lot_size"`
+	BPS      NullDecimal `json:"bps"`
 
 	// Valuation and share-count fields are returned by the API but not
 	// documented.
-	PERatio           decimal.NullDecimal `json:"pe_ratio"`
-	PBRatio           decimal.NullDecimal `json:"pb_ratio"`
-	PSRatio           decimal.NullDecimal `json:"ps_ratio"`
-	Yield             decimal.NullDecimal `json:"yield"`
-	MarketValue       decimal.NullDecimal `json:"market_value"`
-	NegMarketValue    decimal.NullDecimal `json:"neg_market_value"`
-	TotalShares       decimal.NullDecimal `json:"total_shares"`
-	OutstandingShares decimal.NullDecimal `json:"out_standing_shares"`
-	FiftyTwoWeekHigh  decimal.NullDecimal `json:"fifty_two_wk_high"`
-	FiftyTwoWeekLow   decimal.NullDecimal `json:"fifty_two_wk_low"`
-	ListStatus        string              `json:"list_status"`
+	PERatio           NullDecimal `json:"pe_ratio"`
+	PBRatio           NullDecimal `json:"pb_ratio"`
+	PSRatio           NullDecimal `json:"ps_ratio"`
+	Yield             NullDecimal `json:"yield"`
+	MarketValue       NullDecimal `json:"market_value"`
+	NegMarketValue    NullDecimal `json:"neg_market_value"`
+	TotalShares       NullDecimal `json:"total_shares"`
+	OutstandingShares NullDecimal `json:"out_standing_shares"`
+	FiftyTwoWeekHigh  NullDecimal `json:"fifty_two_wk_high"`
+	FiftyTwoWeekLow   NullDecimal `json:"fifty_two_wk_low"`
+	ListStatus        string      `json:"list_status"`
 
 	// Extended hours, populated when SnapshotsRequest.ExtendedHours is set.
-	ExtendedLastPrice     decimal.NullDecimal `json:"extend_hour_last_price"`
-	ExtendedHigh          decimal.NullDecimal `json:"extend_hour_high"`
-	ExtendedLow           decimal.NullDecimal `json:"extend_hour_low"`
-	ExtendedChange        decimal.NullDecimal `json:"extend_hour_change"`
-	ExtendedChangeRatio   decimal.NullDecimal `json:"extend_hour_change_ratio"`
-	ExtendedVolume        decimal.NullDecimal `json:"extend_hour_volume"`
-	ExtendedLastTradeTime Millis              `json:"extend_hour_last_trade_time"`
+	ExtendedLastPrice     NullDecimal `json:"extend_hour_last_price"`
+	ExtendedHigh          NullDecimal `json:"extend_hour_high"`
+	ExtendedLow           NullDecimal `json:"extend_hour_low"`
+	ExtendedChange        NullDecimal `json:"extend_hour_change"`
+	ExtendedChangeRatio   NullDecimal `json:"extend_hour_change_ratio"`
+	ExtendedVolume        NullDecimal `json:"extend_hour_volume"`
+	ExtendedLastTradeTime Millis      `json:"extend_hour_last_trade_time"`
 
 	// Overnight session, populated when SnapshotsRequest.Overnight is set.
-	OvernightPrice         decimal.NullDecimal `json:"ovn_price"`
-	OvernightHigh          decimal.NullDecimal `json:"ovn_high"`
-	OvernightLow           decimal.NullDecimal `json:"ovn_low"`
-	OvernightVolume        decimal.NullDecimal `json:"ovn_volume"`
-	OvernightChange        decimal.NullDecimal `json:"ovn_change"`
-	OvernightChangeRatio   decimal.NullDecimal `json:"ovn_change_ratio"`
-	OvernightLastTradeTime Millis              `json:"ovn_last_trade_time"`
-	OvernightAsk           decimal.NullDecimal `json:"ovn_ask"`
-	OvernightAskSize       decimal.NullDecimal `json:"ovn_ask_size"`
-	OvernightBid           decimal.NullDecimal `json:"ovn_bid"`
-	OvernightBidSize       decimal.NullDecimal `json:"ovn_bid_size"`
-	OvernightQuoteTime     Millis              `json:"ovn_quote_time"`
+	OvernightPrice         NullDecimal `json:"ovn_price"`
+	OvernightHigh          NullDecimal `json:"ovn_high"`
+	OvernightLow           NullDecimal `json:"ovn_low"`
+	OvernightVolume        NullDecimal `json:"ovn_volume"`
+	OvernightChange        NullDecimal `json:"ovn_change"`
+	OvernightChangeRatio   NullDecimal `json:"ovn_change_ratio"`
+	OvernightLastTradeTime Millis      `json:"ovn_last_trade_time"`
+	OvernightAsk           NullDecimal `json:"ovn_ask"`
+	OvernightAskSize       NullDecimal `json:"ovn_ask_size"`
+	OvernightBid           NullDecimal `json:"ovn_bid"`
+	OvernightBidSize       NullDecimal `json:"ovn_bid_size"`
+	OvernightQuoteTime     Millis      `json:"ovn_quote_time"`
 }
 
 // SnapshotsRequest selects the stocks to snapshot.
@@ -122,16 +120,16 @@ type Depth struct {
 // Level is one price level of the book. Order and Broker breakdowns are
 // present only at depths the key is entitled to.
 type Level struct {
-	Price  decimal.Decimal `json:"price"`
-	Size   decimal.Decimal `json:"size"`
-	Orders []LevelOrder    `json:"order,omitempty"`
-	Broker []LevelBroker   `json:"broker,omitempty"`
+	Price  Decimal       `json:"price"`
+	Size   Decimal       `json:"size"`
+	Orders []LevelOrder  `json:"order,omitempty"`
+	Broker []LevelBroker `json:"broker,omitempty"`
 }
 
 // LevelOrder is one market participant's size at a level.
 type LevelOrder struct {
-	MPID string          `json:"mpid"`
-	Size decimal.Decimal `json:"size"`
+	MPID string  `json:"mpid"`
+	Size Decimal `json:"size"`
 }
 
 // LevelBroker identifies a broker at a level.
@@ -167,11 +165,11 @@ func (c *Client) Depth(ctx context.Context, req DepthRequest) (*Depth, error) {
 
 // Tick is one trade.
 type Tick struct {
-	Time    Millis          `json:"time"`
-	Price   decimal.Decimal `json:"price"`
-	Volume  decimal.Decimal `json:"volume"`
-	Side    TickSide        `json:"side"`
-	Session TradingSession  `json:"trading_session"`
+	Time    Millis         `json:"time"`
+	Price   Decimal        `json:"price"`
+	Volume  Decimal        `json:"volume"`
+	Side    TickSide       `json:"side"`
+	Session TradingSession `json:"trading_session"`
 }
 
 // Ticks is a stock's recent trades, newest first.
@@ -207,13 +205,13 @@ func (c *Client) Ticks(ctx context.Context, req TicksRequest) (*Ticks, error) {
 
 // Bar is one OHLCV candle.
 type Bar struct {
-	Time    Time            `json:"time"`
-	Open    decimal.Decimal `json:"open"`
-	High    decimal.Decimal `json:"high"`
-	Low     decimal.Decimal `json:"low"`
-	Close   decimal.Decimal `json:"close"`
-	Volume  decimal.Decimal `json:"volume"`
-	Session TradingSession  `json:"trading_session"`
+	Time    Time           `json:"time"`
+	Open    Decimal        `json:"open"`
+	High    Decimal        `json:"high"`
+	Low     Decimal        `json:"low"`
+	Close   Decimal        `json:"close"`
+	Volume  Decimal        `json:"volume"`
+	Session TradingSession `json:"trading_session"`
 }
 
 // Bars is one stock's candles.
@@ -279,15 +277,15 @@ func (c *Client) Bars(ctx context.Context, req BarsRequest) ([]Bars, error) {
 
 // Footprint is one interval's traded volume broken down by price and side.
 type Footprint struct {
-	Time      Time            `json:"time"`
-	Session   TradingSession  `json:"trading_session"`
-	Total     decimal.Decimal `json:"total"`
-	Delta     decimal.Decimal `json:"delta"`
-	BuyTotal  decimal.Decimal `json:"buy_total"`
-	SellTotal decimal.Decimal `json:"sell_total"`
+	Time      Time           `json:"time"`
+	Session   TradingSession `json:"trading_session"`
+	Total     Decimal        `json:"total"`
+	Delta     Decimal        `json:"delta"`
+	BuyTotal  Decimal        `json:"buy_total"`
+	SellTotal Decimal        `json:"sell_total"`
 	// BuyDetail and SellDetail map price to volume.
-	BuyDetail  map[string]decimal.Decimal `json:"buy_detail"`
-	SellDetail map[string]decimal.Decimal `json:"sell_detail"`
+	BuyDetail  map[string]Decimal `json:"buy_detail"`
+	SellDetail map[string]Decimal `json:"sell_detail"`
 }
 
 // Footprints is one stock's footprint chart.
@@ -335,22 +333,22 @@ func footprintParams(req FootprintsRequest, cat Category) query.Params {
 
 // Imbalance is one auction imbalance reading.
 type Imbalance struct {
-	Symbol       string          `json:"symbol"`
-	InstrumentID string          `json:"instrument_id"`
-	Time         Millis          `json:"imbalance_time"`
-	Type         ImbalanceType   `json:"imbalance_action_type"`
-	RefPrice     decimal.Decimal `json:"imbalance_ref_price"`
-	NearPrice    decimal.Decimal `json:"imbalance_near_price"`
-	FarPrice     decimal.Decimal `json:"imbalance_far_price"`
+	Symbol       string        `json:"symbol"`
+	InstrumentID string        `json:"instrument_id"`
+	Time         Millis        `json:"imbalance_time"`
+	Type         ImbalanceType `json:"imbalance_action_type"`
+	RefPrice     Decimal       `json:"imbalance_ref_price"`
+	NearPrice    Decimal       `json:"imbalance_near_price"`
+	FarPrice     Decimal       `json:"imbalance_far_price"`
 }
 
 // ImbalanceSnapshot is the current auction imbalance for a stock.
 type ImbalanceSnapshot struct {
 	Imbalance
-	PairedShares    decimal.Decimal `json:"paired_shares"`
-	ImbalanceShares decimal.Decimal `json:"imbalance_shares"`
-	Side            string          `json:"imbalance_side"`
-	VarIndicator    string          `json:"imbalance_var_indicator"`
+	PairedShares    Decimal `json:"paired_shares"`
+	ImbalanceShares Decimal `json:"imbalance_shares"`
+	Side            string  `json:"imbalance_side"`
+	VarIndicator    string  `json:"imbalance_var_indicator"`
 }
 
 // ImbalanceRequest selects a stock's opening or closing auction imbalance.

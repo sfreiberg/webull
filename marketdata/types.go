@@ -16,6 +16,16 @@ import (
 // alias of the shared wire type also used by the streaming package.
 type Category = wire.Category
 
+// Decimal is the SDK's fixed-point decimal type. It embeds
+// github.com/shopspring/decimal.Decimal, so all of that type's methods are
+// available, and additionally decodes Webull's absent forms — null and an
+// empty string — where shopspring's own type rejects "".
+type Decimal = wire.Decimal
+
+// NullDecimal is the SDK's nullable fixed-point decimal type, the counterpart
+// of Decimal for fields that may be absent.
+type NullDecimal = wire.NullDecimal
+
 // Categories. USStock and USETF are accepted by the stock endpoints; the rest
 // each have their own.
 const (

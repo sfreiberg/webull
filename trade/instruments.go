@@ -29,17 +29,17 @@ type StockProfile struct {
 	SingleStockETF bool `json:"single_stock_etf"`
 	InverseETF     bool `json:"inverse_etf"`
 
-	MarginRequirementLong  decimal.NullDecimal `json:"margin_requirement_long"`
-	MarginRequirementShort decimal.NullDecimal `json:"margin_requirement_short"`
-	IntradayMarginLong     decimal.NullDecimal `json:"intraday_margin_long"`
-	IntradayMarginShort    decimal.NullDecimal `json:"intraday_margin_short"`
-	MaintenanceMarginLong  decimal.NullDecimal `json:"maintenance_margin_long"`
-	MaintenanceMarginShort decimal.NullDecimal `json:"maintenance_margin_short"`
-	LotSize                decimal.NullDecimal `json:"lot_size"`
+	MarginRequirementLong  NullDecimal `json:"margin_requirement_long"`
+	MarginRequirementShort NullDecimal `json:"margin_requirement_short"`
+	IntradayMarginLong     NullDecimal `json:"intraday_margin_long"`
+	IntradayMarginShort    NullDecimal `json:"intraday_margin_short"`
+	MaintenanceMarginLong  NullDecimal `json:"maintenance_margin_long"`
+	MaintenanceMarginShort NullDecimal `json:"maintenance_margin_short"`
+	LotSize                NullDecimal `json:"lot_size"`
 
 	// ETFLeveragedFlag is "YES" or "NO"; ETFLeveragedFactor is the multiple.
-	ETFLeveragedFlag   string              `json:"etf_leveraged_flag"`
-	ETFLeveragedFactor decimal.NullDecimal `json:"etf_leveraged_factor"`
+	ETFLeveragedFlag   string      `json:"etf_leveraged_flag"`
+	ETFLeveragedFactor NullDecimal `json:"etf_leveraged_factor"`
 }
 
 // StockProfilesRequest filters an equity lookup. Either Symbols or a
@@ -86,12 +86,12 @@ type CryptoProfile struct {
 	Status       TradableStatus `json:"status"`
 	Currency     string         `json:"currency"`
 
-	MinTradeAmount   decimal.NullDecimal `json:"min_trade_amt"`
-	MaxTradeAmount   decimal.NullDecimal `json:"max_trade_amt"`
-	MinTradeQuantity decimal.NullDecimal `json:"min_trade_qty"`
-	MaxTradeQuantity decimal.NullDecimal `json:"max_trade_qty"`
-	PriceStep        decimal.NullDecimal `json:"price_step"`
-	LotSize          decimal.NullDecimal `json:"lot_size"`
+	MinTradeAmount   NullDecimal `json:"min_trade_amt"`
+	MaxTradeAmount   NullDecimal `json:"max_trade_amt"`
+	MinTradeQuantity NullDecimal `json:"min_trade_qty"`
+	MaxTradeQuantity NullDecimal `json:"max_trade_qty"`
+	PriceStep        NullDecimal `json:"price_step"`
+	LotSize          NullDecimal `json:"lot_size"`
 }
 
 // CryptoProfilesRequest filters a crypto lookup.
@@ -140,12 +140,12 @@ type OptionContract struct {
 	UnderlyingInstrumentID string `json:"underlying_instrument_id"`
 	UnderlyingType         string `json:"underlying_type"`
 
-	OptionType       OptionType      `json:"option_type"`
-	Style            OptionStyle     `json:"style"`
-	StrikePrice      decimal.Decimal `json:"strike_price"`
-	Multiplier       decimal.Decimal `json:"multiplier"`
-	SettlementMethod string          `json:"settlement_method"`
-	ExpiredCycle     string          `json:"expired_cycle"`
+	OptionType       OptionType  `json:"option_type"`
+	Style            OptionStyle `json:"style"`
+	StrikePrice      Decimal     `json:"strike_price"`
+	Multiplier       Decimal     `json:"multiplier"`
+	SettlementMethod string      `json:"settlement_method"`
+	ExpiredCycle     string      `json:"expired_cycle"`
 	// PPInd is the Penny Program indicator.
 	PPInd           bool     `json:"ppind"`
 	Currency        string   `json:"currency"`
@@ -159,14 +159,14 @@ type OptionContract struct {
 // OptionDeliverable is what one contract delivers on exercise. After a
 // corporate action a single contract may deliver several things.
 type OptionDeliverable struct {
-	AssetType            string          `json:"asset_type"`
-	Symbol               string          `json:"symbol"`
-	InstrumentID         string          `json:"instrument_id"`
-	Amount               decimal.Decimal `json:"amount"`
-	AllocationPercentage decimal.Decimal `json:"allocation_percentage"`
-	SettlementType       string          `json:"settlement_type"`
-	SettlementMethod     string          `json:"settlement_method"`
-	SettlementStatus     string          `json:"settlement_status"`
+	AssetType            string  `json:"asset_type"`
+	Symbol               string  `json:"symbol"`
+	InstrumentID         string  `json:"instrument_id"`
+	Amount               Decimal `json:"amount"`
+	AllocationPercentage Decimal `json:"allocation_percentage"`
+	SettlementType       string  `json:"settlement_type"`
+	SettlementMethod     string  `json:"settlement_method"`
+	SettlementStatus     string  `json:"settlement_status"`
 }
 
 // OptionContractsRequest filters an option chain lookup.

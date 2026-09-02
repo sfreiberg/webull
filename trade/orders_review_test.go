@@ -86,7 +86,7 @@ func TestUnsetNullDecimalWithStalePayloadIsOmitted(t *testing.T) {
 	// Unmarshalling null keeps the old payload with Valid false; prepare must
 	// still omit it rather than sending an explicit null.
 	o := Order{Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1"),
-		StopPrice: decimal.NullDecimal{Decimal: decimal.NewFromInt(5), Valid: false}}
+		StopPrice: NullDecimal{NullDecimal: decimal.NullDecimal{Decimal: decimal.NewFromInt(5), Valid: false}}}
 	if err := o.prepare(); err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +94,7 @@ func TestUnsetNullDecimalWithStalePayloadIsOmitted(t *testing.T) {
 		t.Errorf("stale unset value serialised: %s", b)
 	}
 	mod := OrderModification{ClientOrderID: "clientorder0001",
-		LimitPrice: decimal.NullDecimal{Decimal: decimal.NewFromInt(5), Valid: false}}
+		LimitPrice: NullDecimal{NullDecimal: decimal.NullDecimal{Decimal: decimal.NewFromInt(5), Valid: false}}}
 	c, f := newBodyClient(t, "", "order_place.json")
 	_, _ = c.ReplaceOrder(context.Background(), "A", mod)
 	if strings.Contains(string(f.gotRaw), "limit_price") {

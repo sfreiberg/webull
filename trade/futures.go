@@ -5,8 +5,6 @@ import (
 	"strconv"
 
 	"github.com/sfreiberg/webull/internal/query"
-
-	"github.com/shopspring/decimal"
 )
 
 // FuturesUnit is the pricing unit of a futures contract, as a numeric code.
@@ -86,8 +84,8 @@ type FuturesContract struct {
 	LastTradingDate  string `json:"last_trading_date"`
 
 	// Size is the contract multiplier; MinTick the minimum price increment.
-	Size    decimal.Decimal `json:"size"`
-	MinTick decimal.Decimal `json:"min_tick"`
+	Size    Decimal `json:"size"`
+	MinTick Decimal `json:"min_tick"`
 }
 
 // FuturesContractsRequest selects contracts by symbol or by product code.

@@ -3,8 +3,6 @@ package marketdata
 import (
 	"context"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -50,49 +48,49 @@ type ReportPeriod struct {
 type BalanceSheet struct {
 	ReportPeriod
 
-	TotalAssets                 decimal.NullDecimal `json:"total_assets"`
-	TotalCurrentAssets          decimal.NullDecimal `json:"total_cur_assets"`
-	CashAndShortTermInvest      decimal.NullDecimal `json:"cash_st_invest"`
-	Cash                        decimal.NullDecimal `json:"cash"`
-	CashEquivalents             decimal.NullDecimal `json:"cash_equiv"`
-	ShortTermInvestments        decimal.NullDecimal `json:"st_invest"`
-	TotalReceivablesNet         decimal.NullDecimal `json:"total_recv_net"`
-	TradeReceivablesNet         decimal.NullDecimal `json:"ar_trade_net"`
-	TotalInventory              decimal.NullDecimal `json:"total_inv"`
-	PrepaidExpenses             decimal.NullDecimal `json:"prepaid_expenses"`
-	OtherCurrentAssets          decimal.NullDecimal `json:"other_cur_assets"`
-	TotalNonCurrentAssets       decimal.NullDecimal `json:"total_non_cur_assets"`
-	PPENet                      decimal.NullDecimal `json:"ppe_net"`
-	PPEGross                    decimal.NullDecimal `json:"ppe_gross"`
-	AccumulatedDepreciation     decimal.NullDecimal `json:"acc_depre"`
-	GoodwillNet                 decimal.NullDecimal `json:"goodwill_net"`
-	IntangiblesNet              decimal.NullDecimal `json:"intangibles_net"`
-	LongTermInvestments         decimal.NullDecimal `json:"lt_invest"`
-	LongTermNotesReceivable     decimal.NullDecimal `json:"note_rece_long_term"`
-	OtherLongTermAssets         decimal.NullDecimal `json:"other_lt_assets"`
-	TotalLiabilities            decimal.NullDecimal `json:"total_liab"`
-	TotalCurrentLiabilities     decimal.NullDecimal `json:"total_cur_liab"`
-	AccountsPayable             decimal.NullDecimal `json:"ap"`
-	AccruedExpenses             decimal.NullDecimal `json:"accrued_expenses"`
-	ShortTermDebt               decimal.NullDecimal `json:"notes_st_debt"`
-	CurrentLongTermDebt         decimal.NullDecimal `json:"cur_lt_debt_lease"`
-	OtherCurrentLiabilities     decimal.NullDecimal `json:"other_cur_liab"`
-	TotalNonCurrentLiabilities  decimal.NullDecimal `json:"total_non_cur_liab"`
-	TotalLongTermDebt           decimal.NullDecimal `json:"total_lt_debt"`
-	LongTermDebt                decimal.NullDecimal `json:"lt_debt"`
-	CapitalLeaseObligations     decimal.NullDecimal `json:"capital_lease_obligations"`
-	TotalDebt                   decimal.NullDecimal `json:"total_debt"`
-	OtherLiabilities            decimal.NullDecimal `json:"other_liab"`
-	MinorityInterest            decimal.NullDecimal `json:"minority_interest"`
-	TotalEquity                 decimal.NullDecimal `json:"total_equity"`
-	TotalShareholdersEquity     decimal.NullDecimal `json:"total_sh_equity"`
-	NonRedeemablePreferredStock decimal.NullDecimal `json:"non_redeemable_preferred_stock"`
-	CommonStock                 decimal.NullDecimal `json:"common_stock"`
-	AdditionalPaidInCapital     decimal.NullDecimal `json:"apic"`
-	RetainedEarnings            decimal.NullDecimal `json:"retained_earnings"`
-	OtherEquity                 decimal.NullDecimal `json:"other_equity"`
-	TotalLiabilitiesAndEquity   decimal.NullDecimal `json:"total_liab_sh_equity"`
-	CommonSharesOutstanding     decimal.NullDecimal `json:"common_shares_out"`
+	TotalAssets                 NullDecimal `json:"total_assets"`
+	TotalCurrentAssets          NullDecimal `json:"total_cur_assets"`
+	CashAndShortTermInvest      NullDecimal `json:"cash_st_invest"`
+	Cash                        NullDecimal `json:"cash"`
+	CashEquivalents             NullDecimal `json:"cash_equiv"`
+	ShortTermInvestments        NullDecimal `json:"st_invest"`
+	TotalReceivablesNet         NullDecimal `json:"total_recv_net"`
+	TradeReceivablesNet         NullDecimal `json:"ar_trade_net"`
+	TotalInventory              NullDecimal `json:"total_inv"`
+	PrepaidExpenses             NullDecimal `json:"prepaid_expenses"`
+	OtherCurrentAssets          NullDecimal `json:"other_cur_assets"`
+	TotalNonCurrentAssets       NullDecimal `json:"total_non_cur_assets"`
+	PPENet                      NullDecimal `json:"ppe_net"`
+	PPEGross                    NullDecimal `json:"ppe_gross"`
+	AccumulatedDepreciation     NullDecimal `json:"acc_depre"`
+	GoodwillNet                 NullDecimal `json:"goodwill_net"`
+	IntangiblesNet              NullDecimal `json:"intangibles_net"`
+	LongTermInvestments         NullDecimal `json:"lt_invest"`
+	LongTermNotesReceivable     NullDecimal `json:"note_rece_long_term"`
+	OtherLongTermAssets         NullDecimal `json:"other_lt_assets"`
+	TotalLiabilities            NullDecimal `json:"total_liab"`
+	TotalCurrentLiabilities     NullDecimal `json:"total_cur_liab"`
+	AccountsPayable             NullDecimal `json:"ap"`
+	AccruedExpenses             NullDecimal `json:"accrued_expenses"`
+	ShortTermDebt               NullDecimal `json:"notes_st_debt"`
+	CurrentLongTermDebt         NullDecimal `json:"cur_lt_debt_lease"`
+	OtherCurrentLiabilities     NullDecimal `json:"other_cur_liab"`
+	TotalNonCurrentLiabilities  NullDecimal `json:"total_non_cur_liab"`
+	TotalLongTermDebt           NullDecimal `json:"total_lt_debt"`
+	LongTermDebt                NullDecimal `json:"lt_debt"`
+	CapitalLeaseObligations     NullDecimal `json:"capital_lease_obligations"`
+	TotalDebt                   NullDecimal `json:"total_debt"`
+	OtherLiabilities            NullDecimal `json:"other_liab"`
+	MinorityInterest            NullDecimal `json:"minority_interest"`
+	TotalEquity                 NullDecimal `json:"total_equity"`
+	TotalShareholdersEquity     NullDecimal `json:"total_sh_equity"`
+	NonRedeemablePreferredStock NullDecimal `json:"non_redeemable_preferred_stock"`
+	CommonStock                 NullDecimal `json:"common_stock"`
+	AdditionalPaidInCapital     NullDecimal `json:"apic"`
+	RetainedEarnings            NullDecimal `json:"retained_earnings"`
+	OtherEquity                 NullDecimal `json:"other_equity"`
+	TotalLiabilitiesAndEquity   NullDecimal `json:"total_liab_sh_equity"`
+	CommonSharesOutstanding     NullDecimal `json:"common_shares_out"`
 }
 
 // BalanceSheets returns a company's balance sheets, most recent first.
@@ -109,36 +107,36 @@ func (c *Client) BalanceSheets(ctx context.Context, req FinancialsRequest) ([]Ba
 type IncomeStatement struct {
 	ReportPeriod
 
-	TotalRevenue             decimal.NullDecimal `json:"total_revenue"`
-	Revenue                  decimal.NullDecimal `json:"revenue"`
-	CostOfRevenue            decimal.NullDecimal `json:"cost_of_revenue"`
-	GrossProfit              decimal.NullDecimal `json:"gross_profit"`
-	OperatingExpenses        decimal.NullDecimal `json:"opex"`
-	SGAExpenses              decimal.NullDecimal `json:"sga_exp"`
-	RnDExpenses              decimal.NullDecimal `json:"rnd_exp"`
-	UnusualExpenseIncome     decimal.NullDecimal `json:"unusual_expense_income"`
-	OperatingIncome          decimal.NullDecimal `json:"op_income"`
-	OperatingProfit          decimal.NullDecimal `json:"op_profit"`
-	NonOperatingInterestNet  decimal.NullDecimal `json:"inter_inc_expse_net_non_oper"`
-	GainOnSaleOfAssets       decimal.NullDecimal `json:"gain_loss_on_sale_of_assets"`
-	OtherNetIncome           decimal.NullDecimal `json:"other_net_income"`
-	PretaxIncome             decimal.NullDecimal `json:"ebt"`
-	PretaxEarnings           decimal.NullDecimal `json:"ebt_alt"`
-	IncomeTax                decimal.NullDecimal `json:"income_tax"`
-	AfterTaxIncome           decimal.NullDecimal `json:"eat"`
-	AfterTaxEarnings         decimal.NullDecimal `json:"eat_alt"`
-	MinorityInterest         decimal.NullDecimal `json:"minority_interest"`
-	IncomeBeforeExtraItems   decimal.NullDecimal `json:"ni_pre_extra"`
-	ExtraordinaryItems       decimal.NullDecimal `json:"extra_items"`
-	NetIncome                decimal.NullDecimal `json:"net_income"`
-	NetIncomeCommonExclExtra decimal.NullDecimal `json:"ni_common_excl_extra"`
-	NetIncomeCommonInclExtra decimal.NullDecimal `json:"ni_common_incl_extra"`
-	DilutedNetIncome         decimal.NullDecimal `json:"diluted_ni"`
-	DilutedAvgShares         decimal.NullDecimal `json:"diluted_avg_shares"`
-	DilutedEPSExclExtra      decimal.NullDecimal `json:"diluted_eps_excl_extra"`
-	DilutedEPSInclExtra      decimal.NullDecimal `json:"diluted_eps_incl_extra"`
-	DilutedNormalizedEPS     decimal.NullDecimal `json:"diluted_norm_eps"`
-	DividendsPerShare        decimal.NullDecimal `json:"dps"`
+	TotalRevenue             NullDecimal `json:"total_revenue"`
+	Revenue                  NullDecimal `json:"revenue"`
+	CostOfRevenue            NullDecimal `json:"cost_of_revenue"`
+	GrossProfit              NullDecimal `json:"gross_profit"`
+	OperatingExpenses        NullDecimal `json:"opex"`
+	SGAExpenses              NullDecimal `json:"sga_exp"`
+	RnDExpenses              NullDecimal `json:"rnd_exp"`
+	UnusualExpenseIncome     NullDecimal `json:"unusual_expense_income"`
+	OperatingIncome          NullDecimal `json:"op_income"`
+	OperatingProfit          NullDecimal `json:"op_profit"`
+	NonOperatingInterestNet  NullDecimal `json:"inter_inc_expse_net_non_oper"`
+	GainOnSaleOfAssets       NullDecimal `json:"gain_loss_on_sale_of_assets"`
+	OtherNetIncome           NullDecimal `json:"other_net_income"`
+	PretaxIncome             NullDecimal `json:"ebt"`
+	PretaxEarnings           NullDecimal `json:"ebt_alt"`
+	IncomeTax                NullDecimal `json:"income_tax"`
+	AfterTaxIncome           NullDecimal `json:"eat"`
+	AfterTaxEarnings         NullDecimal `json:"eat_alt"`
+	MinorityInterest         NullDecimal `json:"minority_interest"`
+	IncomeBeforeExtraItems   NullDecimal `json:"ni_pre_extra"`
+	ExtraordinaryItems       NullDecimal `json:"extra_items"`
+	NetIncome                NullDecimal `json:"net_income"`
+	NetIncomeCommonExclExtra NullDecimal `json:"ni_common_excl_extra"`
+	NetIncomeCommonInclExtra NullDecimal `json:"ni_common_incl_extra"`
+	DilutedNetIncome         NullDecimal `json:"diluted_ni"`
+	DilutedAvgShares         NullDecimal `json:"diluted_avg_shares"`
+	DilutedEPSExclExtra      NullDecimal `json:"diluted_eps_excl_extra"`
+	DilutedEPSInclExtra      NullDecimal `json:"diluted_eps_incl_extra"`
+	DilutedNormalizedEPS     NullDecimal `json:"diluted_norm_eps"`
+	DividendsPerShare        NullDecimal `json:"dps"`
 }
 
 // IncomeStatements returns a company's income statements, most recent first.
@@ -155,23 +153,23 @@ func (c *Client) IncomeStatements(ctx context.Context, req FinancialsRequest) ([
 type CashFlow struct {
 	ReportPeriod
 
-	OperatingCashFlow        decimal.NullDecimal `json:"cfo"`
-	NetIncome                decimal.NullDecimal `json:"net_income"`
-	DepreciationAmortization decimal.NullDecimal `json:"dna"`
-	DeferredTaxes            decimal.NullDecimal `json:"deferred_tax"`
-	NonCashItems             decimal.NullDecimal `json:"non_cash_items"`
-	WorkingCapitalChange     decimal.NullDecimal `json:"wc_change"`
-	InvestingCashFlow        decimal.NullDecimal `json:"cfi"`
-	CapitalExpenditures      decimal.NullDecimal `json:"capex"`
-	OtherInvestingItems      decimal.NullDecimal `json:"other_cfi_items"`
-	FinancingCashFlow        decimal.NullDecimal `json:"cff"`
-	FinancingItems           decimal.NullDecimal `json:"cff_items"`
-	NetStockIssuance         decimal.NullDecimal `json:"net_stock_iss_ret"`
-	NetDebtIssuance          decimal.NullDecimal `json:"net_debt_iss_ret"`
-	FXEffects                decimal.NullDecimal `json:"fx_effects"`
-	NetChangeInCash          decimal.NullDecimal `json:"net_change_cash"`
-	InterestPaid             decimal.NullDecimal `json:"interest_paid"`
-	TaxesPaid                decimal.NullDecimal `json:"taxes_paid"`
+	OperatingCashFlow        NullDecimal `json:"cfo"`
+	NetIncome                NullDecimal `json:"net_income"`
+	DepreciationAmortization NullDecimal `json:"dna"`
+	DeferredTaxes            NullDecimal `json:"deferred_tax"`
+	NonCashItems             NullDecimal `json:"non_cash_items"`
+	WorkingCapitalChange     NullDecimal `json:"wc_change"`
+	InvestingCashFlow        NullDecimal `json:"cfi"`
+	CapitalExpenditures      NullDecimal `json:"capex"`
+	OtherInvestingItems      NullDecimal `json:"other_cfi_items"`
+	FinancingCashFlow        NullDecimal `json:"cff"`
+	FinancingItems           NullDecimal `json:"cff_items"`
+	NetStockIssuance         NullDecimal `json:"net_stock_iss_ret"`
+	NetDebtIssuance          NullDecimal `json:"net_debt_iss_ret"`
+	FXEffects                NullDecimal `json:"fx_effects"`
+	NetChangeInCash          NullDecimal `json:"net_change_cash"`
+	InterestPaid             NullDecimal `json:"interest_paid"`
+	TaxesPaid                NullDecimal `json:"taxes_paid"`
 }
 
 // CashFlows returns a company's cash flow statements, most recent first.
@@ -188,8 +186,8 @@ func (c *Client) CashFlows(ctx context.Context, req FinancialsRequest) ([]CashFl
 type IndicatorValue struct {
 	FiscalYear int `json:"fiscal_year"`
 	// FiscalPeriod is 0 for the full year and 1 through 4 for quarters.
-	FiscalPeriod int                 `json:"fiscal_period"`
-	Value        decimal.NullDecimal `json:"value"`
+	FiscalPeriod int         `json:"fiscal_period"`
+	Value        NullDecimal `json:"value"`
 }
 
 // FinancialIndicators holds per-period financial ratios keyed by indicator
@@ -218,12 +216,12 @@ type FinancialAlert struct {
 	EndDate    Time `json:"end_date"`
 	FiscalYear int  `json:"fiscal_year"`
 	// FiscalPeriod is 1 through 4 for quarters, or 5 for a pre-release.
-	FiscalPeriod    int                 `json:"fiscal_period"`
-	Currency        string              `json:"currency"`
-	EPSEstimate     decimal.NullDecimal `json:"eps_est"`
-	EPSLastYear     decimal.NullDecimal `json:"eps_ly"`
-	RevenueEstimate decimal.NullDecimal `json:"rev_est"`
-	RevenueLastYear decimal.NullDecimal `json:"rev_ly"`
+	FiscalPeriod    int         `json:"fiscal_period"`
+	Currency        string      `json:"currency"`
+	EPSEstimate     NullDecimal `json:"eps_est"`
+	EPSLastYear     NullDecimal `json:"eps_ly"`
+	RevenueEstimate NullDecimal `json:"rev_est"`
+	RevenueLastYear NullDecimal `json:"rev_ly"`
 }
 
 // FinancialAlert returns the estimate for a company's next financial report.

@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -132,27 +130,27 @@ const (
 // Turnover is null for US-market keys without the entitlement Webull calls
 // "Nb authorization"; Currency and PETTM are returned but not documented.
 type ScreenerStock struct {
-	InstrumentID   string              `json:"instrument_id"`
-	Symbol         string              `json:"symbol"`
-	Name           string              `json:"name"`
-	ExchangeCode   string              `json:"exchange_code"`
-	CurrencyCode   string              `json:"currency_code"`
-	Currency       string              `json:"currency"`
-	PreClose       decimal.NullDecimal `json:"pre_close"`
-	Open           decimal.NullDecimal `json:"open"`
-	High           decimal.NullDecimal `json:"high"`
-	Low            decimal.NullDecimal `json:"low"`
-	Close          decimal.NullDecimal `json:"close"`
-	Price          decimal.NullDecimal `json:"price"`
-	Change         decimal.NullDecimal `json:"change"`
-	ChangeRatio    decimal.NullDecimal `json:"change_ratio"`
-	Volume         decimal.NullDecimal `json:"volume"`
-	Turnover       decimal.NullDecimal `json:"turnover"`
-	TurnoverRate   decimal.NullDecimal `json:"turnover_rate"`
-	MarketValue    decimal.NullDecimal `json:"market_value"`
-	Amplitude      decimal.NullDecimal `json:"amplitude"`
-	RelativeVolume decimal.NullDecimal `json:"relative_volume_10d"`
-	PETTM          decimal.NullDecimal `json:"pe_ttm"`
+	InstrumentID   string      `json:"instrument_id"`
+	Symbol         string      `json:"symbol"`
+	Name           string      `json:"name"`
+	ExchangeCode   string      `json:"exchange_code"`
+	CurrencyCode   string      `json:"currency_code"`
+	Currency       string      `json:"currency"`
+	PreClose       NullDecimal `json:"pre_close"`
+	Open           NullDecimal `json:"open"`
+	High           NullDecimal `json:"high"`
+	Low            NullDecimal `json:"low"`
+	Close          NullDecimal `json:"close"`
+	Price          NullDecimal `json:"price"`
+	Change         NullDecimal `json:"change"`
+	ChangeRatio    NullDecimal `json:"change_ratio"`
+	Volume         NullDecimal `json:"volume"`
+	Turnover       NullDecimal `json:"turnover"`
+	TurnoverRate   NullDecimal `json:"turnover_rate"`
+	MarketValue    NullDecimal `json:"market_value"`
+	Amplitude      NullDecimal `json:"amplitude"`
+	RelativeVolume NullDecimal `json:"relative_volume_10d"`
+	PETTM          NullDecimal `json:"pe_ttm"`
 }
 
 // GainersLosersRequest selects a price-change ranking.
@@ -209,27 +207,27 @@ func (c *Client) TopActive(ctx context.Context, req TopActiveRequest) ([]Screene
 
 // DividendStock is one row of the high-dividend screener.
 type DividendStock struct {
-	InstrumentID string              `json:"instrument_id"`
-	Category     Category            `json:"category"`
-	Symbol       string              `json:"symbol"`
-	Name         string              `json:"name"`
-	ExchangeCode string              `json:"exchange_code"`
-	Currency     string              `json:"currency"`
-	Close        decimal.NullDecimal `json:"close"`
-	Change       decimal.NullDecimal `json:"change"`
-	ChangeRatio  decimal.NullDecimal `json:"change_ratio"`
-	Price        decimal.NullDecimal `json:"price"`
-	Volume       decimal.NullDecimal `json:"volume"`
-	MarketValue  decimal.NullDecimal `json:"market_value"`
-	TurnoverRate decimal.NullDecimal `json:"turnover_rate"`
-	Amplitude    decimal.NullDecimal `json:"amplitude"`
-	High         decimal.NullDecimal `json:"high"`
-	Low          decimal.NullDecimal `json:"low"`
-	Turnover     decimal.NullDecimal `json:"turnover"`
-	Yield        decimal.NullDecimal `json:"yield"`
-	Dividend     decimal.NullDecimal `json:"dividend"`
-	ExDate       Time                `json:"ex_date"`
-	PETTM        decimal.NullDecimal `json:"pe_ttm"`
+	InstrumentID string      `json:"instrument_id"`
+	Category     Category    `json:"category"`
+	Symbol       string      `json:"symbol"`
+	Name         string      `json:"name"`
+	ExchangeCode string      `json:"exchange_code"`
+	Currency     string      `json:"currency"`
+	Close        NullDecimal `json:"close"`
+	Change       NullDecimal `json:"change"`
+	ChangeRatio  NullDecimal `json:"change_ratio"`
+	Price        NullDecimal `json:"price"`
+	Volume       NullDecimal `json:"volume"`
+	MarketValue  NullDecimal `json:"market_value"`
+	TurnoverRate NullDecimal `json:"turnover_rate"`
+	Amplitude    NullDecimal `json:"amplitude"`
+	High         NullDecimal `json:"high"`
+	Low          NullDecimal `json:"low"`
+	Turnover     NullDecimal `json:"turnover"`
+	Yield        NullDecimal `json:"yield"`
+	Dividend     NullDecimal `json:"dividend"`
+	ExDate       Time        `json:"ex_date"`
+	PETTM        NullDecimal `json:"pe_ttm"`
 }
 
 // HighDividendRequest selects a dividend-yield ranking.
@@ -257,29 +255,29 @@ func (c *Client) HighDividend(ctx context.Context, req HighDividendRequest) ([]D
 
 // Week52Stock is one row of the 52-week high-low screener.
 type Week52Stock struct {
-	InstrumentID string              `json:"instrument_id"`
-	Category     Category            `json:"category"`
-	Symbol       string              `json:"symbol"`
-	Name         string              `json:"name"`
-	ExchangeCode string              `json:"exchange_code"`
-	Currency     string              `json:"currency"`
-	Close        decimal.NullDecimal `json:"close"`
-	Change       decimal.NullDecimal `json:"change"`
-	ChangeRatio  decimal.NullDecimal `json:"change_ratio"`
-	Price        decimal.NullDecimal `json:"price"`
-	Volume       decimal.NullDecimal `json:"volume"`
-	MarketValue  decimal.NullDecimal `json:"market_value"`
-	TurnoverRate decimal.NullDecimal `json:"turnover_rate"`
-	Amplitude    decimal.NullDecimal `json:"amplitude"`
-	High         decimal.NullDecimal `json:"high"`
-	Low          decimal.NullDecimal `json:"low"`
-	Turnover     decimal.NullDecimal `json:"turnover"`
+	InstrumentID string      `json:"instrument_id"`
+	Category     Category    `json:"category"`
+	Symbol       string      `json:"symbol"`
+	Name         string      `json:"name"`
+	ExchangeCode string      `json:"exchange_code"`
+	Currency     string      `json:"currency"`
+	Close        NullDecimal `json:"close"`
+	Change       NullDecimal `json:"change"`
+	ChangeRatio  NullDecimal `json:"change_ratio"`
+	Price        NullDecimal `json:"price"`
+	Volume       NullDecimal `json:"volume"`
+	MarketValue  NullDecimal `json:"market_value"`
+	TurnoverRate NullDecimal `json:"turnover_rate"`
+	Amplitude    NullDecimal `json:"amplitude"`
+	High         NullDecimal `json:"high"`
+	Low          NullDecimal `json:"low"`
+	Turnover     NullDecimal `json:"turnover"`
 	// Week1Price and Week52Price are the extreme this week and over 52
 	// weeks; ChangeRatio52W is the change since the 52-week extreme.
-	Week1Price    decimal.NullDecimal `json:"price_1w"`
-	Week52Price   decimal.NullDecimal `json:"price_52w"`
-	ChangeRatio52 decimal.NullDecimal `json:"change_ratio_52w"`
-	PETTM         decimal.NullDecimal `json:"pe_ttm"`
+	Week1Price    NullDecimal `json:"price_1w"`
+	Week52Price   NullDecimal `json:"price_52w"`
+	ChangeRatio52 NullDecimal `json:"change_ratio_52w"`
+	PETTM         NullDecimal `json:"pe_ttm"`
 }
 
 // Week52Request selects a 52-week high-low ranking.
@@ -317,15 +315,15 @@ type SectorLeader struct {
 
 // Sector is one market sector's aggregate statistics.
 type Sector struct {
-	ID          string              `json:"id"`
-	Name        string              `json:"name"`
-	ChangeRatio decimal.NullDecimal `json:"change_ratio"`
-	Volume      decimal.NullDecimal `json:"volume"`
-	MarketValue decimal.NullDecimal `json:"market_value"`
-	Declined    decimal.NullDecimal `json:"declined"`
-	Advanced    decimal.NullDecimal `json:"advanced"`
-	Flat        decimal.NullDecimal `json:"flat"`
-	Leaders     []SectorLeader      `json:"data"`
+	ID          string         `json:"id"`
+	Name        string         `json:"name"`
+	ChangeRatio NullDecimal    `json:"change_ratio"`
+	Volume      NullDecimal    `json:"volume"`
+	MarketValue NullDecimal    `json:"market_value"`
+	Declined    NullDecimal    `json:"declined"`
+	Advanced    NullDecimal    `json:"advanced"`
+	Flat        NullDecimal    `json:"flat"`
+	Leaders     []SectorLeader `json:"data"`
 }
 
 // SectorsPage is one page of market sectors.
@@ -386,32 +384,32 @@ func (c *Client) MarketSectors(ctx context.Context, req MarketSectorsRequest) (*
 
 // SectorStock is one stock within a sector detail listing.
 type SectorStock struct {
-	InstrumentID string              `json:"instrument_id"`
-	Category     Category            `json:"category"`
-	Symbol       string              `json:"symbol"`
-	Name         string              `json:"name"`
-	ExchangeCode string              `json:"exchange_code"`
-	Currency     string              `json:"currency"`
-	Close        decimal.NullDecimal `json:"close"`
-	ChangeRatio  decimal.NullDecimal `json:"change_ratio"`
-	Price        decimal.NullDecimal `json:"price"`
-	Volume       decimal.NullDecimal `json:"volume"`
-	MarketValue  decimal.NullDecimal `json:"market_value"`
-	TurnoverRate decimal.NullDecimal `json:"turnover_rate"`
-	Amplitude    decimal.NullDecimal `json:"amplitude"`
-	High         decimal.NullDecimal `json:"high"`
-	Low          decimal.NullDecimal `json:"low"`
+	InstrumentID string      `json:"instrument_id"`
+	Category     Category    `json:"category"`
+	Symbol       string      `json:"symbol"`
+	Name         string      `json:"name"`
+	ExchangeCode string      `json:"exchange_code"`
+	Currency     string      `json:"currency"`
+	Close        NullDecimal `json:"close"`
+	ChangeRatio  NullDecimal `json:"change_ratio"`
+	Price        NullDecimal `json:"price"`
+	Volume       NullDecimal `json:"volume"`
+	MarketValue  NullDecimal `json:"market_value"`
+	TurnoverRate NullDecimal `json:"turnover_rate"`
+	Amplitude    NullDecimal `json:"amplitude"`
+	High         NullDecimal `json:"high"`
+	Low          NullDecimal `json:"low"`
 }
 
 // SectorDetail is one sector's statistics with its constituent stocks.
 type SectorDetail struct {
-	ID          string              `json:"id"`
-	Name        string              `json:"name"`
-	ChangeRatio decimal.NullDecimal `json:"change_ratio"`
-	Declined    decimal.NullDecimal `json:"declined"`
-	Advanced    decimal.NullDecimal `json:"advanced"`
-	Flat        decimal.NullDecimal `json:"flat"`
-	Stocks      []SectorStock       `json:"data"`
+	ID          string        `json:"id"`
+	Name        string        `json:"name"`
+	ChangeRatio NullDecimal   `json:"change_ratio"`
+	Declined    NullDecimal   `json:"declined"`
+	Advanced    NullDecimal   `json:"advanced"`
+	Flat        NullDecimal   `json:"flat"`
+	Stocks      []SectorStock `json:"data"`
 	// PaginationKey continues the stock listing; empty on the last page.
 	PaginationKey string `json:"pagination_key"`
 }

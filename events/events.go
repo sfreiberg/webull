@@ -32,14 +32,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/wire"
 )
 
 // Time is a point in time in Webull's ISO 8601 form. It is an alias of the
 // shared wire type also used by the marketdata package.
 type Time = wire.Time
+
+// NullDecimal is the SDK's decimal type: it embeds shopspring's and also
+// decodes Webull's absent forms, null and an empty string.
+type NullDecimal = wire.NullDecimal
 
 // Terminal stream errors.
 var (
@@ -111,34 +113,34 @@ const (
 
 // OrderEvent is an order status change.
 type OrderEvent struct {
-	RequestID      string              `json:"request_id"`
-	AccountID      string              `json:"account_id"`
-	ClientOrderID  string              `json:"client_order_id"`
-	OrderID        string              `json:"order_id"`
-	InstrumentID   string              `json:"instrument_id"`
-	Symbol         string              `json:"symbol"`
-	Category       string              `json:"category"`
-	Status         string              `json:"order_status"`
-	Scene          SceneType           `json:"scene_type"`
-	Side           string              `json:"side"`
-	OrderType      string              `json:"order_type"`
-	Quantity       decimal.NullDecimal `json:"qty"`
-	FilledQuantity decimal.NullDecimal `json:"filled_qty"`
-	FilledPrice    decimal.NullDecimal `json:"filled_price"`
-	FilledTime     Time                `json:"filled_time"`
+	RequestID      string      `json:"request_id"`
+	AccountID      string      `json:"account_id"`
+	ClientOrderID  string      `json:"client_order_id"`
+	OrderID        string      `json:"order_id"`
+	InstrumentID   string      `json:"instrument_id"`
+	Symbol         string      `json:"symbol"`
+	Category       string      `json:"category"`
+	Status         string      `json:"order_status"`
+	Scene          SceneType   `json:"scene_type"`
+	Side           string      `json:"side"`
+	OrderType      string      `json:"order_type"`
+	Quantity       NullDecimal `json:"qty"`
+	FilledQuantity NullDecimal `json:"filled_qty"`
+	FilledPrice    NullDecimal `json:"filled_price"`
+	FilledTime     Time        `json:"filled_time"`
 }
 
 // PositionEvent is a position change. Webull documents only the
 // event-contract settlement form; every field may be absent for other
 // instruments, whose full payload is in Event.Payload.
 type PositionEvent struct {
-	EventName    string              `json:"event_name"`
-	YesCondition string              `json:"yes_condition"`
-	SettleResult string              `json:"settle_result"`
-	SettleSide   string              `json:"settle_side"`
-	Quantity     decimal.NullDecimal `json:"quantity"`
-	Cost         decimal.NullDecimal `json:"cost"`
-	SettleAmount decimal.NullDecimal `json:"settle_amount"`
+	EventName    string      `json:"event_name"`
+	YesCondition string      `json:"yes_condition"`
+	SettleResult string      `json:"settle_result"`
+	SettleSide   string      `json:"settle_side"`
+	Quantity     NullDecimal `json:"quantity"`
+	Cost         NullDecimal `json:"cost"`
+	SettleAmount NullDecimal `json:"settle_amount"`
 }
 
 // jsonContentType is the payload content type carrying JSON. Matching is

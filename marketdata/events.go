@@ -3,8 +3,6 @@ package marketdata
 import (
 	"context"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -15,19 +13,19 @@ type EventSnapshot struct {
 	InstrumentID string `json:"instrument_id"`
 	Name         string `json:"name"`
 
-	Price         decimal.NullDecimal `json:"price"`
-	Volume        decimal.NullDecimal `json:"volume"`
-	OpenInterest  decimal.NullDecimal `json:"open_interest"`
-	LastTradeTime Millis              `json:"last_trade_time"`
+	Price         NullDecimal `json:"price"`
+	Volume        NullDecimal `json:"volume"`
+	OpenInterest  NullDecimal `json:"open_interest"`
+	LastTradeTime Millis      `json:"last_trade_time"`
 
-	YesBid     decimal.NullDecimal `json:"yes_bid"`
-	YesBidSize decimal.NullDecimal `json:"yes_bid_size"`
-	YesAsk     decimal.NullDecimal `json:"yes_ask"`
-	YesAskSize decimal.NullDecimal `json:"yes_ask_size"`
-	NoBid      decimal.NullDecimal `json:"no_bid"`
-	NoBidSize  decimal.NullDecimal `json:"no_bid_size"`
-	NoAsk      decimal.NullDecimal `json:"no_ask"`
-	NoAskSize  decimal.NullDecimal `json:"no_ask_size"`
+	YesBid     NullDecimal `json:"yes_bid"`
+	YesBidSize NullDecimal `json:"yes_bid_size"`
+	YesAsk     NullDecimal `json:"yes_ask"`
+	YesAskSize NullDecimal `json:"yes_ask_size"`
+	NoBid      NullDecimal `json:"no_bid"`
+	NoBidSize  NullDecimal `json:"no_bid_size"`
+	NoAsk      NullDecimal `json:"no_ask"`
+	NoAskSize  NullDecimal `json:"no_ask_size"`
 }
 
 // EventSnapshots returns the current state of event contract markets.
@@ -79,12 +77,12 @@ const (
 
 // EventTick is one event contract trade, reported with both outcomes' prices.
 type EventTick struct {
-	Time     Millis          `json:"time"`
-	TradeID  string          `json:"trade_id"`
-	Side     EventOutcome    `json:"side"`
-	YesPrice decimal.Decimal `json:"yes_price"`
-	NoPrice  decimal.Decimal `json:"no_price"`
-	Volume   decimal.Decimal `json:"volume"`
+	Time     Millis       `json:"time"`
+	TradeID  string       `json:"trade_id"`
+	Side     EventOutcome `json:"side"`
+	YesPrice Decimal      `json:"yes_price"`
+	NoPrice  Decimal      `json:"no_price"`
+	Volume   Decimal      `json:"volume"`
 }
 
 // EventTicks is an event contract market's recent trades, newest first.
