@@ -618,3 +618,63 @@ func TestWaiterContextCancelsIndependently(t *testing.T) {
 		t.Errorf("leader: %v", err)
 	}
 }
+
+func TestFlexInt64TreatsAbsentShapesAsZero(t *testing.T) {
+	var tok Token
+	if err := json.Unmarshal([]byte(`{"access_token":"a","expires_in":null,"rt_expires_in":""}`), &tok); err != nil {
+		t.Fatal(err)
+	}
+	if tok.AccessExpiresIn != 0 || tok.RefreshExpiresIn != 0 {
+		t.Errorf("lifetimes = %d, %d, want zeros for null and empty", tok.AccessExpiresIn, tok.RefreshExpiresIn)
+	}
+}
+
+func TestClientFromStoreEmptyStoreIsErrNoToken(t *testing.T) {
+	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return Token{} }})
+	c, err := a.ClientFromStore(&MemoryTokenStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Token(context.Background()); !errors.Is(err, ErrNoToken) {
+		t.Errorf("err = %v, want ErrNoToken", err)
+	}
+}
+
+// failingSaveStore loads normally but cannot persist.
+type failingSaveStore struct {
+	MemoryTokenStore
+}
+
+func (f *failingSaveStore) Save(context.Context, *Token) error {
+	return errors.New("db down")
+}
+
+func TestSaveFailureAfterRefreshKeepsTheRotatedPair(t *testing.T) {
+	// The rotation consumed the old refresh token, so even when the store
+	// cannot persist the new pair, the client must keep it in memory: the
+	// request fails loudly, but the session is not lost.
+	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
+	f := &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("fresh", "r1", now) }}
+	a := newFixture(t, f)
+	store := &failingSaveStore{}
+	_ = store.MemoryTokenStore.Save(context.Background(), ptr(mkToken("expired", "r0", now.Add(-40*time.Minute))))
+
+	c, err := a.ClientFromStore(store)
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.src.now = func() time.Time { return now }
+
+	if _, err := c.Token(context.Background()); err == nil || !strings.Contains(err.Error(), "saving refreshed token") {
+		t.Fatalf("err = %v, want a save error", err)
+	}
+	// The rotated pair survives in memory: the next call succeeds without
+	// another refresh.
+	tok, err := c.Token(context.Background())
+	if err != nil || tok.RefreshToken != "r1" {
+		t.Errorf("tok = %+v, %v; want the rotated pair retained", tok, err)
+	}
+	if n := f.tokenCalls.Load(); n != 1 {
+		t.Errorf("token endpoint called %d times, want 1", n)
+	}
+}
