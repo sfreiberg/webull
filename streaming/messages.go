@@ -46,6 +46,10 @@ import (
 // type also used by the marketdata package.
 type Category = wire.Category
 
+// NullDecimal is the SDK's decimal type, shared with the other packages: it
+// embeds shopspring's and tolerates absent forms.
+type NullDecimal = wire.NullDecimal
+
 // Categories the streaming subscribe endpoint documents.
 const (
 	USStock Category = "US_STOCK"
@@ -98,37 +102,37 @@ type Basic struct {
 type Snapshot struct {
 	Basic
 	TradeTime   time.Time
-	Price       decimal.NullDecimal
-	Open        decimal.NullDecimal
-	High        decimal.NullDecimal
-	Low         decimal.NullDecimal
-	PreClose    decimal.NullDecimal
-	Volume      decimal.NullDecimal
-	Change      decimal.NullDecimal
-	ChangeRatio decimal.NullDecimal
+	Price       NullDecimal
+	Open        NullDecimal
+	High        NullDecimal
+	Low         NullDecimal
+	PreClose    NullDecimal
+	Volume      NullDecimal
+	Change      NullDecimal
+	ChangeRatio NullDecimal
 
 	ExtendedTradeTime   time.Time
-	ExtendedPrice       decimal.NullDecimal
-	ExtendedHigh        decimal.NullDecimal
-	ExtendedLow         decimal.NullDecimal
-	ExtendedVolume      decimal.NullDecimal
-	ExtendedChange      decimal.NullDecimal
-	ExtendedChangeRatio decimal.NullDecimal
+	ExtendedPrice       NullDecimal
+	ExtendedHigh        NullDecimal
+	ExtendedLow         NullDecimal
+	ExtendedVolume      NullDecimal
+	ExtendedChange      NullDecimal
+	ExtendedChangeRatio NullDecimal
 
 	OvernightTradeTime   time.Time
-	OvernightPrice       decimal.NullDecimal
-	OvernightHigh        decimal.NullDecimal
-	OvernightLow         decimal.NullDecimal
-	OvernightVolume      decimal.NullDecimal
-	OvernightChange      decimal.NullDecimal
-	OvernightChangeRatio decimal.NullDecimal
+	OvernightPrice       NullDecimal
+	OvernightHigh        NullDecimal
+	OvernightLow         NullDecimal
+	OvernightVolume      NullDecimal
+	OvernightChange      NullDecimal
+	OvernightChangeRatio NullDecimal
 }
 
 // Level is one price level of a streamed book. Orders and Brokers carry
 // market-participant detail at entitled depths.
 type Level struct {
-	Price   decimal.NullDecimal
-	Size    decimal.NullDecimal
+	Price   NullDecimal
+	Size    NullDecimal
 	Orders  []LevelOrder
 	Brokers []LevelBroker
 }
@@ -136,7 +140,7 @@ type Level struct {
 // LevelOrder is one market participant's size at a level.
 type LevelOrder struct {
 	MPID string
-	Size decimal.NullDecimal
+	Size NullDecimal
 }
 
 // LevelBroker identifies a broker at a level.
@@ -156,32 +160,32 @@ type Quote struct {
 type Tick struct {
 	Basic
 	Time   time.Time
-	Price  decimal.NullDecimal
-	Volume decimal.NullDecimal
+	Price  NullDecimal
+	Volume NullDecimal
 	Side   string
 }
 
 // EventSnapshot is the current state of an event-contract market.
 type EventSnapshot struct {
 	Basic
-	Price         decimal.NullDecimal
-	Volume        decimal.NullDecimal
+	Price         NullDecimal
+	Volume        NullDecimal
 	LastTradeTime time.Time
-	OpenInterest  decimal.NullDecimal
-	YesAsk        decimal.NullDecimal
-	YesBid        decimal.NullDecimal
-	YesAskSize    decimal.NullDecimal
-	YesBidSize    decimal.NullDecimal
-	NoAsk         decimal.NullDecimal
-	NoBid         decimal.NullDecimal
-	NoAskSize     decimal.NullDecimal
-	NoBidSize     decimal.NullDecimal
+	OpenInterest  NullDecimal
+	YesAsk        NullDecimal
+	YesBid        NullDecimal
+	YesAskSize    NullDecimal
+	YesBidSize    NullDecimal
+	NoAsk         NullDecimal
+	NoBid         NullDecimal
+	NoAskSize     NullDecimal
+	NoBidSize     NullDecimal
 }
 
 // EventLevel is one price level of an event contract's book.
 type EventLevel struct {
-	Price decimal.NullDecimal
-	Size  decimal.NullDecimal
+	Price NullDecimal
+	Size  NullDecimal
 }
 
 // EventQuote is an event-contract book update, one side per outcome.
@@ -194,24 +198,24 @@ type EventQuote struct {
 // EventTick is one event-contract trade.
 type EventTick struct {
 	Basic
-	YesPrice decimal.NullDecimal
-	NoPrice  decimal.NullDecimal
-	Volume   decimal.NullDecimal
+	YesPrice NullDecimal
+	NoPrice  NullDecimal
+	Volume   NullDecimal
 	Side     string
 	TradeID  string
 	Time     time.Time
 }
 
 // dec parses a wire decimal string; empty means absent.
-func dec(s string) decimal.NullDecimal {
+func dec(s string) NullDecimal {
 	if s == "" {
-		return decimal.NullDecimal{}
+		return NullDecimal{}
 	}
 	d, err := decimal.NewFromString(s)
 	if err != nil {
-		return decimal.NullDecimal{}
+		return NullDecimal{}
 	}
-	return decimal.NullDecimal{Decimal: d, Valid: true}
+	return wire.NewNullDecimal(d)
 }
 
 // millis parses an epoch-millisecond string; empty or zero means absent.

@@ -4,8 +4,6 @@ import (
 	"context"
 
 	"github.com/sfreiberg/webull/internal/query"
-
-	"github.com/shopspring/decimal"
 )
 
 // EventCategory groups event contract series, such as Economics or Sports.
@@ -123,9 +121,9 @@ type EventMarket struct {
 
 // PriceRange is a band of permitted prices and the tick within it.
 type PriceRange struct {
-	Start decimal.Decimal `json:"start"`
-	End   decimal.Decimal `json:"end"`
-	Step  decimal.Decimal `json:"step"`
+	Start Decimal `json:"start"`
+	End   Decimal `json:"end"`
+	Step  Decimal `json:"step"`
 }
 
 // EventMarketsRequest filters an event market lookup.

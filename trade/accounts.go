@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/sfreiberg/webull/internal/query"
-
-	"github.com/shopspring/decimal"
 )
 
 // Account is a brokerage account accessible to the API key.
@@ -34,24 +32,24 @@ func (c *Client) Accounts(ctx context.Context) ([]Account, error) {
 // decimal.NullDecimal: Webull omits them for some account classes, and an
 // omitted margin figure is not the same thing as a margin figure of zero.
 type Balance struct {
-	Currency                  string          `json:"total_asset_currency"`
-	TotalCashBalance          decimal.Decimal `json:"total_cash_balance"`
-	TotalMarketValue          decimal.Decimal `json:"total_market_value"`
-	TotalUnrealizedProfitLoss decimal.Decimal `json:"total_unrealized_profit_loss"`
-	TotalNetLiquidationValue  decimal.Decimal `json:"total_net_liquidation_value"`
-	TotalDayProfitLoss        decimal.Decimal `json:"total_day_profit_loss"`
+	Currency                  string  `json:"total_asset_currency"`
+	TotalCashBalance          Decimal `json:"total_cash_balance"`
+	TotalMarketValue          Decimal `json:"total_market_value"`
+	TotalUnrealizedProfitLoss Decimal `json:"total_unrealized_profit_loss"`
+	TotalNetLiquidationValue  Decimal `json:"total_net_liquidation_value"`
+	TotalDayProfitLoss        Decimal `json:"total_day_profit_loss"`
 
 	// DayTradesLeft is a count, or "UNLIMITED". It is left as a string because
 	// the sentinel makes it neither a number nor an enumeration.
 	DayTradesLeft string `json:"day_trades_left"`
 
-	MaintenanceMargin      decimal.NullDecimal `json:"maintenance_margin"`
-	UsedMargin             decimal.NullDecimal `json:"used_margin"`
-	UsedMarginForOpenOrder decimal.NullDecimal `json:"used_margin_for_open_order"`
-	InitMargin             decimal.NullDecimal `json:"init_margin"`
-	IntradayMargin         decimal.NullDecimal `json:"intraday_margin"`
-	MarginExcess           decimal.NullDecimal `json:"margin_excess"`
-	MarginRatio            decimal.NullDecimal `json:"margin_ratio"`
+	MaintenanceMargin      NullDecimal `json:"maintenance_margin"`
+	UsedMargin             NullDecimal `json:"used_margin"`
+	UsedMarginForOpenOrder NullDecimal `json:"used_margin_for_open_order"`
+	InitMargin             NullDecimal `json:"init_margin"`
+	IntradayMargin         NullDecimal `json:"intraday_margin"`
+	MarginExcess           NullDecimal `json:"margin_excess"`
+	MarginRatio            NullDecimal `json:"margin_ratio"`
 
 	// OpenMarginCalls lists outstanding margin calls. Webull's documentation
 	// describes this as a single value; the API returns a list.
@@ -62,31 +60,31 @@ type Balance struct {
 
 // CurrencyAssets is the per-currency breakdown of a Balance.
 type CurrencyAssets struct {
-	Currency             string          `json:"currency"`
-	CashBalance          decimal.Decimal `json:"cash_balance"`
-	MarketValue          decimal.Decimal `json:"market_value"`
-	UnrealizedProfitLoss decimal.Decimal `json:"unrealized_profit_loss"`
+	Currency             string  `json:"currency"`
+	CashBalance          Decimal `json:"cash_balance"`
+	MarketValue          Decimal `json:"market_value"`
+	UnrealizedProfitLoss Decimal `json:"unrealized_profit_loss"`
 
-	SettledCash             decimal.NullDecimal `json:"settled_cash"`
-	UnsettledCash           decimal.NullDecimal `json:"unsettled_cash"`
-	HeldAmount              decimal.NullDecimal `json:"held_amount"`
-	FrozenAmount            decimal.NullDecimal `json:"frozen_amount"`
-	BuyingPower             decimal.NullDecimal `json:"buying_power"`
-	AvailableWithdrawal     decimal.NullDecimal `json:"available_withdrawal"`
-	InterestsUnpaid         decimal.NullDecimal `json:"interests_unpaid"`
-	NetLiquidationValue     decimal.NullDecimal `json:"net_liquidation_value"`
-	OptionBuyingPower       decimal.NullDecimal `json:"option_buying_power"`
-	DayBuyingPower          decimal.NullDecimal `json:"day_buying_power"`
-	OvernightBuyingPower    decimal.NullDecimal `json:"overnight_buying_power"`
-	NightTradingBuyingPower decimal.NullDecimal `json:"night_trading_buying_power"`
-	DayProfitLoss           decimal.NullDecimal `json:"day_profit_loss"`
-	UsedMargin              decimal.NullDecimal `json:"used_margin"`
-	UsedMarginForOpenOrder  decimal.NullDecimal `json:"used_margin_for_open_order"`
-	InitMargin              decimal.NullDecimal `json:"init_margin"`
-	MaintenanceMargin       decimal.NullDecimal `json:"maintenance_margin"`
-	IntradayMargin          decimal.NullDecimal `json:"intraday_margin"`
-	MarginExcess            decimal.NullDecimal `json:"margin_excess"`
-	MarginRatio             decimal.NullDecimal `json:"margin_ratio"`
+	SettledCash             NullDecimal `json:"settled_cash"`
+	UnsettledCash           NullDecimal `json:"unsettled_cash"`
+	HeldAmount              NullDecimal `json:"held_amount"`
+	FrozenAmount            NullDecimal `json:"frozen_amount"`
+	BuyingPower             NullDecimal `json:"buying_power"`
+	AvailableWithdrawal     NullDecimal `json:"available_withdrawal"`
+	InterestsUnpaid         NullDecimal `json:"interests_unpaid"`
+	NetLiquidationValue     NullDecimal `json:"net_liquidation_value"`
+	OptionBuyingPower       NullDecimal `json:"option_buying_power"`
+	DayBuyingPower          NullDecimal `json:"day_buying_power"`
+	OvernightBuyingPower    NullDecimal `json:"overnight_buying_power"`
+	NightTradingBuyingPower NullDecimal `json:"night_trading_buying_power"`
+	DayProfitLoss           NullDecimal `json:"day_profit_loss"`
+	UsedMargin              NullDecimal `json:"used_margin"`
+	UsedMarginForOpenOrder  NullDecimal `json:"used_margin_for_open_order"`
+	InitMargin              NullDecimal `json:"init_margin"`
+	MaintenanceMargin       NullDecimal `json:"maintenance_margin"`
+	IntradayMargin          NullDecimal `json:"intraday_margin"`
+	MarginExcess            NullDecimal `json:"margin_excess"`
+	MarginRatio             NullDecimal `json:"margin_ratio"`
 }
 
 // Balance returns the balance of an account.
@@ -102,15 +100,15 @@ func (c *Client) Balance(ctx context.Context, accountID string) (*Balance, error
 
 // Position is an open holding in an account.
 type Position struct {
-	PositionID           string          `json:"position_id"`
-	Currency             string          `json:"currency"`
-	Symbol               string          `json:"symbol"`
-	InstrumentType       InstrumentType  `json:"instrument_type"`
-	OptionStrategy       OptionStrategy  `json:"option_strategy"`
-	Quantity             decimal.Decimal `json:"quantity"`
-	LastPrice            decimal.Decimal `json:"last_price"`
-	CostPrice            decimal.Decimal `json:"cost_price"`
-	UnrealizedProfitLoss decimal.Decimal `json:"unrealized_profit_loss"`
+	PositionID           string         `json:"position_id"`
+	Currency             string         `json:"currency"`
+	Symbol               string         `json:"symbol"`
+	InstrumentType       InstrumentType `json:"instrument_type"`
+	OptionStrategy       OptionStrategy `json:"option_strategy"`
+	Quantity             Decimal        `json:"quantity"`
+	LastPrice            Decimal        `json:"last_price"`
+	CostPrice            Decimal        `json:"cost_price"`
+	UnrealizedProfitLoss Decimal        `json:"unrealized_profit_loss"`
 
 	// EventOutcome is set only for event contract positions.
 	EventOutcome EventOutcome `json:"event_outcome"`
@@ -121,17 +119,17 @@ type Position struct {
 
 // PositionLeg is one leg of an option position.
 type PositionLeg struct {
-	LegID    string              `json:"leg_id"`
-	Symbol   string              `json:"symbol"`
-	Quantity decimal.NullDecimal `json:"quantity"`
+	LegID    string      `json:"leg_id"`
+	Symbol   string      `json:"symbol"`
+	Quantity NullDecimal `json:"quantity"`
 
 	OptionType OptionType `json:"option_type"`
 	// ExpireDate is in yyyy-MM-dd form.
-	ExpireDate          string              `json:"option_expire_date"`
-	ExercisePrice       decimal.NullDecimal `json:"option_exercise_price"`
-	ContractMultiplier  decimal.NullDecimal `json:"option_contract_multiplier"`
-	ContractDeliverable decimal.NullDecimal `json:"option_contract_deliverable"`
-	ExpirationType      string              `json:"expiration_type"`
+	ExpireDate          string      `json:"option_expire_date"`
+	ExercisePrice       NullDecimal `json:"option_exercise_price"`
+	ContractMultiplier  NullDecimal `json:"option_contract_multiplier"`
+	ContractDeliverable NullDecimal `json:"option_contract_deliverable"`
+	ExpirationType      string      `json:"expiration_type"`
 }
 
 // Positions lists the open positions in an account. Webull does not paginate
@@ -159,8 +157,8 @@ type CashActivity struct {
 	// TradeDate is the accounting date, in yyyy-MM-dd form.
 	TradeDate string `json:"trade_date"`
 	// NetAmount is positive for a credit and negative for a debit.
-	NetAmount decimal.Decimal `json:"net_amount"`
-	BizTime   time.Time       `json:"biz_time"`
+	NetAmount Decimal   `json:"net_amount"`
+	BizTime   time.Time `json:"biz_time"`
 }
 
 // CashActivitiesRequest filters a cash activity query.

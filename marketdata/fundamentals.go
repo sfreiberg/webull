@@ -3,8 +3,6 @@ package marketdata
 import (
 	"context"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -33,15 +31,15 @@ func (c *Client) CompanyProfile(ctx context.Context, symbol string, cat Category
 
 // AnalystRating is the consensus of analyst recommendations.
 type AnalystRating struct {
-	Symbol        string          `json:"symbol"`
-	Category      Category        `json:"category"`
-	Analysts      decimal.Decimal `json:"number"`
-	StrongBuy     decimal.Decimal `json:"strong_buy"`
-	Buy           decimal.Decimal `json:"buy"`
-	Hold          decimal.Decimal `json:"hold"`
-	UnderPerform  decimal.Decimal `json:"under_perform"`
-	Sell          decimal.Decimal `json:"sell"`
-	EffectiveFrom Time            `json:"effective_start_date"`
+	Symbol        string   `json:"symbol"`
+	Category      Category `json:"category"`
+	Analysts      Decimal  `json:"number"`
+	StrongBuy     Decimal  `json:"strong_buy"`
+	Buy           Decimal  `json:"buy"`
+	Hold          Decimal  `json:"hold"`
+	UnderPerform  Decimal  `json:"under_perform"`
+	Sell          Decimal  `json:"sell"`
+	EffectiveFrom Time     `json:"effective_start_date"`
 }
 
 // AnalystRating returns the consensus analyst rating for a stock.
@@ -55,14 +53,14 @@ func (c *Client) AnalystRating(ctx context.Context, symbol string, cat Category)
 
 // TargetPrice is the consensus of analyst price targets.
 type TargetPrice struct {
-	Symbol        string          `json:"symbol"`
-	Category      Category        `json:"category"`
-	Mean          decimal.Decimal `json:"mean"`
-	Median        decimal.Decimal `json:"median"`
-	Low           decimal.Decimal `json:"low"`
-	High          decimal.Decimal `json:"high"`
-	Currency      string          `json:"currency"`
-	EffectiveFrom Time            `json:"effective_start_date"`
+	Symbol        string   `json:"symbol"`
+	Category      Category `json:"category"`
+	Mean          Decimal  `json:"mean"`
+	Median        Decimal  `json:"median"`
+	Low           Decimal  `json:"low"`
+	High          Decimal  `json:"high"`
+	Currency      string   `json:"currency"`
+	EffectiveFrom Time     `json:"effective_start_date"`
 }
 
 // TargetPrice returns the consensus analyst price target for a stock.
@@ -77,13 +75,13 @@ func (c *Client) TargetPrice(ctx context.Context, symbol string, cat Category) (
 // CapitalFlow is one trading day's traded value broken down by order size,
 // in the market's base currency.
 type CapitalFlow struct {
-	Date      Time            `json:"date"`
-	LargeIn   decimal.Decimal `json:"large_in"`
-	LargeOut  decimal.Decimal `json:"large_out"`
-	MediumIn  decimal.Decimal `json:"medium_in"`
-	MediumOut decimal.Decimal `json:"medium_out"`
-	SmallIn   decimal.Decimal `json:"small_in"`
-	SmallOut  decimal.Decimal `json:"small_out"`
+	Date      Time    `json:"date"`
+	LargeIn   Decimal `json:"large_in"`
+	LargeOut  Decimal `json:"large_out"`
+	MediumIn  Decimal `json:"medium_in"`
+	MediumOut Decimal `json:"medium_out"`
+	SmallIn   Decimal `json:"small_in"`
+	SmallOut  Decimal `json:"small_out"`
 }
 
 // CapitalFlows returns the most recent trading days' capital flow, oldest
@@ -100,15 +98,15 @@ func (c *Client) CapitalFlows(ctx context.Context, symbol string, cat Category, 
 
 // Dividend is one declared dividend.
 type Dividend struct {
-	Symbol         string          `json:"symbol"`
-	Market         string          `json:"market"`
-	Currency       string          `json:"currency"`
-	Amount         decimal.Decimal `json:"amount"`
-	Type           string          `json:"div_type"`
-	DeclareDate    Time            `json:"declare_date"`
-	ExDividendDate Time            `json:"ex_div_date"`
-	RecordDate     Time            `json:"record_date"`
-	PayDate        Time            `json:"pay_date"`
+	Symbol         string  `json:"symbol"`
+	Market         string  `json:"market"`
+	Currency       string  `json:"currency"`
+	Amount         Decimal `json:"amount"`
+	Type           string  `json:"div_type"`
+	DeclareDate    Time    `json:"declare_date"`
+	ExDividendDate Time    `json:"ex_div_date"`
+	RecordDate     Time    `json:"record_date"`
+	PayDate        Time    `json:"pay_date"`
 }
 
 // DividendCalendar returns a stock's declared dividends.
@@ -122,14 +120,14 @@ func (c *Client) DividendCalendar(ctx context.Context, symbol string, cat Catego
 
 // Earnings is one quarter's estimated and, once reported, actual earnings.
 type Earnings struct {
-	FiscalYear          int                 `json:"fiscal_year"`
-	FiscalPeriod        int                 `json:"fiscal_period"`
-	Currency            string              `json:"currency"`
-	ExpectedPublishDate Time                `json:"expected_publish_date"`
-	EPSActual           decimal.NullDecimal `json:"eps_actual"`
-	EPSEstimate         decimal.NullDecimal `json:"eps_est"`
-	RevenueActual       decimal.NullDecimal `json:"rev_actual"`
-	RevenueEstimate     decimal.NullDecimal `json:"rev_est"`
+	FiscalYear          int         `json:"fiscal_year"`
+	FiscalPeriod        int         `json:"fiscal_period"`
+	Currency            string      `json:"currency"`
+	ExpectedPublishDate Time        `json:"expected_publish_date"`
+	EPSActual           NullDecimal `json:"eps_actual"`
+	EPSEstimate         NullDecimal `json:"eps_est"`
+	RevenueActual       NullDecimal `json:"rev_actual"`
+	RevenueEstimate     NullDecimal `json:"rev_est"`
 }
 
 // EarningsCalendar returns a stock's quarterly earnings dates and estimates.
@@ -161,11 +159,11 @@ func (c *Client) Filings(ctx context.Context, symbol string, cat Category) ([]Fi
 
 // EPSForecast is one quarter's estimated and, once reported, actual EPS.
 type EPSForecast struct {
-	FiscalYear   int                 `json:"fiscal_year"`
-	FiscalPeriod int                 `json:"fiscal_period"`
-	Actual       decimal.NullDecimal `json:"actual"`
-	Estimate     decimal.NullDecimal `json:"est"`
-	Reported     bool                `json:"reported"`
+	FiscalYear   int         `json:"fiscal_year"`
+	FiscalPeriod int         `json:"fiscal_period"`
+	Actual       NullDecimal `json:"actual"`
+	Estimate     NullDecimal `json:"est"`
+	Reported     bool        `json:"reported"`
 }
 
 // ForecastEPS returns a stock's quarterly EPS estimates and results.
@@ -180,10 +178,10 @@ func (c *Client) ForecastEPS(ctx context.Context, symbol string, cat Category) (
 // IndustryRank is one company's rank within its industry on the compared
 // metric. Value is null when the company has no figure for the metric.
 type IndustryRank struct {
-	Symbol string              `json:"symbol"`
-	Name   string              `json:"name"`
-	Rank   int                 `json:"rank"`
-	Value  decimal.NullDecimal `json:"value"`
+	Symbol string      `json:"symbol"`
+	Name   string      `json:"name"`
+	Rank   int         `json:"rank"`
+	Value  NullDecimal `json:"value"`
 }
 
 // ComparisonMetric is the financial metric an industry comparison ranks by.

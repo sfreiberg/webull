@@ -4,8 +4,6 @@ import (
 	"context"
 	"strconv"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -15,35 +13,35 @@ type OptionSnapshot struct {
 	Symbol       string `json:"symbol"`
 	InstrumentID string `json:"instrument_id"`
 
-	Price         decimal.NullDecimal `json:"price"`
-	Open          decimal.NullDecimal `json:"open"`
-	High          decimal.NullDecimal `json:"high"`
-	Low           decimal.NullDecimal `json:"low"`
-	Close         decimal.NullDecimal `json:"close"`
-	PreClose      decimal.NullDecimal `json:"pre_close"`
-	Volume        decimal.NullDecimal `json:"volume"`
-	Change        decimal.NullDecimal `json:"change"`
-	ChangeRatio   decimal.NullDecimal `json:"change_ratio"`
-	LastTradeTime Millis              `json:"last_trade_time"`
+	Price         NullDecimal `json:"price"`
+	Open          NullDecimal `json:"open"`
+	High          NullDecimal `json:"high"`
+	Low           NullDecimal `json:"low"`
+	Close         NullDecimal `json:"close"`
+	PreClose      NullDecimal `json:"pre_close"`
+	Volume        NullDecimal `json:"volume"`
+	Change        NullDecimal `json:"change"`
+	ChangeRatio   NullDecimal `json:"change_ratio"`
+	LastTradeTime Millis      `json:"last_trade_time"`
 
-	Bid       decimal.NullDecimal `json:"bid"`
-	BidSize   decimal.NullDecimal `json:"bid_size"`
-	Ask       decimal.NullDecimal `json:"ask"`
-	AskSize   decimal.NullDecimal `json:"ask_size"`
-	QuoteTime Millis              `json:"quote_time"`
+	Bid       NullDecimal `json:"bid"`
+	BidSize   NullDecimal `json:"bid_size"`
+	Ask       NullDecimal `json:"ask"`
+	AskSize   NullDecimal `json:"ask_size"`
+	QuoteTime Millis      `json:"quote_time"`
 
-	StrikePrice  decimal.NullDecimal `json:"strike_price"`
-	OpenInterest decimal.NullDecimal `json:"open_interest"`
+	StrikePrice  NullDecimal `json:"strike_price"`
+	OpenInterest NullDecimal `json:"open_interest"`
 	// DealAmount is the day's traded value; returned by the API but not
 	// documented.
-	DealAmount decimal.NullDecimal `json:"deal_amount"`
+	DealAmount NullDecimal `json:"deal_amount"`
 
-	Delta      decimal.NullDecimal `json:"delta"`
-	Gamma      decimal.NullDecimal `json:"gamma"`
-	Theta      decimal.NullDecimal `json:"theta"`
-	Vega       decimal.NullDecimal `json:"vega"`
-	Rho        decimal.NullDecimal `json:"rho"`
-	ImpliedVol decimal.NullDecimal `json:"imp_vol"`
+	Delta      NullDecimal `json:"delta"`
+	Gamma      NullDecimal `json:"gamma"`
+	Theta      NullDecimal `json:"theta"`
+	Vega       NullDecimal `json:"vega"`
+	Rho        NullDecimal `json:"rho"`
+	ImpliedVol NullDecimal `json:"imp_vol"`
 }
 
 // OptionSnapshots returns the current state of up to 20 option contracts,

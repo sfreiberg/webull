@@ -3,8 +3,6 @@ package marketdata
 import (
 	"context"
 
-	"github.com/shopspring/decimal"
-
 	"github.com/sfreiberg/webull/internal/query"
 )
 
@@ -14,21 +12,21 @@ type CryptoSnapshot struct {
 	Symbol       string `json:"symbol"`
 	InstrumentID string `json:"instrument_id"`
 
-	Price         decimal.NullDecimal `json:"price"`
-	Open          decimal.NullDecimal `json:"open"`
-	High          decimal.NullDecimal `json:"high"`
-	Low           decimal.NullDecimal `json:"low"`
-	Close         decimal.NullDecimal `json:"close"`
-	PreClose      decimal.NullDecimal `json:"pre_close"`
-	Change        decimal.NullDecimal `json:"change"`
-	ChangeRatio   decimal.NullDecimal `json:"change_ratio"`
-	LastTradeTime Millis              `json:"last_trade_time"`
+	Price         NullDecimal `json:"price"`
+	Open          NullDecimal `json:"open"`
+	High          NullDecimal `json:"high"`
+	Low           NullDecimal `json:"low"`
+	Close         NullDecimal `json:"close"`
+	PreClose      NullDecimal `json:"pre_close"`
+	Change        NullDecimal `json:"change"`
+	ChangeRatio   NullDecimal `json:"change_ratio"`
+	LastTradeTime Millis      `json:"last_trade_time"`
 
-	Bid       decimal.NullDecimal `json:"bid"`
-	BidSize   decimal.NullDecimal `json:"bid_size"`
-	Ask       decimal.NullDecimal `json:"ask"`
-	AskSize   decimal.NullDecimal `json:"ask_size"`
-	QuoteTime Millis              `json:"quote_time"`
+	Bid       NullDecimal `json:"bid"`
+	BidSize   NullDecimal `json:"bid_size"`
+	Ask       NullDecimal `json:"ask"`
+	AskSize   NullDecimal `json:"ask_size"`
+	QuoteTime Millis      `json:"quote_time"`
 }
 
 // CryptoSnapshots returns the current state of crypto pairs such as "BTCUSD".

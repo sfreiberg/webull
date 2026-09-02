@@ -146,7 +146,7 @@ func TestPrepareValidation(t *testing.T) {
 func TestPrepareAcceptsZeroPrice(t *testing.T) {
 	// A limit price of zero is unusual but expressible: NullDecimal set to
 	// zero is Valid and must pass validation.
-	o := Order{Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: Price("1"), LimitPrice: decimal.NewNullDecimal(decimal.Zero)}
+	o := Order{Symbol: "AAPL", Side: Buy, Type: Limit, Quantity: Price("1"), LimitPrice: NullDecimal{NullDecimal: decimal.NewNullDecimal(decimal.Zero)}}
 	if err := o.prepare(); err != nil {
 		t.Errorf("zero limit price rejected: %v", err)
 	}

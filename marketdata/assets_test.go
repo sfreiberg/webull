@@ -273,3 +273,24 @@ func TestFuturesDepthDecodes(t *testing.T) {
 		t.Errorf("depth = %+v", got)
 	}
 }
+
+// TestOptionSnapshotToleratesEmptyStringGreeks is the regression test for the
+// live failure where Webull returns "" for absent option greeks (outside
+// market hours) and the decimal decoder rejected it. The empty-string fields
+// must decode as absent, not error.
+func TestOptionSnapshotToleratesEmptyStringGreeks(t *testing.T) {
+	c, _ := newClient(t, "/market-data/options/snapshots/list", "option_snapshot_empty.json", 0)
+	got, err := c.OptionSnapshots(context.Background(), []string{"AAPL261218C00240000"})
+	if err != nil {
+		t.Fatalf("empty-string greeks must decode without error: %v", err)
+	}
+	s := got[0]
+	if !s.Price.Decimal.Equal(d("80.85")) || !s.StrikePrice.Decimal.Equal(d("240")) {
+		t.Errorf("present fields = %+v", s)
+	}
+	for name, v := range map[string]NullDecimal{"delta": s.Delta, "gamma": s.Gamma, "theta": s.Theta, "vega": s.Vega, "rho": s.Rho, "imp_vol": s.ImpliedVol} {
+		if v.Valid {
+			t.Errorf("%s from an empty string must be absent, got valid=%v", name, v.Valid)
+		}
+	}
+}

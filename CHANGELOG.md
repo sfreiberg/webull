@@ -10,6 +10,14 @@ called out explicitly.
 
 ## [Unreleased]
 
+### Fixed
+
+- Decimal fields now decode Webull's absent forms — `null` and an empty
+  string — to an absent or zero value. Webull returns `""` for an unreported
+  number (such as an option greek outside market hours), which previously
+  failed to decode. The SDK's decimal types embed shopspring's, so their
+  methods are unchanged.
+
 ### Added
 
 - `streaming` package: real-time market data over MQTT, reachable as
