@@ -63,7 +63,7 @@ Python and Java SDKs is recorded in
 | Bracket orders (take-profit / stop-loss) | Complete | Yes | Yes | 5a | Placed, inspected and cancelled live; cancelling the master cancels the group |
 | Trailing stops | Complete | Yes | – | 5a | Previewed live in the integration suite |
 | OTO / OCO / OTOCO | Unverified | Yes | – | 5a | Implemented to the documented table. **The sandbox rejects all three** with `invalid combo_type` regardless of shape, contrary to the docs |
-| **Market data (HTTP)** | Complete | Yes | Yes | 6d | Every endpoint the sandbox serves is implemented; the sub-rows marked Blocked (corporate actions, profiles/logos, event display, news) 404 there and are not |
+| **Market data (HTTP)** | Complete | Yes | Yes | 6d | Every documented core endpoint is implemented. News is Blocked (below); corporate actions, logos and the event-contract display endpoints are Excluded with the Market Data Display Solution product they belong to |
 | Stock snapshots, depth, ticks, bars | Complete | Yes | Yes | 6a | Verified live. The documented single-symbol bars path 404s; `Bars` uses the batch endpoint for one or many |
 | Option snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live, including greeks |
 | Futures snapshots, ticks, bars | Complete | Yes | – | 6b | Verified live on `MESmain`, the only symbol the sandbox serves |
@@ -73,7 +73,7 @@ Python and Java SDKs is recorded in
 | Event-contract display endpoints (markets/*, live data, game stats) | Excluded | – | – | 11 | Documented only under the Market Data Display Solution product (see below), which is why every path 404s on the core hosts |
 | Footprint (stocks) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`please subscribe to FOOTPRINT`) |
 | NOII (auction imbalance) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`STOCK QUOTES LV2`) |
-| Stock profiles, logos | Blocked | – | – | 6a | The documented paths return `404 Route Not Found` in the sandbox. Profiles are served by `trade.StockProfiles`, which is the same data under the SDK scheme; logos have no equivalent |
+| Stock profiles, logos | Excluded | – | – | 11 | Resolved by the 2026-09 audit: logos are documented only under the Market Data Display Solution product (see below); profiles are the core `trade.StockProfiles`, implemented since 4a |
 | Company profile, analyst rating, target price | Complete | Yes | – | 6a | Verified live |
 | Financial statements (balance sheet, income, cash flow) | Unverified | Yes | – | 6c | Implemented to the documented schema. **The sandbox serves an empty list** for every symbol tried |
 | Financial indicators, financial alert | Complete | Yes | – | 6c | Verified live |

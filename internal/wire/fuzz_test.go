@@ -44,3 +44,26 @@ func FuzzDecimalUnmarshalJSON(f *testing.F) {
 		}
 	})
 }
+
+func FuzzMillisUnmarshalJSON(f *testing.F) {
+	for _, seed := range []string{
+		`1760000000000`, `"1760000000000"`, `0`, `"0"`, `"00"`, `null`, `""`,
+		`-1`, `"soon"`, `1.5e12`, `"9223372036854775808"`, `{}`,
+	} {
+		f.Add([]byte(seed))
+	}
+	f.Fuzz(func(t *testing.T, data []byte) {
+		var m Millis
+		if err := m.UnmarshalJSON(data); err != nil {
+			if !m.IsZero() {
+				t.Errorf("error with non-zero value: %q -> %v", data, m)
+			}
+			return
+		}
+		// A successful decode round-trips through Marshal, and a parsed
+		// zero — however it was spelled — is the zero time.
+		if _, err := m.MarshalJSON(); err != nil {
+			t.Errorf("marshal after decode of %q: %v", data, err)
+		}
+	})
+}

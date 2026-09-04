@@ -5,8 +5,6 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
-	"net/http/httptest"
-	"strings"
 	"testing"
 	"time"
 )
@@ -83,27 +81,21 @@ func TestAccessTokenAbsentExpiryShapes(t *testing.T) {
 
 func TestConfigAccessTokenIsSentAsHeader(t *testing.T) {
 	var got string
-	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	c, _ := newTestClient(t, func(w http.ResponseWriter, r *http.Request) {
 		got = r.Header.Get("x-access-token")
 		_, _ = w.Write([]byte(`{"token_check_enabled":true}`))
-	}))
-	t.Cleanup(srv.Close)
-	c, err := NewClient(Config{
-		AppKey: "k", AppSecret: "s", Environment: Sandbox,
-		HTTPClient:  srv.Client(),
-		AccessToken: "the-access-token",
-		EndpointOverrides: map[string]string{
-			"trading": strings.TrimPrefix(srv.URL, "https://"),
-		},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	}, func(cfg *Config) { cfg.AccessToken = "the-access-token" })
 	if _, err := c.TokenCheckEnabled(context.Background()); err != nil {
 		t.Fatal(err)
 	}
 	if got != "the-access-token" {
 		t.Errorf("x-access-token = %q", got)
+	}
+	// The events client must carry it too: Config.AccessToken promises the
+	// token accompanies every request, and gRPC subscriptions sign their
+	// own metadata rather than going through the HTTP transport.
+	if c.Events.AccessToken != "the-access-token" {
+		t.Error("Config.AccessToken did not reach the events client")
 	}
 }
 

@@ -584,3 +584,41 @@ func TestRenewalFallsBackToReconnectOnFailure(t *testing.T) {
 		t.Errorf("dials = %d; the failed renewal must fall back to reconnect", dials.Load())
 	}
 }
+
+func TestAccessTokenTravelsInSubscribeMetadata(t *testing.T) {
+	// Config.AccessToken promises the token accompanies every request; the
+	// gRPC stream signs its own metadata, so the token must cross into it.
+	f := &fakeServer{handler: func(_ int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
+		_ = stream.Send(ack())
+		return nil
+	}}
+	c := newFixture(t, f)
+	c.AccessToken = "tok-123"
+
+	stream, err := c.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}})
+	if err != nil {
+		t.Fatalf("Subscribe: %v", err)
+	}
+	defer func() { _ = stream.Close() }()
+
+	f.mu.Lock()
+	md := f.gotMD[0]
+	f.mu.Unlock()
+	if got := md.Get("x-access-token"); len(got) != 1 || got[0] != "tok-123" {
+		t.Errorf("x-access-token metadata = %v", got)
+	}
+	// And it must be absent when not configured.
+	c2 := newFixture(t, &fakeServer{handler: func(_ int, stream grpc.ServerStreamingServer[eventspb.SubscribeResponse]) error {
+		md, _ := metadata.FromIncomingContext(stream.Context())
+		if len(md.Get("x-access-token")) != 0 {
+			t.Error("x-access-token must be absent when not configured")
+		}
+		_ = stream.Send(ack())
+		return nil
+	}})
+	s2, err := c2.Subscribe(context.Background(), SubscribeRequest{AccountIDs: []string{"A"}})
+	if err != nil {
+		t.Fatalf("Subscribe without token: %v", err)
+	}
+	_ = s2.Close()
+}

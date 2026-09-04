@@ -4,9 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/sfreiberg/webull/internal/transport"
 	"github.com/sfreiberg/webull/internal/wire"
@@ -93,35 +91,9 @@ const (
 // Millis is a point in time transmitted as epoch milliseconds, which Webull
 // sends sometimes as a JSON number and sometimes as a string. The zero value
 // means the field was absent; a wire value of 0 is treated the same way,
-// since no market data event happened at the epoch.
-type Millis struct{ time.Time }
-
-// UnmarshalJSON accepts a number, a numeric string, 0, or null.
-func (m *Millis) UnmarshalJSON(b []byte) error {
-	s := strings.Trim(string(b), `"`)
-	if s == "" || s == "null" {
-		m.Time = time.Time{}
-		return nil
-	}
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return fmt.Errorf("marketdata: %q is not an epoch-millisecond time", s)
-	}
-	if n == 0 {
-		m.Time = time.Time{}
-		return nil
-	}
-	m.Time = time.UnixMilli(n).UTC()
-	return nil
-}
-
-// MarshalJSON writes epoch milliseconds as a number, or null when zero.
-func (m Millis) MarshalJSON() ([]byte, error) {
-	if m.IsZero() {
-		return []byte("null"), nil
-	}
-	return []byte(strconv.FormatInt(m.UnixMilli(), 10)), nil
-}
+// since no market data event happened at the epoch. It is an alias of the
+// shared wire type also used by the root package.
+type Millis = wire.Millis
 
 // Time is a point in time transmitted in Webull's ISO 8601 form, such as
 // "2026-08-27T04:00:00.000+0000". It accepts every date form the API uses;

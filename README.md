@@ -7,15 +7,17 @@
 
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
-> **Status: pre-release.** Trading (accounts, instrument data, orders across
-> every asset class), the Market Data HTTP API (quotes, fundamentals,
-> funds, screeners, watchlists) and real-time trade events over gRPC are
-> implemented, and verified against Webull's sandbox except where the
-> [compatibility matrix](docs/COMPATIBILITY.md) says otherwise. A few
-> documented market-data endpoints that do not exist in the sandbox — news
-> and corporate actions among them — are recorded there as blocked rather
-> than implemented. MQTT market-data streaming and the Connect API are not
-> yet implemented. The public API may change without notice until v1.0.0.
+> **Status: pre-release.** Every endpoint the core product documents is
+> implemented: trading (accounts, instrument data, orders across every
+> asset class), the Market Data HTTP API (quotes, fundamentals, funds,
+> screeners, watchlists), MQTT market-data streaming, real-time trade
+> events over gRPC, access tokens, and the Connect API — verified against
+> Webull's sandbox except where the
+> [compatibility matrix](docs/COMPATIBILITY.md) says otherwise. The
+> exceptions, with reasons, live in that matrix: news is blocked, and
+> corporate actions turn out to belong to a separate Webull product that
+> is excluded as a whole. The public API may change without notice until
+> v1.0.0.
 
 ## Disclaimer
 

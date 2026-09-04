@@ -72,9 +72,11 @@ func NewClient(cfg Config) (*Client, error) {
 		Retry:       transport.DefaultRetryPolicy(),
 	}
 	if cfg.AccessToken != "" {
-		token := cfg.AccessToken
+		// One shared map: the header is static and the transport only
+		// reads it, so per-request allocation would buy nothing.
+		headers := map[string]string{"x-access-token": cfg.AccessToken}
 		doer.Authorizer = func(context.Context) (map[string]string, error) {
-			return map[string]string{"x-access-token": token}, nil
+			return headers, nil
 		}
 	}
 
@@ -97,10 +99,16 @@ func NewClient(cfg Config) (*Client, error) {
 		return nil, err
 	}
 
+	// The events client signs its own gRPC metadata rather than going
+	// through the Doer, so the access token must cross over explicitly for
+	// Config.AccessToken's every-request promise to hold there too.
+	eventsClient := events.New(doer.Signer, eventsHost)
+	eventsClient.AccessToken = cfg.AccessToken
+
 	return &Client{
 		Trade:      trade.New(doer, tradingHost),
 		MarketData: marketdata.New(doer, marketDataHost),
-		Events:     events.New(doer.Signer, eventsHost),
+		Events:     eventsClient,
 		Streaming:  streaming.New(doer, marketDataHost, streamingHost),
 		cfg:        cfg,
 		doer:       doer,

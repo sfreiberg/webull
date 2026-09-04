@@ -15,7 +15,9 @@ called out explicitly.
 - Access tokens, for deployments where `token_check_enabled` requires token
   authentication on top of request signing: `Client.CreateAccessToken` and
   `Client.CheckAccessToken` (verified against the live sandbox), with
-  `Config.AccessToken` sending `x-access-token` on every request. This
+  `Config.AccessToken` sending `x-access-token` on every request — HTTP
+  and gRPC alike, so trade-event subscriptions carry it in their signed
+  metadata. This
   closes the one endpoint gap found by the Milestone 11 completeness audit
   against the documentation index and the successor Python and Java SDKs;
   the audit itself is recorded in `docs/discovery/completeness-audit.md`.

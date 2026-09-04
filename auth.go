@@ -3,12 +3,10 @@ package webull
 import (
 	"context"
 	"encoding/json"
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/sfreiberg/webull/internal/transport"
+	"github.com/sfreiberg/webull/internal/wire"
 )
 
 // TokenStatus is the lifecycle state of an access token.
@@ -44,35 +42,18 @@ type AccessToken struct {
 }
 
 // UnmarshalJSON decodes the wire shape, whose expiry is epoch milliseconds
-// that Webull may send as a number or a numeric string.
+// that Webull may send as a number or a numeric string; the shared wire
+// decoder absorbs both.
 func (t *AccessToken) UnmarshalJSON(data []byte) error {
 	var w struct {
 		Token     string      `json:"token"`
-		ExpiresAt flexMillis  `json:"expires_at"`
+		ExpiresAt wire.Millis `json:"expires_at"`
 		Status    TokenStatus `json:"status"`
 	}
 	if err := json.Unmarshal(data, &w); err != nil {
 		return err
 	}
-	*t = AccessToken{Token: w.Token, ExpiresAt: time.Time(w.ExpiresAt), Status: w.Status}
-	return nil
-}
-
-// flexMillis decodes an epoch-millisecond timestamp whether it arrives bare
-// or quoted; null, an empty string, and zero decode as the zero time.
-type flexMillis time.Time
-
-func (m *flexMillis) UnmarshalJSON(data []byte) error {
-	s := strings.Trim(string(data), `"`)
-	if s == "" || s == "null" || s == "0" {
-		*m = flexMillis(time.Time{})
-		return nil
-	}
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return fmt.Errorf("webull: %q is not an epoch-millisecond time", s)
-	}
-	*m = flexMillis(time.UnixMilli(n).UTC())
+	*t = AccessToken{Token: w.Token, ExpiresAt: w.ExpiresAt.Time, Status: w.Status}
 	return nil
 }
 
