@@ -3,6 +3,7 @@ package testutil
 
 import (
 	"context"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -38,6 +39,15 @@ func NewIntegrationClient(t *testing.T) *webull.Client {
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}
+	// The default client pools keep-alive connections in the process-global
+	// transport, and an idle HTTP/2 connection holds a read-loop goroutine.
+	// Packages that verify goroutine leaks with goleak would report that
+	// pool as a leak, so drain it when the test ends.
+	t.Cleanup(func() {
+		if tr, ok := http.DefaultTransport.(*http.Transport); ok {
+			tr.CloseIdleConnections()
+		}
+	})
 	if c.Environment().IsProduction() {
 		t.Fatal("client is pointed at production")
 	}
