@@ -68,3 +68,44 @@ func ExampleAPIError() {
 		}
 	}
 }
+
+// ExampleClient_CreateAccessToken shows the token flow for deployments where
+// TokenCheckEnabled reports that token authentication is required.
+func ExampleClient_CreateAccessToken() {
+	client, err := webull.NewClient(webull.Config{
+		AppKey:      os.Getenv("WEBULL_APP_KEY"),
+		AppSecret:   os.Getenv("WEBULL_APP_SECRET"),
+		Environment: webull.Sandbox,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	needed, err := client.TokenCheckEnabled(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	if !needed {
+		return // signing alone is enough for this deployment
+	}
+
+	// The token starts PENDING until verified through SMS and the Webull
+	// app; it lives 15 days and is then recreated, not refreshed.
+	tok, err := client.CreateAccessToken(context.Background())
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Println(tok.Status, tok.ExpiresAt)
+
+	// Requests carry the token once a client is built with it.
+	authed, err := webull.NewClient(webull.Config{
+		AppKey:      os.Getenv("WEBULL_APP_KEY"),
+		AppSecret:   os.Getenv("WEBULL_APP_SECRET"),
+		Environment: webull.Sandbox,
+		AccessToken: tok.Token,
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	_ = authed
+}

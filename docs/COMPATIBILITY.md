@@ -24,19 +24,25 @@ working.
 
 ## Summary
 
-The transport layer, the Trading API, and the Market Data HTTP API — quotes
-for every asset class, fundamentals, funds, screeners and watchlists — are
-implemented. The documented market-data endpoints that 404 in the sandbox
-are Blocked, not implemented: corporate actions, stock profiles and logos
-(under the documented paths), the event-contract display endpoints, and
-news. Streaming and Connect are not implemented yet.
+Every endpoint the core product documents is implemented: transport and
+signing, access tokens, the Trading API for every asset class, the Market
+Data HTTP API (quotes, fundamentals, funds, screeners, watchlists), MQTT
+streaming, gRPC trade events, and the Connect API. The exceptions are news
+(an SSE endpoint whose documentation is unresolvable — see below) and the
+single-symbol bars page, which 404s. The corporate-action, logo and
+event-contract display endpoints that historically 404ed turned out to
+belong to the separate Market Data Display Solution product, excluded below.
+A full three-way audit against the documentation index and the successor
+Python and Java SDKs is recorded in
+[discovery/completeness-audit.md](discovery/completeness-audit.md)
+(2026-09-04).
 
 | Area | Status | Tests | Example | Phase | Notes |
 |---|---|---|---|---|---|
 | **Transport and signing** | Complete | Yes | – | 3 | HMAC-SHA256, verified against live sandbox |
 | Request signing | Complete | Yes | – | 3 | Golden-vector tests plus live verification |
-| Token lifecycle | Partial | Yes | – | 3 | `token_check_enabled` is false in sandbox, so untested in anger |
-| Client token | Planned | – | – | 3 | Documented only; no SDK reference |
+| Token lifecycle | Complete | Yes | Yes | 11 | `CreateAccessToken`/`CheckAccessToken` verified live: the sandbox issues a `NORMAL` token with the documented 15-day expiry (it skips SMS verification). `Config.AccessToken` sends `x-access-token` on every request; `token_check_enabled` is false in sandbox, so enforcement itself is untested |
+| Client token | Excluded | – | – | 11 | Part of the Market Data Display Solution product; see below |
 | Environments | Complete | Yes | – | 3 | Sandbox verified; production unverified (no keys) |
 | **Accounts** | Complete | Yes | – | 4a | Verified against sandbox |
 | Account list | Complete | Yes | – | 4a | |
@@ -64,7 +70,7 @@ news. Streaming and Connect are not implemented yet.
 | Futures depth, footprint | Unverified | Yes | – | 6b | Implemented; the sandbox key is not subscribed (`FUTURES LV2`, `FOOTPRINT`) |
 | Crypto snapshots, bars | Complete | Yes | – | 6b | Verified live; crypto bars carry no volume |
 | Event-contract snapshots, depth, ticks, bars | Complete | Yes | – | 6b | Verified live |
-| Event-contract display endpoints (markets/*, live data, game stats) | Blocked | – | – | 6b | All six return `404 Route Not Found` in the sandbox, as do the milestones and sports-filter instrument lookups |
+| Event-contract display endpoints (markets/*, live data, game stats) | Excluded | – | – | 11 | Documented only under the Market Data Display Solution product (see below), which is why every path 404s on the core hosts |
 | Footprint (stocks) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`please subscribe to FOOTPRINT`) |
 | NOII (auction imbalance) | Unverified | Yes | – | 6a | Implemented; the sandbox key is not subscribed (`STOCK QUOTES LV2`) |
 | Stock profiles, logos | Blocked | – | – | 6a | The documented paths return `404 Route Not Found` in the sandbox. Profiles are served by `trade.StockProfiles`, which is the same data under the SDK scheme; logos have no equivalent |
@@ -77,8 +83,8 @@ news. Streaming and Connect are not implemented yet.
 | Funds: allocations, holdings, files | Unverified | Yes | – | 6d | Implemented to the documented schema. **The sandbox serves an empty list** for every fund tried (SPY, QQQ, TQQQ, VOO, BND) |
 | Screeners (gainers-losers, top active, high dividend, 52-week, sectors) | Complete | Yes | – | 6d | All verified live, including sector detail and its pagination shape |
 | Watchlists | Complete | Yes | – | 6d | Full lifecycle verified live: create, list, rename, add, reorder, remove, delete |
-| Corporate actions | Blocked | – | – | 6a | Both documented paths and every SDK-scheme alias return 404 in the sandbox |
-| News | Blocked | – | – | 6d | The one remaining documented endpoint, `news/summaries/get`, is a Server-Sent Events stream from Webull's AI assistant, absent from all SDKs. **It 404s in the sandbox** — the gateway rewrites it to `/openapi/news/summary` and returns a bare Spring 404. Not implemented; revisit with production keys |
+| Corporate actions | Excluded | – | – | 11 | Documented only under the Market Data Display Solution product (see below); the historic 404s on core hosts were the product boundary, not a sandbox gap |
+| News | Blocked | – | – | 6d | The one documented endpoint, `news/summaries/get`, is a Server-Sent Events stream whose reference page contradicts the platform: the raw app secret as a header, HMAC-SHA1 where every verified endpoint uses SHA256, an `x-access-token` with no linkage to the token flow, and no stream termination. **It 404s in the sandbox** and no official SDK implements it, so the contradictions cannot be resolved without inventing behaviour. Revisit with production keys |
 | **Connect API / OAuth** | Unverified | Yes | Yes | 7 | The full OAuth flow (authorization URL, code exchange, rotating refresh) and a Connect-authenticated Trade client, implemented to the documented spec. **Connect credentials are partner-gated and were not available**, so nothing here has been exercised against the live service; the integration test skips until credentials are set |
 | **gRPC trade events** | Complete | Yes | Yes | 8 | Verified live: a cancelled sandbox order's CANCEL_SUCCESS event arrived typed on the stream |
 | Order events | Complete | Yes | Yes | 8 | Typed to the documented payload; CANCEL_SUCCESS observed live |
@@ -107,8 +113,9 @@ clean addition rather than a redesign.
 
 ### Broker API — Excluded
 
-115 documented reference pages covering account opening, ACH and wire funding,
-cash journals, agreements, document handling, and a dedicated event stream.
+50 HTTP reference pages plus 11 gRPC event modules (2026-09 index) covering
+account opening, ACH and wire funding, cash journals, agreements, document
+handling, and a dedicated event stream.
 
 Excluded by project decision. The reasoning:
 
@@ -126,11 +133,25 @@ move money and have never been executed once would be worse than not shipping
 them. Adding it later is additive and needs no redesign, since its
 authentication and domain model are separate anyway.
 
-### Previous-generation gRPC quotes — Likely excluded
+### Previous-generation gRPC quotes — Excluded (confirmed)
 
 `quotes.proto` and `gateway.proto` describe a gRPC market-data transport in the
-older SDKs, superseded by MQTT in the current generation. To be confirmed during
-Phase 9 rather than assumed.
+older SDKs, superseded by MQTT in the current generation. Confirmed by the
+2026-09 audit: the successor Python SDK removed the gateway entirely, and the
+successor Java SDK ships only unused stubs.
+
+### Market Data Display Solution — Excluded
+
+A parallel market-data product (27 endpoints as of 2026-09) on
+`us-global-openapi.uat.webullbroker.com`, authenticated with client tokens
+(`/auth/client-tokens/create|refresh` and an `access_token` header) rather
+than request signing — aimed at fully-disclosed brokers displaying market
+data to end users. It carries the corporate-action, security-logo and
+event-contract display endpoints that this matrix historically marked
+Blocked: they were never core endpoints, and this SDK's app-key credentials
+cannot reach the product (its documented host is UAT-only). Excluded as a
+product, like the Broker API; adding it later is additive. Details in
+[discovery/completeness-audit.md](discovery/completeness-audit.md).
 
 ## Recorded decisions
 
@@ -239,8 +260,8 @@ resolved and are kept for a release or two so the answers are discoverable.
 | 22 | Whether option market orders and GTC option sells, which preview, are also accepted at placement; the FAQ says neither is | a run during options hours, with a position to sell |
 | 23 | Whether GTD option orders are accepted with a valid expiry; the one attempt was rejected on `expire_date`, not on the time in force | later |
 | 24 | Footprint and NOII decoding against real data; the sandbox key is not subscribed, so the models rest on the documented schema | a subscribed key |
-| 25 | Whether corporate actions, stock profiles and logos exist in production; every path 404s in the sandbox | production keys |
-| 26 | Whether the event-contract display endpoints (`markets/*`, live data, game stats), milestones and sports filters exist in production; all 404 in the sandbox | production keys |
+| ~~25~~ | ~~Whether corporate actions, stock profiles and logos exist in production~~ — **resolved by the 2026-09 audit: corporate actions and logos belong to the Market Data Display Solution product; stock profiles are the core `instruments/stocks/profiles/list`, implemented** | – |
+| ~~26~~ | ~~Whether the event-contract display endpoints exist in production~~ — **resolved by the 2026-09 audit: they belong to the Market Data Display Solution product** | – |
 | 27 | Futures depth and footprint decoding against real data; the key lacks `FUTURES LV2` and `FOOTPRINT` | a subscribed key |
 | 28 | Financial statements and industry comparison against real data; the sandbox returns them empty for every symbol. The integration subtests skip today and pass when data appears | production keys |
 | 29 | Fund allocations, holdings and files against real data; the sandbox returns them empty for every fund tried | production keys |

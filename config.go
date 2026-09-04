@@ -44,6 +44,12 @@ type Config struct {
 	// UserAgent is appended to the SDK's own User-Agent, identifying the
 	// calling application. Optional.
 	UserAgent string
+
+	// AccessToken is sent as the x-access-token header on every request, for
+	// deployments where TokenCheckEnabled reports that token authentication
+	// is required in addition to the signature. Create one with
+	// Client.CreateAccessToken. Optional; most deployments do not need it.
+	AccessToken string
 }
 
 // ErrMissingCredentials is returned when AppKey or AppSecret is empty.

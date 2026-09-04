@@ -2,6 +2,7 @@ package webull_test
 
 import (
 	"errors"
+	"net/http"
 	"os"
 	"testing"
 
@@ -77,4 +78,36 @@ func TestIntegrationUnauthenticatedIsClassified(t *testing.T) {
 	} else {
 		t.Logf("rejected as expected: %v", err)
 	}
+}
+
+// TestIntegrationAccessTokenLifecycle creates an access token and checks it
+// back. Access tokens gate deployments where token authentication is enabled
+// on top of signing; the sandbox reports it disabled, but the endpoints are
+// documented to exist there, and the test environment skips the SMS
+// verification step that production requires.
+func TestIntegrationAccessTokenLifecycle(t *testing.T) {
+	c := testutil.NewIntegrationClient(t)
+	ctx := testutil.IntegrationContext(t)
+
+	tok, err := c.CreateAccessToken(ctx)
+	if err != nil {
+		var apiErr *webull.APIError
+		if errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusNotFound {
+			t.Skipf("sandbox does not serve /auth/tokens/create: %v", err)
+		}
+		t.Fatalf("CreateAccessToken: %v", err)
+	}
+	if tok.Token == "" || tok.Status == "" {
+		t.Fatalf("token = %+v", tok)
+	}
+	t.Logf("created token status=%s expires=%s", tok.Status, tok.ExpiresAt)
+
+	checked, err := c.CheckAccessToken(ctx, tok.Token)
+	if err != nil {
+		t.Fatalf("CheckAccessToken: %v", err)
+	}
+	if checked.Status != tok.Status && checked.Status != webull.TokenNormal {
+		t.Errorf("checked status = %s, created was %s", checked.Status, tok.Status)
+	}
+	t.Logf("checked token status=%s", checked.Status)
 }

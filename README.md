@@ -73,7 +73,11 @@ SDK makes for you. Orders placed against `Production` are real.
 Some deployments additionally require a per-user access token
 (`token_check_enabled`); `client.TokenCheckEnabled(ctx)` reports whether yours
 does. The sandbox does not, so most integrations need only the app key and
-secret.
+secret. When yours does, create a token with `client.CreateAccessToken(ctx)`
+(it starts `PENDING` until verified through SMS and the Webull app; tokens
+live 15 days and are not refreshable), check it with `CheckAccessToken`, and
+supply it through `Config.AccessToken` — the SDK then sends it as
+`x-access-token` on every request.
 
 ## Quick start
 

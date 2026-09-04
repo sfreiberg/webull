@@ -71,6 +71,12 @@ func NewClient(cfg Config) (*Client, error) {
 		DecodeError: decodeAPIError,
 		Retry:       transport.DefaultRetryPolicy(),
 	}
+	if cfg.AccessToken != "" {
+		token := cfg.AccessToken
+		doer.Authorizer = func(context.Context) (map[string]string, error) {
+			return map[string]string{"x-access-token": token}, nil
+		}
+	}
 
 	// Hosts are resolved once here. Overrides were cloned above, so the
 	// resolution cannot change under a running client.
