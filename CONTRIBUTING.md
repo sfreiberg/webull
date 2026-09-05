@@ -135,8 +135,8 @@ that decision appears. Restated facts drift.
 
 ## Reference material
 
-Webull publishes official Python, Java and Go references, and they are useful
-for understanding protocol behaviour. They are Apache-2.0 licensed and this
+Webull publishes official Python and Java SDKs and a Go CLI, and they are
+useful for understanding protocol behaviour. They are Apache-2.0 licensed and this
 project is MIT, so:
 
 - Protocol facts — endpoint paths, header names, signing steps, protobuf field
@@ -144,6 +144,20 @@ project is MIT, so:
   wrong.
 - Everything else — structure, naming, abstractions, documentation prose — is
   written fresh. Do not copy source or comments, and do not transliterate.
+
+## Releasing
+
+Releases are cut from `main` by a release pull request, then tagged:
+
+1. A release PR moves the changelog's Unreleased content under the new
+   version heading (one heading per change type) and sets `Version` in
+   `version.go` to the release number.
+2. After the squash-merge, tag that commit `vX.Y.Z` and publish a GitHub
+   release with notes drawn from the changelog entry.
+3. Immediately bump `Version` to the next minor with a `-dev` suffix
+   (`0.2.0-dev` after `v0.1.0`), so a build from `main` is never
+   indistinguishable from a tagged release in the `User-Agent` header or a
+   bug report.
 
 ## Reporting security issues
 

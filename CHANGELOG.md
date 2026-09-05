@@ -10,6 +10,13 @@ called out explicitly.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] - 2026-09-04
+
+The first release. Everything below arrived between the project's start and
+this version.
+
 ### Added
 
 - Access tokens, for deployments where `token_check_enabled` requires token
@@ -24,23 +31,6 @@ called out explicitly.
 - Fuzz tests for every decoder that reads server-controlled bytes, and
   goroutine-leak verification (goleak) for the streaming and events
   packages.
-
-### Fixed
-
-- Every Go snippet in the README now handles its errors: the market-data
-  example dropped its first error and dereferenced the result regardless,
-  and most other blocks trimmed checks away, discarded them into
-  reassignments, or deferred a close on a stream that could be nil. The
-  blocks are now compiled and linted verbatim (`readme_snippets_test.go`),
-  with a test failing on any drift between the README and what compiled.
-
-- Decimal fields now decode Webull's absent forms — `null` and an empty
-  string — to an absent or zero value. Webull returns `""` for an unreported
-  number (such as an option greek outside market hours), which previously
-  failed to decode. The SDK's decimal types embed shopspring's, so their
-  methods are unchanged.
-
-### Added
 
 - `connect` package: OAuth 2.0 access to other users' Webull accounts (the
   Connect API), reachable through an `Authorizer` — build an authorization
@@ -127,6 +117,19 @@ called out explicitly.
   vulnerability scanning, secret scanning, and an enforced 90% coverage floor.
 - `Version` and `UserAgent` for identifying the SDK in outgoing requests.
 
+- Every Go snippet in the README now handles its errors: the market-data
+  example dropped its first error and dereferenced the result regardless,
+  and most other blocks trimmed checks away, discarded them into
+  reassignments, or deferred a close on a stream that could be nil. The
+  blocks are now compiled and linted verbatim (`readme_snippets_test.go`),
+  with a test failing on any drift between the README and what compiled.
+
+- Decimal fields now decode Webull's absent forms — `null` and an empty
+  string — to an absent or zero value. Webull returns `""` for an unreported
+  number (such as an option greek outside market hours), which previously
+  failed to decode. The SDK's decimal types embed shopspring's, so their
+  methods are unchanged.
+
 ### Notes
 
 - Endpoint paths follow Webull's documented scheme (`/trading/...`). The
@@ -137,4 +140,5 @@ called out explicitly.
   are out of scope; see
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
-[Unreleased]: https://github.com/sfreiberg/webull/commits/main
+[Unreleased]: https://github.com/sfreiberg/webull/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sfreiberg/webull/releases/tag/v0.1.0
