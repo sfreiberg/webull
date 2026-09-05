@@ -15,12 +15,12 @@ import (
 
 // newTestClient starts a TLS test server and returns a Client pointed at it.
 // The transport always speaks https, so a plain httptest server would not do.
-func newTestClient(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.Server) {
+func newTestClient(t *testing.T, handler http.HandlerFunc, mutate ...func(*Config)) (*Client, *httptest.Server) {
 	t.Helper()
 	srv := httptest.NewTLSServer(handler)
 	t.Cleanup(srv.Close)
 
-	c, err := NewClient(Config{
+	cfg := Config{
 		AppKey:      "test-key",
 		AppSecret:   "test-secret",
 		Environment: Sandbox,
@@ -28,7 +28,11 @@ func newTestClient(t *testing.T, handler http.HandlerFunc) (*Client, *httptest.S
 		EndpointOverrides: map[string]string{
 			"trading": strings.TrimPrefix(srv.URL, "https://"),
 		},
-	})
+	}
+	for _, m := range mutate {
+		m(&cfg)
+	}
+	c, err := NewClient(cfg)
 	if err != nil {
 		t.Fatalf("NewClient: %v", err)
 	}

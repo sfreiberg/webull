@@ -34,6 +34,13 @@ type Client struct {
 	// or reach a plaintext test server. Set it before the first
 	// Subscribe; it must not change afterwards.
 	DialOptions []grpc.DialOption
+
+	// AccessToken, when set, is sent as x-access-token metadata on every
+	// subscription, for deployments that require token authentication in
+	// addition to signing. The root webull package sets it from
+	// Config.AccessToken. Set it before the first Subscribe; it must not
+	// change afterwards.
+	AccessToken string
 }
 
 // New returns a Client that connects to host with signer's credentials.
@@ -150,6 +157,9 @@ func (s *Stream) connect(ctx context.Context) error {
 		return fmt.Errorf("events: marshal request: %w", err)
 	}
 	md := metadata.New(s.client.signer.SignStream(body))
+	if s.client.AccessToken != "" {
+		md.Set("x-access-token", s.client.AccessToken)
+	}
 
 	rpc, err := eventspb.NewEventServiceClient(conn).Subscribe(metadata.NewOutgoingContext(ctx, md), pbReq)
 	if err != nil {

@@ -5,6 +5,7 @@ go 1.26
 require (
 	github.com/eclipse/paho.mqtt.golang v1.5.1
 	github.com/shopspring/decimal v1.4.0
+	go.uber.org/goleak v1.3.0
 	google.golang.org/grpc v1.83.2
 	google.golang.org/protobuf v1.36.11
 )
