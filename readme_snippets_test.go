@@ -152,9 +152,9 @@ func readmeOptionOrder(ctx context.Context, client *webull.Client, acct trade.Ac
 func readmeBracket(ctx context.Context, client *webull.Client, acct trade.Account) {
 	// readme:block
 	combo := trade.Bracket(
-		&trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("10"), LimitPrice: trade.Price("180")},
-		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("10"), LimitPrice: trade.Price("195")},
-		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, Quantity: trade.Price("10"), StopPrice: trade.Price("170")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("180.00")},
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("200.00")},   // take profit
+		&trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, TimeInForce: trade.GTC, Quantity: trade.Price("1"), StopPrice: trade.Price("170.00")}, // stop loss
 	)
 	receipt, err := client.Trade.PlaceCombo(ctx, acct.AccountID, combo)
 	if err != nil {
@@ -162,7 +162,9 @@ func readmeBracket(ctx context.Context, client *webull.Client, acct trade.Accoun
 	}
 	fmt.Println("placed group", receipt.ComboOrderID)
 
-	// Later: cancelling the unfilled master cancels the whole group.
+	// Later: CancelCombo cancels every order in the group still working; an
+	// unfilled master takes its exits with it, while a filled master leaves
+	// independent exit orders that this call still cancels.
 	if err := client.Trade.CancelCombo(ctx, acct.AccountID, combo); err != nil {
 		log.Fatal(err)
 	}
@@ -344,7 +346,11 @@ func readmeRateLimit(err error) {
 	if errors.Is(err, webull.ErrRateLimited) {
 		var apiErr *webull.APIError
 		if errors.As(err, &apiErr) {
-			time.Sleep(apiErr.RetryAfter)
+			wait := apiErr.RetryAfter
+			if wait == 0 {
+				wait = time.Second // Webull sent no Retry-After header
+			}
+			time.Sleep(wait)
 		}
 	}
 	// readme:end

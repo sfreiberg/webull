@@ -163,7 +163,9 @@ func ExampleClient_PlaceCombo() {
 	}
 	fmt.Println("placed group", receipt.ComboOrderID)
 
-	// Cancelling the unfilled master cancels the whole group.
+	// CancelCombo cancels every order in the group still working; an
+	// unfilled master takes its exits with it, while a filled master
+	// leaves independent exit orders that this call still cancels.
 	if err := client.Trade.CancelCombo(context.Background(), accountID, combo); err != nil {
 		log.Fatal(err)
 	}

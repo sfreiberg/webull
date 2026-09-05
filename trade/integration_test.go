@@ -525,6 +525,7 @@ func skipIfCode(t *testing.T, err error, codes ...string) {
 var marketClosedCodes = []string{
 	"OPENAPI_DAY_ORDER_NOT_ALLOWED_AFT_CORE_TIME_LIMIT",     // a DAY order outside regular hours
 	"OPENAPI_FUTURES_CAN_NOT_TRADING_FOR_NON_TRADING_HOURS", // futures outside their session
+	"OPENAPI_CAN_NOT_TRADING_FOR_NON_TRADING_HOURS",         // equities outside 9:30–16:00 ET (observed on combos)
 	"OPENAPI_CAN_NOT_TRADING_FOR_FIXGW_NOT_READY",           // the order gateway is not accepting orders now
 }
 
