@@ -32,7 +32,7 @@ import "runtime"
 // traffic and so that bug reports can be tied to a specific release.
 //
 // Development builds between releases carry a -dev suffix.
-const Version = "0.2.0-dev"
+const Version = "0.1.1-dev"
 
 // userAgentPrefix identifies this SDK in the User-Agent header. It is kept
 // separate from Version so that callers appending their own product token
