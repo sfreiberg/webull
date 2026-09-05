@@ -32,23 +32,6 @@ this version.
   goroutine-leak verification (goleak) for the streaming and events
   packages.
 
-### Fixed
-
-- Every Go snippet in the README now handles its errors: the market-data
-  example dropped its first error and dereferenced the result regardless,
-  and most other blocks trimmed checks away, discarded them into
-  reassignments, or deferred a close on a stream that could be nil. The
-  blocks are now compiled and linted verbatim (`readme_snippets_test.go`),
-  with a test failing on any drift between the README and what compiled.
-
-- Decimal fields now decode Webull's absent forms — `null` and an empty
-  string — to an absent or zero value. Webull returns `""` for an unreported
-  number (such as an option greek outside market hours), which previously
-  failed to decode. The SDK's decimal types embed shopspring's, so their
-  methods are unchanged.
-
-### Added
-
 - `connect` package: OAuth 2.0 access to other users' Webull accounts (the
   Connect API), reachable through an `Authorizer` — build an authorization
   URL, exchange the returned code for a `Token`, then get a `Client` whose
@@ -133,6 +116,19 @@ this version.
 - Continuous integration: tests on Go 1.27 and 1.26, race detector, linting,
   vulnerability scanning, secret scanning, and an enforced 90% coverage floor.
 - `Version` and `UserAgent` for identifying the SDK in outgoing requests.
+
+- Every Go snippet in the README now handles its errors: the market-data
+  example dropped its first error and dereferenced the result regardless,
+  and most other blocks trimmed checks away, discarded them into
+  reassignments, or deferred a close on a stream that could be nil. The
+  blocks are now compiled and linted verbatim (`readme_snippets_test.go`),
+  with a test failing on any drift between the README and what compiled.
+
+- Decimal fields now decode Webull's absent forms — `null` and an empty
+  string — to an absent or zero value. Webull returns `""` for an unreported
+  number (such as an option greek outside market hours), which previously
+  failed to decode. The SDK's decimal types embed shopspring's, so their
+  methods are unchanged.
 
 ### Notes
 

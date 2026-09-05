@@ -36,7 +36,7 @@ required, has no documented equivalent that we could find. It is used under its
 
 Both are documented — Connect API has 4 reference pages plus OAuth 2.0 guides,
 Broker API has 78 under `broker-fd-api` and a further 37 for broker market data
-— but neither appears anywhere in the Python, Java, or Go references. There is no
+— but neither appears anywhere in the Python or Java SDKs or the Go CLI. There is no
 OAuth code, no authorization-code exchange, no `redirect_uri` handling in any
 official SDK.
 
