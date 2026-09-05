@@ -61,6 +61,9 @@ client, err := webull.NewClient(webull.Config{
     AppSecret:   os.Getenv("WEBULL_APP_SECRET"),
     Environment: webull.Sandbox, // or webull.Production
 })
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 Keep credentials out of source: read them from the environment or a secret
@@ -104,6 +107,10 @@ if err != nil {
 acct := accounts[0]
 
 balance, err := client.Trade.Balance(ctx, acct.AccountID)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(acct.AccountID, balance.TotalCashBalance)
 ```
 
 ### Buying shares
@@ -119,6 +126,10 @@ order := &trade.Order{
 
 // Preview returns estimated cost and fees without placing anything.
 preview, err := client.Trade.PreviewOrder(ctx, acct.AccountID, order)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("estimated cost", preview.EstimatedCost)
 
 receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, order)
 if err != nil {
@@ -151,8 +162,14 @@ chain, err := client.Trade.OptionContracts(ctx, trade.OptionContractsRequest{
     StartDate:         "2026-12-18",
     EndDate:           "2026-12-18",
 })
+if err != nil {
+    log.Fatal(err)
+}
 
 leg, err := trade.LegFromSymbol(chain.Contracts[0].Symbol) // e.g. AAPL261218C00240000
+if err != nil {
+    log.Fatal(err)
+}
 
 receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
     Symbol:         "AAPL",
@@ -163,6 +180,10 @@ receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
     PositionIntent: trade.BuyToOpen,
     Legs:           []trade.OrderLeg{leg},
 })
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("placed", receipt.OrderID)
 ```
 
 ### Attaching a take-profit and stop-loss
@@ -171,13 +192,22 @@ A bracket is one placement: the entry plus its exits, cancelled together.
 
 ```go
 combo := trade.Bracket(
-    &trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, Quantity: trade.Price("10"), LimitPrice: trade.Price("180")},
-    &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, Quantity: trade.Price("10"), LimitPrice: trade.Price("195")},
-    &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, Quantity: trade.Price("10"), StopPrice: trade.Price("170")},
+    &trade.Order{Symbol: "AAPL", Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("180.00")},
+    &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.Limit, TimeInForce: trade.GTC, Quantity: trade.Price("1"), LimitPrice: trade.Price("200.00")},   // take profit
+    &trade.Order{Symbol: "AAPL", Side: trade.Sell, Type: trade.StopLoss, TimeInForce: trade.GTC, Quantity: trade.Price("1"), StopPrice: trade.Price("170.00")}, // stop loss
 )
 receipt, err := client.Trade.PlaceCombo(ctx, acct.AccountID, combo)
-// later
-err = client.Trade.CancelCombo(ctx, acct.AccountID, combo)
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("placed group", receipt.ComboOrderID)
+
+// Later: CancelCombo cancels every order in the group still working; an
+// unfilled master takes its exits with it, while a filled master leaves
+// independent exit orders that this call still cancels.
+if err := client.Trade.CancelCombo(ctx, acct.AccountID, combo); err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### A vertical spread
@@ -185,8 +215,14 @@ err = client.Trade.CancelCombo(ctx, acct.AccountID, combo)
 Multi-leg strategies are one `Order` with a strategy and its legs.
 
 ```go
-long, _ := trade.LegFromSymbol("AAPL261218C00240000")
-short, _ := trade.LegFromSymbol("AAPL261218C00250000")
+long, err := trade.LegFromSymbol("AAPL261218C00240000")
+if err != nil {
+    log.Fatal(err)
+}
+short, err := trade.LegFromSymbol("AAPL261218C00250000")
+if err != nil {
+    log.Fatal(err)
+}
 long.Side, short.Side = trade.Buy, trade.Sell
 
 receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
@@ -198,6 +234,10 @@ receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, &trade.Order{
     OptionStrategy: trade.StrategyVertical,
     Legs:           []trade.OrderLeg{long, short},
 })
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println("placed", receipt.OrderID)
 ```
 
 ### Other asset classes
@@ -206,19 +246,23 @@ Set `InstrumentType`; the rules for each asset class are checked locally.
 
 ```go
 // Crypto, sized in coins (up to eight decimal places), $2 minimum.
-client.Trade.PlaceOrder(ctx, cryptoAcct.AccountID, &trade.Order{
+if _, err := client.Trade.PlaceOrder(ctx, cryptoAcct.AccountID, &trade.Order{
     InstrumentType: trade.InstrumentCrypto, Symbol: "BTCUSD",
     Side: trade.Buy, Type: trade.Limit, TimeInForce: trade.GTC,
     Quantity: trade.Price("0.001"), LimitPrice: trade.Price("60000"),
-})
+}); err != nil {
+    log.Fatal(err)
+}
 
 // Event contracts are limit-only and need the outcome being bought.
-client.Trade.PlaceOrder(ctx, eventsAcct.AccountID, &trade.Order{
+if _, err := client.Trade.PlaceOrder(ctx, eventsAcct.AccountID, &trade.Order{
     InstrumentType: trade.InstrumentEvent, Symbol: "KXRATECUTCOUNT-26DEC31-T3",
     Side: trade.Buy, Type: trade.Limit,
     Quantity: trade.Price("5"), LimitPrice: trade.Price("0.10"),
     EventOutcome: trade.OutcomeYes,
-})
+}); err != nil {
+    log.Fatal(err)
+}
 ```
 
 Futures, crypto and event contracts each have their own account; use the one
@@ -229,16 +273,20 @@ whose `AccountClass` matches.
 Only the fields you set are changed; the rest are left as they are.
 
 ```go
-_, err = client.Trade.ReplaceOrder(ctx, acct.AccountID, trade.OrderModification{
+if _, err := client.Trade.ReplaceOrder(ctx, acct.AccountID, trade.OrderModification{
     ClientOrderID: order.ClientOrderID,
     LimitPrice:    trade.Price("182.00"),
-})
+}); err != nil {
+    log.Fatal(err)
+}
 ```
 
 ### Cancelling
 
 ```go
-_, err = client.Trade.CancelOrder(ctx, acct.AccountID, order.ClientOrderID)
+if _, err := client.Trade.CancelOrder(ctx, acct.AccountID, order.ClientOrderID); err != nil {
+    log.Fatal(err)
+}
 ```
 
 Cancel, replace and lookup are keyed by the client order ID, not Webull's own
@@ -251,11 +299,18 @@ consumed, and placing it again returns `trade.ErrDuplicateOrder`.
 snaps, err := client.MarketData.Snapshots(ctx, marketdata.SnapshotsRequest{
     Symbols: []string{"AAPL", "SPY"}, ExtendedHours: true,
 })
+if err != nil {
+    log.Fatal(err)
+}
 fmt.Println(snaps[0].Price.Decimal, snaps[0].LastTradeTime)
 
 bars, err := client.MarketData.Bars(ctx, marketdata.BarsRequest{
     Symbols: []string{"AAPL"}, Timespan: marketdata.Daily, Count: 30,
 })
+if err != nil {
+    log.Fatal(err)
+}
+fmt.Println(len(bars[0].Bars), "daily bars")
 ```
 
 Data the key is not subscribed to fails with `marketdata.ErrNotSubscribed`, and
@@ -267,7 +322,10 @@ the wrapped `*webull.APIError` names the product required.
 stream, err := client.Events.Subscribe(ctx, events.SubscribeRequest{
     AccountIDs: []string{acct.AccountID},
 })
-defer stream.Close()
+if err != nil {
+    log.Fatal(err)
+}
+defer func() { _ = stream.Close() }()
 for {
     ev, err := stream.Recv()
     if err != nil {
@@ -289,11 +347,16 @@ retried.
 
 ```go
 stream, err := client.Streaming.Connect(ctx)
-defer stream.Close()
-err = stream.Subscribe(ctx, streaming.SubscribeRequest{
+if err != nil {
+    log.Fatal(err)
+}
+defer func() { _ = stream.Close() }()
+if err := stream.Subscribe(ctx, streaming.SubscribeRequest{
     Symbols: []string{"AAPL"},
     Types:   []streaming.SubType{streaming.SubSnapshot, streaming.SubTick},
-})
+}); err != nil {
+    log.Fatal(err)
+}
 for {
     msg, err := stream.Recv(ctx)
     if err != nil {
@@ -316,21 +379,33 @@ To act on *another* user's Webull account — the model for a platform whose
 users link their Webull accounts — use the `connect` package's OAuth flow:
 
 ```go
-authorizer, _ := connect.NewAuthorizer(connect.Config{
+authorizer, err := connect.NewAuthorizer(connect.Config{
     ClientID: clientID, ClientSecret: clientSecret,
     AppKey: appKey, AppSecret: appSecret,
     Environment: webull.Production,
     RedirectURI: "https://app.example.com/webull/callback",
 })
+if err != nil {
+    log.Fatal(err)
+}
 
 // Send the user here; on the callback, exchange the code.
 url := authorizer.AuthorizationURL(state)
-token, _ := authorizer.ExchangeCode(ctx, code)
+token, err := authorizer.ExchangeCode(ctx, code)
+if err != nil {
+    log.Fatal(err)
+}
 
 // Trade on the user's behalf; the access token refreshes itself. Use
 // ClientFromStore to keep the rotating token pair in a store of your own.
-client, _ := authorizer.Client(token)
-accounts, _ := client.Trade.Accounts(ctx)
+client, err := authorizer.Client(token)
+if err != nil {
+    log.Fatal(err)
+}
+accounts, err := client.Trade.Accounts(ctx)
+if err != nil {
+    log.Fatal(err)
+}
 ```
 
 Connect credentials are issued by Webull to partner platforms, not
@@ -360,8 +435,13 @@ errors with `errors.Is`:
 ```go
 if errors.Is(err, webull.ErrRateLimited) {
     var apiErr *webull.APIError
-    errors.As(err, &apiErr)
-    time.Sleep(apiErr.RetryAfter)
+    if errors.As(err, &apiErr) {
+        wait := apiErr.RetryAfter
+        if wait == 0 {
+            wait = time.Second // Webull sent no Retry-After header
+        }
+        time.Sleep(wait)
+    }
 }
 ```
 

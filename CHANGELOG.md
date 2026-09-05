@@ -27,6 +27,13 @@ called out explicitly.
 
 ### Fixed
 
+- Every Go snippet in the README now handles its errors: the market-data
+  example dropped its first error and dereferenced the result regardless,
+  and most other blocks trimmed checks away, discarded them into
+  reassignments, or deferred a close on a stream that could be nil. The
+  blocks are now compiled and linted verbatim (`readme_snippets_test.go`),
+  with a test failing on any drift between the README and what compiled.
+
 - Decimal fields now decode Webull's absent forms — `null` and an empty
   string — to an absent or zero value. Webull returns `""` for an unreported
   number (such as an option greek outside market hours), which previously
