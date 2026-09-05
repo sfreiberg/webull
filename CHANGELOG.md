@@ -10,6 +10,13 @@ called out explicitly.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [0.1.0] - 2026-09-04
+
+The first release. Everything below arrived between the project's start and
+this version.
+
 ### Added
 
 - Access tokens, for deployments where `token_check_enabled` requires token
@@ -137,4 +144,5 @@ called out explicitly.
   are out of scope; see
   [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
-[Unreleased]: https://github.com/sfreiberg/webull/commits/main
+[Unreleased]: https://github.com/sfreiberg/webull/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/sfreiberg/webull/releases/tag/v0.1.0

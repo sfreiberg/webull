@@ -31,8 +31,8 @@ import "runtime"
 // User-Agent header of outgoing requests so that Webull can identify SDK
 // traffic and so that bug reports can be tied to a specific release.
 //
-// Pre-release builds carry a -dev suffix.
-const Version = "0.0.0-dev"
+// Development builds between releases carry a -dev suffix.
+const Version = "0.1.0"
 
 // userAgentPrefix identifies this SDK in the User-Agent header. It is kept
 // separate from Version so that callers appending their own product token

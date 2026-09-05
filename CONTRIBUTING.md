@@ -135,7 +135,7 @@ that decision appears. Restated facts drift.
 
 ## Reference material
 
-Webull publishes official Python, Java and Go references, and they are useful
+Webull publishes official Python and Java references, and they are useful
 for understanding protocol behaviour. They are Apache-2.0 licensed and this
 project is MIT, so:
 

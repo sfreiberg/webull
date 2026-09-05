@@ -7,7 +7,7 @@
 
 An independent, open-source Go SDK for the [Webull OpenAPI](https://developer.webull.com/).
 
-> **Status: pre-release.** Every endpoint the core product documents is
+> **Status: pre-1.0.** Every endpoint the core product documents is
 > implemented: trading (accounts, instrument data, orders across every
 > asset class), the Market Data HTTP API (quotes, fundamentals, funds,
 > screeners, watchlists), MQTT market-data streaming, real-time trade
