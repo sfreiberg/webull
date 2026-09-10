@@ -154,10 +154,12 @@ Releases are cut from `main` by a release pull request, then tagged:
    `version.go` to the release number.
 2. After the squash-merge, tag that commit `vX.Y.Z` and publish a GitHub
    release with notes drawn from the changelog entry.
-3. Immediately bump `Version` to the next minor with a `-dev` suffix
-   (`0.2.0-dev` after `v0.1.0`), so a build from `main` is never
+3. Immediately bump `Version` to the next patch with a `-dev` suffix
+   (`0.1.1-dev` after `v0.1.0`), so a build from `main` is never
    indistinguishable from a tagged release in the `User-Agent` header or a
-   bug report.
+   bug report. The next patch is the smallest claim that is guaranteed
+   true — it matches the shape of the pseudo-versions Go itself assigns
+   to untagged commits — and the next release PR sets the real number.
 
 ## Reporting security issues
 
