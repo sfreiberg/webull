@@ -378,6 +378,12 @@ func newClientOrderID() string {
 // prepare fills defaults and validates. It mutates o so that generated values
 // are visible to the caller.
 func (o *Order) prepare() error {
+	// A nil order is a caller bug, but it must surface as ErrInvalidOrder
+	// like every other malformed order rather than as a nil-pointer panic.
+	// Combo.prepare already reports a nil member this way.
+	if o == nil {
+		return fmt.Errorf("%w: order is nil", ErrInvalidOrder)
+	}
 	if o.ClientOrderID == "" {
 		o.ClientOrderID = newClientOrderID()
 	}

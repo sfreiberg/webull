@@ -133,3 +133,29 @@ func TestLegFromSymbolUsesRoot(t *testing.T) {
 		t.Errorf("strike = %v", leg.StrikePrice)
 	}
 }
+
+// A nil order or combo is a caller bug, but it must come back as
+// ErrInvalidOrder, as a nil member of a Combo already does, rather than
+// panicking inside the SDK. Nothing may reach the server.
+func TestNilOrderAndComboAreRejected(t *testing.T) {
+	c := newClientFor(t, http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		t.Error("a nil order must not reach the server")
+	}))
+	ctx := context.Background()
+	valid := &Order{Symbol: "AAPL", Side: Buy, Type: Market, Quantity: Price("1")}
+
+	checks := map[string]func() error{
+		"PreviewOrder": func() error { _, err := c.PreviewOrder(ctx, "acct", nil); return err },
+		"PlaceOrder":   func() error { _, err := c.PlaceOrder(ctx, "acct", nil); return err },
+		"PlaceOrders":  func() error { _, err := c.PlaceOrders(ctx, "acct", []*Order{valid, nil}); return err },
+		"PreviewCombo": func() error { _, err := c.PreviewCombo(ctx, "acct", nil); return err },
+		"PlaceCombo":   func() error { _, err := c.PlaceCombo(ctx, "acct", nil); return err },
+	}
+	for name, call := range checks {
+		t.Run(name, func(t *testing.T) {
+			if err := call(); !errors.Is(err, ErrInvalidOrder) {
+				t.Errorf("got %v, want ErrInvalidOrder", err)
+			}
+		})
+	}
+}

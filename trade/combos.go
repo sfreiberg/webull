@@ -166,7 +166,7 @@ func (c *Combo) kind() (ComboType, error) {
 
 // prepare validates the group and every order in it.
 func (c *Combo) prepare() error {
-	if len(c.Orders) == 0 {
+	if c == nil || len(c.Orders) == 0 {
 		return fmt.Errorf("%w: empty combo", ErrInvalidOrder)
 	}
 	for i, o := range c.Orders {
