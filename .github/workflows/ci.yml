@@ -126,9 +126,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # Not go-version-file: go.mod says `go 1.26.0` (golang.org/x/* require
+      # that spelling), and setup-go reads it as exactly 1.26.0, whose
+      # standard library has long-fixed vulnerabilities that would fail this
+      # job for a reason no change here can address. Scan against the latest
+      # patch release of the minimum Go version instead.
       - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: "1.26.x"
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
