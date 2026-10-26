@@ -164,7 +164,7 @@ func TestZeroValueSignerUsesDefaults(t *testing.T) {
 
 func TestNonceIsUniquePerCall(t *testing.T) {
 	seen := make(map[string]bool, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		n := uuid()
 		if seen[n] {
 			t.Fatalf("uuid repeated after %d calls: %s", i, n)
@@ -176,12 +176,10 @@ func TestNonceIsUniquePerCall(t *testing.T) {
 func TestSignerIsSafeForConcurrentUse(t *testing.T) {
 	s := New("key", "secret")
 	var wg sync.WaitGroup
-	for i := 0; i < 50; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 50 {
+		wg.Go(func() {
 			s.Sign(Request{Host: "h", Path: "/p"})
-		}()
+		})
 	}
 	wg.Wait()
 }

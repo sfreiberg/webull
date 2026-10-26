@@ -187,7 +187,7 @@ func TestClientCarriesBearerToken(t *testing.T) {
 	f := &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("A", "R", now) }}
 	a := newFixture(t, f)
 
-	c, err := a.Client(ptr(mkToken("access-live", "refresh-live", now)))
+	c, err := a.Client(new(mkToken("access-live", "refresh-live", now)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -208,8 +208,6 @@ func TestClientCarriesBearerToken(t *testing.T) {
 		t.Errorf("a valid token must not be refreshed: %d token calls", f.tokenCalls.Load())
 	}
 }
-
-func ptr[T any](v T) *T { return &v }
 
 func TestNearExpiryTriggersRefresh(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
@@ -273,14 +271,12 @@ func TestConcurrentRefreshHappensOnce(t *testing.T) {
 	c.src.now = func() time.Time { return now }
 
 	var wg sync.WaitGroup
-	for i := 0; i < 20; i++ {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+	for range 20 {
+		wg.Go(func() {
 			if _, err := c.Token(context.Background()); err != nil {
 				t.Errorf("Token: %v", err)
 			}
-		}()
+		})
 	}
 	wg.Wait()
 	if n := f.tokenCalls.Load(); n != 1 {
@@ -290,7 +286,7 @@ func TestConcurrentRefreshHappensOnce(t *testing.T) {
 
 func TestClientFromStoreLoadsLazily(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
-	store := NewMemoryTokenStore(ptr(mkToken("stored-access", "stored-refresh", now)))
+	store := NewMemoryTokenStore(new(mkToken("stored-access", "stored-refresh", now)))
 
 	f := &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("x", "y", now) }}
 	a := newFixture(t, f)
@@ -322,7 +318,7 @@ func TestClientFromStoreNeverClobbersTheStore(t *testing.T) {
 	// produces a genuinely newer pair.
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	store := &countingStore{}
-	_ = store.MemoryTokenStore.Save(context.Background(), ptr(mkToken("newer-access", "r1", now)))
+	_ = store.MemoryTokenStore.Save(context.Background(), new(mkToken("newer-access", "r1", now)))
 
 	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("x", "y", now) }})
 	c, err := a.ClientFromStore(store)
@@ -433,7 +429,7 @@ func (errStore) Save(context.Context, *Token) error   { return nil }
 func TestStoreLoadErrorSurfaces(t *testing.T) {
 	now := time.Date(2026, 9, 2, 12, 0, 0, 0, time.UTC)
 	a := newFixture(t, &fakeServer{nextToken: func(int, url.Values) Token { return Token{} }})
-	c, err := a.Client(ptr(mkToken("a", "r", now)))
+	c, err := a.Client(new(mkToken("a", "r", now)))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -546,7 +542,7 @@ func TestFailedRefreshIsSharedByConcurrentCallers(t *testing.T) {
 
 	var wg sync.WaitGroup
 	errs := make([]error, 20)
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
@@ -657,7 +653,7 @@ func TestSaveFailureAfterRefreshKeepsTheRotatedPair(t *testing.T) {
 	f := &fakeServer{nextToken: func(int, url.Values) Token { return mkToken("fresh", "r1", now) }}
 	a := newFixture(t, f)
 	store := &failingSaveStore{}
-	_ = store.MemoryTokenStore.Save(context.Background(), ptr(mkToken("expired", "r0", now.Add(-40*time.Minute))))
+	_ = store.MemoryTokenStore.Save(context.Background(), new(mkToken("expired", "r0", now.Add(-40*time.Minute))))
 
 	c, err := a.ClientFromStore(store)
 	if err != nil {

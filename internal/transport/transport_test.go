@@ -103,9 +103,9 @@ func TestDoSignsTheExactBodyItSends(t *testing.T) {
 }
 
 func TestDoRetriesIdempotentRequests(t *testing.T) {
-	var calls int32
+	var calls atomic.Int32
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if atomic.AddInt32(&calls, 1) < 3 {
+		if calls.Add(1) < 3 {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -118,7 +118,7 @@ func TestDoRetriesIdempotentRequests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected success after retries: %v", err)
 	}
-	if got := atomic.LoadInt32(&calls); got != 3 {
+	if got := calls.Load(); got != 3 {
 		t.Errorf("made %d attempts, want 3", got)
 	}
 }
@@ -126,9 +126,9 @@ func TestDoRetriesIdempotentRequests(t *testing.T) {
 // This is the most important test in the package. A retried order placement is
 // a duplicated order.
 func TestDoNeverRetriesPOST(t *testing.T) {
-	var calls int32
+	var calls atomic.Int32
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&calls, 1)
+		calls.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -138,7 +138,7 @@ func TestDoNeverRetriesPOST(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected the error to surface")
 	}
-	if got := atomic.LoadInt32(&calls); got != 1 {
+	if got := calls.Load(); got != 1 {
 		t.Fatalf("POST was attempted %d times; a replayed order placement can "+
 			"duplicate an order and must never be retried", got)
 	}
@@ -147,9 +147,9 @@ func TestDoNeverRetriesPOST(t *testing.T) {
 func TestDoDoesNotRetryClientErrors(t *testing.T) {
 	for _, status := range []int{400, 401, 403, 404, 417} {
 		t.Run(http.StatusText(status), func(t *testing.T) {
-			var calls int32
+			var calls atomic.Int32
 			srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				atomic.AddInt32(&calls, 1)
+				calls.Add(1)
 				w.WriteHeader(status)
 			}))
 			defer srv.Close()
@@ -159,7 +159,7 @@ func TestDoDoesNotRetryClientErrors(t *testing.T) {
 			if err == nil {
 				t.Fatal("expected an error")
 			}
-			if got := atomic.LoadInt32(&calls); got != 1 {
+			if got := calls.Load(); got != 1 {
 				t.Errorf("retried a %d %d times; replaying cannot change the outcome", status, got)
 			}
 		})
@@ -169,9 +169,9 @@ func TestDoDoesNotRetryClientErrors(t *testing.T) {
 // Retrying a 429 inside a sub-second backoff deepens the throttle rather than
 // relieving it, so the SDK surfaces it and lets the caller decide.
 func TestDoDoesNotRetryRateLimits(t *testing.T) {
-	var calls int32
+	var calls atomic.Int32
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		atomic.AddInt32(&calls, 1)
+		calls.Add(1)
 		w.WriteHeader(http.StatusTooManyRequests)
 	}))
 	defer srv.Close()
@@ -180,7 +180,7 @@ func TestDoDoesNotRetryRateLimits(t *testing.T) {
 		Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil); err == nil {
 		t.Fatal("expected the rate-limit error to surface")
 	}
-	if got := atomic.LoadInt32(&calls); got != 1 {
+	if got := calls.Load(); got != 1 {
 		t.Errorf("429 was retried %d times; that deepens the throttle", got)
 	}
 }
@@ -223,9 +223,9 @@ func TestDoPropagatesContextCancellation(t *testing.T) {
 }
 
 func TestDoStopsRetryingWhenContextIsCancelled(t *testing.T) {
-	var calls int32
+	var calls atomic.Int32
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&calls, 1)
+		calls.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -240,7 +240,7 @@ func TestDoStopsRetryingWhenContextIsCancelled(t *testing.T) {
 	if err := d.Do(ctx, Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil); err == nil {
 		t.Fatal("expected the cancellation to abort the retry loop")
 	}
-	if got := atomic.LoadInt32(&calls); got != 1 {
+	if got := calls.Load(); got != 1 {
 		t.Errorf("kept retrying after cancellation: %d calls", got)
 	}
 }
@@ -355,7 +355,7 @@ func TestDoRetriesTransportFailuresForIdempotentOnly(t *testing.T) {
 	host := hostOf(srv)
 	srv.Close()
 
-	var sleeps int32
+	var sleeps atomic.Int32
 	newD := func() *Doer {
 		return &Doer{
 			HTTPClient:  client,
@@ -363,7 +363,7 @@ func TestDoRetriesTransportFailuresForIdempotentOnly(t *testing.T) {
 			DecodeError: decodeStub,
 			Retry:       RetryPolicy{MaxAttempts: 3},
 			Sleep: func(context.Context, time.Duration) error {
-				atomic.AddInt32(&sleeps, 1)
+				sleeps.Add(1)
 				return nil
 			},
 		}
@@ -373,25 +373,25 @@ func TestDoRetriesTransportFailuresForIdempotentOnly(t *testing.T) {
 		Request{Method: "GET", Host: host, Path: "/p"}, nil); err == nil {
 		t.Fatal("expected a transport error")
 	}
-	if got := atomic.LoadInt32(&sleeps); got != 2 {
+	if got := sleeps.Load(); got != 2 {
 		t.Errorf("GET backed off %d times, want 2 retries", got)
 	}
 
-	atomic.StoreInt32(&sleeps, 0)
+	sleeps.Store(0)
 	if err := newD().Do(context.Background(),
 		Request{Method: "POST", Host: host, Path: "/orders/place"}, nil); err == nil {
 		t.Fatal("expected a transport error")
 	}
-	if got := atomic.LoadInt32(&sleeps); got != 0 {
+	if got := sleeps.Load(); got != 0 {
 		t.Errorf("POST retried %d times after a transport failure; the server may "+
 			"have processed the request, so it must not be replayed", got)
 	}
 }
 
 func TestDoTreatsZeroMaxAttemptsAsOne(t *testing.T) {
-	var calls int32
+	var calls atomic.Int32
 	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&calls, 1)
+		calls.Add(1)
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
@@ -401,7 +401,7 @@ func TestDoTreatsZeroMaxAttemptsAsOne(t *testing.T) {
 		Request{Method: "GET", Host: hostOf(srv), Path: "/p"}, nil); err == nil {
 		t.Fatal("expected an error")
 	}
-	if got := atomic.LoadInt32(&calls); got != 1 {
+	if got := calls.Load(); got != 1 {
 		t.Errorf("made %d attempts, want 1", got)
 	}
 }

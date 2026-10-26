@@ -321,7 +321,7 @@ func TestQueueDropsOldestWhenFull(t *testing.T) {
 		fx.fake.publish("tick", b)
 	}
 	got := []string{}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		msg, err := stream.Recv(ctx)
 		cancel()

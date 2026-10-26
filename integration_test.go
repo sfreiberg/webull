@@ -52,8 +52,7 @@ func TestIntegrationNotFoundIsClassified(t *testing.T) {
 		t.Errorf("404 did not classify as ErrNotFound: %v", err)
 	}
 
-	var apiErr *webull.APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*webull.APIError](err); ok {
 		t.Logf("gateway error: status=%d code=%q message=%q", apiErr.StatusCode, apiErr.Code, apiErr.Message)
 	}
 }

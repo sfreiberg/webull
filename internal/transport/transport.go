@@ -123,13 +123,10 @@ func (d *Doer) Do(ctx context.Context, req Request, out any) error {
 		}
 	}
 
-	attempts := d.Retry.MaxAttempts
-	if attempts < 1 {
-		attempts = 1
-	}
+	attempts := max(d.Retry.MaxAttempts, 1)
 
 	var lastErr error
-	for attempt := 0; attempt < attempts; attempt++ {
+	for attempt := range attempts {
 		if attempt > 0 {
 			if err := d.sleep(ctx, d.Retry.backoff(attempt)); err != nil {
 				// Preserve why we were retrying. Returning only the context

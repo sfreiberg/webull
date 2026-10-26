@@ -104,6 +104,16 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.1
+      # gopls' modernize analyzer flags code that has a simpler idiom at the
+      # go.mod language version (range over int, min/max, slices.Contains,
+      # errors.AsType, ...). It exits non-zero on any suggestion; apply them
+      # locally with -fix. The generated protobuf packages are excluded for the
+      # same reason they are excluded from coverage: they are regenerated, not
+      # hand-edited, so a finding there is not ours to fix.
+      - name: modernize
+        run: |
+          go list ./... | grep -v -E '/internal/(eventspb|streampb)$' |
+            xargs go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@v0.52.0 -test
       # A malformed workflow fails the run before any job starts, which gives
       # no useful output. This catches it as an ordinary lint error instead.
       - name: actionlint
@@ -116,9 +126,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      # Not go-version-file: go.mod says `go 1.26.0` (golang.org/x/* require
+      # that spelling), and setup-go reads it as exactly 1.26.0, whose
+      # standard library has long-fixed vulnerabilities that would fail this
+      # job for a reason no change here can address. Scan against the latest
+      # patch release of the minimum Go version instead.
       - uses: actions/setup-go@v7
         with:
-          go-version-file: go.mod
+          go-version: "1.26.x"
+          # The runner's cached 1.26.x can lag the newest patch release.
+          check-latest: true
       - name: govulncheck
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@v1.7.0
