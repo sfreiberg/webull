@@ -116,8 +116,7 @@ func TestDuplicateClientOrderIDIsClassified(t *testing.T) {
 	if !errors.Is(err, ErrDuplicateOrder) {
 		t.Fatalf("got %v, want ErrDuplicateOrder", err)
 	}
-	var coded *codedError
-	if !errors.As(err, &coded) {
+	if _, ok := errors.AsType[*codedError](err); !ok {
 		t.Error("the original error must remain reachable")
 	}
 }

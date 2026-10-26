@@ -62,8 +62,7 @@ func ExampleAPIError() {
 
 	_, err = client.Trade.Accounts(context.Background())
 	if errors.Is(err, webull.ErrRateLimited) {
-		var apiErr *webull.APIError
-		if errors.As(err, &apiErr) {
+		if apiErr, ok := errors.AsType[*webull.APIError](err); ok {
 			fmt.Printf("rate limited; retry after %s\n", apiErr.RetryAfter)
 		}
 	}

@@ -509,8 +509,7 @@ func accountOfClass(ctx context.Context, t *testing.T, c *trade.Client, class tr
 // silently green.
 func skipIfCode(t *testing.T, err error, codes ...string) {
 	t.Helper()
-	var apiErr *webull.APIError
-	if errors.As(err, &apiErr) {
+	if apiErr, ok := errors.AsType[*webull.APIError](err); ok {
 		for _, code := range codes {
 			if apiErr.Code == code {
 				t.Skipf("integration: sandbox: %s (%s)", apiErr.Message, apiErr.Code)
@@ -555,7 +554,7 @@ func isTransient(err error) bool {
 func retryTransient(ctx context.Context, t *testing.T, what string, fn func() error) error {
 	t.Helper()
 	var err error
-	for attempt := 0; attempt < 6; attempt++ {
+	for attempt := range 6 {
 		if err = fn(); err == nil || !isTransient(err) {
 			return err
 		}

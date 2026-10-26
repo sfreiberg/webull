@@ -103,8 +103,7 @@ func readmePlaceOrder(ctx context.Context, client *webull.Client, acct trade.Acc
 
 	receipt, err := client.Trade.PlaceOrder(ctx, acct.AccountID, order)
 	if err != nil {
-		var apiErr *webull.APIError
-		if errors.As(err, &apiErr) {
+		if apiErr, ok := errors.AsType[*webull.APIError](err); ok {
 			log.Fatalf("rejected: %s (%s)", apiErr.Message, apiErr.Code)
 		}
 		// A transport failure means the outcome is unknown. The SDK generated
@@ -344,8 +343,7 @@ func readmeConnect(ctx context.Context, clientID, clientSecret, appKey, appSecre
 func readmeRateLimit(err error) {
 	// readme:block
 	if errors.Is(err, webull.ErrRateLimited) {
-		var apiErr *webull.APIError
-		if errors.As(err, &apiErr) {
+		if apiErr, ok := errors.AsType[*webull.APIError](err); ok {
 			wait := apiErr.RetryAfter
 			if wait == 0 {
 				wait = time.Second // Webull sent no Retry-After header

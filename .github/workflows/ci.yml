@@ -104,6 +104,16 @@ jobs:
       - uses: golangci/golangci-lint-action@v9
         with:
           version: v2.13.1
+      # gopls' modernize analyzer flags code that has a simpler idiom at the
+      # go.mod language version (range over int, min/max, slices.Contains,
+      # errors.AsType, ...). It exits non-zero on any suggestion; apply them
+      # locally with -fix. The generated protobuf packages are excluded for the
+      # same reason they are excluded from coverage: they are regenerated, not
+      # hand-edited, so a finding there is not ours to fix.
+      - name: modernize
+        run: |
+          go list ./... | grep -v -E '/internal/(eventspb|streampb)$' |
+            xargs go run golang.org/x/tools/go/analysis/passes/modernize/cmd/modernize@v0.52.0 -test
       # A malformed workflow fails the run before any job starts, which gives
       # no useful output. This catches it as an ordinary lint error instead.
       - name: actionlint

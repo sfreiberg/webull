@@ -247,9 +247,9 @@ func TestClientSurfacesHostResolutionErrors(t *testing.T) {
 func TestClientRefusesRedirects(t *testing.T) {
 	// Go strips only Authorization and Cookie across hosts, so following a
 	// redirect would forward the app key and signature to the target.
-	var hits int32
+	var hits atomic.Int32
 	target := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		atomic.AddInt32(&hits, 1)
+		hits.Add(1)
 		if r.Header.Get("x-app-key") != "" {
 			t.Error("signature headers were forwarded to the redirect target")
 		}
@@ -276,7 +276,7 @@ func TestClientRefusesRedirects(t *testing.T) {
 	} else if !errors.Is(err, ErrRedirectNotAllowed) {
 		t.Errorf("got %v, want ErrRedirectNotAllowed", err)
 	}
-	if got := atomic.LoadInt32(&hits); got != 0 {
+	if got := hits.Load(); got != 0 {
 		t.Errorf("the redirect target was contacted %d times", got)
 	}
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/url"
+	"slices"
 )
 
 // HasCode reports whether err carries one of the given Webull error codes.
@@ -15,12 +16,7 @@ func HasCode(err error, codes ...string) bool {
 		return false
 	}
 	got := coded.ErrorCode()
-	for _, c := range codes {
-		if c == got {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(codes, got)
 }
 
 // Get performs a signed GET against host and decodes the result into out.

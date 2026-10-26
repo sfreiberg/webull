@@ -71,7 +71,7 @@ func TestPrepareFillsEquityDefaults(t *testing.T) {
 
 func TestPrepareGeneratesUniqueIDs(t *testing.T) {
 	seen := map[string]bool{}
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		id := newClientOrderID()
 		if seen[id] {
 			t.Fatal("duplicate client order id")

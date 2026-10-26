@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/sfreiberg/webull/internal/transport"
@@ -111,12 +112,7 @@ type roleRule struct {
 }
 
 func (r roleRule) allows(t OrderType) bool {
-	for _, x := range r.types {
-		if x == t {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(r.types, t)
 }
 
 var (

@@ -45,8 +45,7 @@ func ExampleClient_PlaceOrder() {
 
 	receipt, err := client.Trade.PlaceOrder(context.Background(), accountID, order)
 	if err != nil {
-		var apiErr *webull.APIError
-		if errors.As(err, &apiErr) {
+		if apiErr, ok := errors.AsType[*webull.APIError](err); ok {
 			log.Fatalf("rejected: %s (%s)", apiErr.Message, apiErr.Code)
 		}
 		// A transport failure leaves the outcome unknown. The SDK wrote
